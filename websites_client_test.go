@@ -17,7 +17,7 @@ func getTestToken() string {
 	if token := os.Getenv("TEST_API_TOKEN"); token != "" {
 		return token
 	}
-	return getTestToken() // fallback for local testing
+	return "test-token" // fallback for local testing
 }
 
 func TestWebsitesClient_List_Success(t *testing.T) {
