@@ -12,6 +12,7 @@ import (
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	"go.lumeweb.com/ipfs-sdk/mocks"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 func setupInternalClient() *internalclient.ClientWithResponses {
@@ -21,6 +22,16 @@ func setupInternalClient() *internalclient.ClientWithResponses {
 		return nil
 	}
 	return genClient
+}
+
+// testDNSService creates a mock DNS service configured for testing
+// Returns service configured with no retries for predictable test behavior
+func testDNSService(t *testing.T) (DNSService, *mocks.MockDNSClientWithResponsesInterface) {
+	mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+	// Configure service with 1 attempt (no retries) for predictable tests
+	retries := 1
+	service := NewDNSService(mockClient, WithDNSRetry(httputil.RetryConfig{Attempts: uint(retries)}))
+	return service, mockClient
 }
 
 func TestNewDNSService(t *testing.T) {
@@ -55,7 +66,7 @@ func TestDNSServiceListZonesContext(t *testing.T) {
 
 func TestDNSService_GetZone(t *testing.T) {
 	t.Run("returns zone data on successful API call", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedZone := &internalclient.ZoneResponse{
 			Id:         123,
@@ -73,7 +84,6 @@ func TestDNSService_GetZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.GetZone(context.Background(), "123")
 
 		require.NoError(t, err)
@@ -83,14 +93,13 @@ func TestDNSService_GetZone(t *testing.T) {
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			GetApiDnsZonesIdWithResponse(mock.Anything, "123").
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.GetZone(context.Background(), "123")
 
 		assert.Error(t, err)
@@ -98,7 +107,7 @@ func TestDNSService_GetZone(t *testing.T) {
 	})
 
 	t.Run("returns error on non-200 status", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		respBody := []byte(`{"error":"Not found"}`)
 
@@ -112,7 +121,6 @@ func TestDNSService_GetZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.GetZone(context.Background(), "999")
 
 		assert.Error(t, err)
@@ -120,7 +128,7 @@ func TestDNSService_GetZone(t *testing.T) {
 	})
 
 	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			GetApiDnsZonesIdWithResponse(mock.Anything, "123").
@@ -130,7 +138,6 @@ func TestDNSService_GetZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.GetZone(context.Background(), "123")
 
 		assert.Error(t, err)
@@ -140,7 +147,7 @@ func TestDNSService_GetZone(t *testing.T) {
 
 func TestDNSService_CreateZone(t *testing.T) {
 	t.Run("creates zone successfully", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedZone := &internalclient.ZoneResponse{
 			Id:         456,
@@ -158,7 +165,6 @@ func TestDNSService_CreateZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.CreateZone(context.Background(), "newdomain.com", []string{"ns1.example.com"})
 
 		require.NoError(t, err)
@@ -168,14 +174,13 @@ func TestDNSService_CreateZone(t *testing.T) {
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			PostApiDnsZonesWithResponse(mock.Anything, mock.Anything).
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.CreateZone(context.Background(), "newdomain.com", nil)
 
 		assert.Error(t, err)
@@ -183,7 +188,7 @@ func TestDNSService_CreateZone(t *testing.T) {
 	})
 
 	t.Run("returns error when JSON201 is nil", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			PostApiDnsZonesWithResponse(mock.Anything, mock.Anything).
@@ -193,7 +198,6 @@ func TestDNSService_CreateZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		zone, err := service.CreateZone(context.Background(), "newdomain.com", nil)
 
 		assert.Error(t, err)
@@ -203,7 +207,7 @@ func TestDNSService_CreateZone(t *testing.T) {
 
 func TestDNSService_DeleteZone(t *testing.T) {
 	t.Run("deletes zone successfully", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			DeleteApiDnsZonesIdWithResponse(mock.Anything, "123").
@@ -212,28 +216,26 @@ func TestDNSService_DeleteZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		err := service.DeleteZone(context.Background(), "123")
 
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			DeleteApiDnsZonesIdWithResponse(mock.Anything, "123").
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		err := service.DeleteZone(context.Background(), "123")
 
 		assert.Error(t, err)
 	})
 
 	t.Run("returns error on non-200/204 status", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		respBody := []byte(`{"error":"Zone not found"}`)
 
@@ -247,7 +249,6 @@ func TestDNSService_DeleteZone(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		err := service.DeleteZone(context.Background(), "999")
 
 		assert.Error(t, err)
@@ -256,7 +257,7 @@ func TestDNSService_DeleteZone(t *testing.T) {
 
 func TestDNSService_ListRecords(t *testing.T) {
 	t.Run("lists records for a zone", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		// The API returns one record at a time
 		expectedRecord := internalclient.RecordResponse{
@@ -277,7 +278,6 @@ func TestDNSService_ListRecords(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		records, err := service.ListRecords(context.Background(), "123")
 
 		require.NoError(t, err)
@@ -288,14 +288,13 @@ func TestDNSService_ListRecords(t *testing.T) {
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			GetApiDnsZonesIdRecordsWithResponse(mock.Anything, "123").
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		records, err := service.ListRecords(context.Background(), "123")
 
 		assert.Error(t, err)
@@ -305,7 +304,7 @@ func TestDNSService_ListRecords(t *testing.T) {
 
 func TestDNSService_CreateRecord(t *testing.T) {
 	t.Run("creates record successfully", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedRecord := &RecordResponse{
 			Name:    "www",
@@ -321,8 +320,6 @@ func TestDNSService_CreateRecord(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
-
 		record := RecordRequest{
 			Name:    "www",
 			Type:    "A",
@@ -337,14 +334,13 @@ func TestDNSService_CreateRecord(t *testing.T) {
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			PostApiDnsZonesIdRecordsWithResponse(mock.Anything, "123", mock.Anything).
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		result, err := service.CreateRecord(context.Background(), "123", RecordRequest{})
 
 		assert.Error(t, err)
@@ -352,7 +348,7 @@ func TestDNSService_CreateRecord(t *testing.T) {
 	})
 
 	t.Run("returns error when JSON201 is nil", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			PostApiDnsZonesIdRecordsWithResponse(mock.Anything, "123", mock.Anything).
@@ -362,7 +358,6 @@ func TestDNSService_CreateRecord(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		result, err := service.CreateRecord(context.Background(), "123", RecordRequest{})
 
 		assert.Error(t, err)
@@ -372,7 +367,7 @@ func TestDNSService_CreateRecord(t *testing.T) {
 
 func TestDNSService_GetRecord(t *testing.T) {
 	t.Run("gets specific record", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedRecord := &RecordResponse{
 			Name:    "www",
@@ -388,7 +383,6 @@ func TestDNSService_GetRecord(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		record, err := service.GetRecord(context.Background(), "123", "www", "A")
 
 		require.NoError(t, err)
@@ -398,14 +392,13 @@ func TestDNSService_GetRecord(t *testing.T) {
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			GetApiDnsZonesIdRecordsNameTypeWithResponse(mock.Anything, "123", "www", "A").
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		record, err := service.GetRecord(context.Background(), "123", "www", "A")
 
 		assert.Error(t, err)
@@ -415,7 +408,7 @@ func TestDNSService_GetRecord(t *testing.T) {
 
 func TestDNSService_UpdateRecord(t *testing.T) {
 	t.Run("updates record successfully", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedRecord := &RecordResponse{
 			Name:    "www",
@@ -430,8 +423,6 @@ func TestDNSService_UpdateRecord(t *testing.T) {
 				JSON200:      expectedRecord,
 			}, nil).
 			Once()
-
-		service := NewDNSService(mockClient)
 
 		record := RecordRequest{
 			Name:    "www",
@@ -449,7 +440,7 @@ func TestDNSService_UpdateRecord(t *testing.T) {
 
 func TestDNSService_DeleteRecord(t *testing.T) {
 	t.Run("deletes record successfully", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			DeleteApiDnsZonesIdRecordsNameTypeWithResponse(mock.Anything, "123", "www", "A").
@@ -458,21 +449,19 @@ func TestDNSService_DeleteRecord(t *testing.T) {
 			}, nil).
 			Once()
 
-		service := NewDNSService(mockClient)
 		err := service.DeleteRecord(context.Background(), "123", "www", "A")
 
 		assert.NoError(t, err)
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
 			DeleteApiDnsZonesIdRecordsNameTypeWithResponse(mock.Anything, "123", "www", "A").
 			Return(nil, assert.AnError).
 			Once()
 
-		service := NewDNSService(mockClient)
 		err := service.DeleteRecord(context.Background(), "123", "www", "A")
 
 		assert.Error(t, err)
@@ -481,7 +470,7 @@ func TestDNSService_DeleteRecord(t *testing.T) {
 
 func TestDNSService_BulkCreateRecords(t *testing.T) {
 	t.Run("creates multiple records", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedRecords := []RecordResponse{
 			{Name: "www", Type: "A", Content: "1.2.3.4"},
@@ -499,8 +488,6 @@ func TestDNSService_BulkCreateRecords(t *testing.T) {
 				},
 			}, nil).
 			Once()
-
-		service := NewDNSService(mockClient)
 
 		records := []RecordRequest{
 			{Name: "www", Type: "A", Content: "1.2.3.4"},
@@ -524,7 +511,7 @@ func TestDNSService_BulkCreateRecords(t *testing.T) {
 
 func TestDNSService_BulkDeleteRecords(t *testing.T) {
 	t.Run("deletes multiple records", func(t *testing.T) {
-		mockClient := mocks.NewMockDNSClientWithResponsesInterface(t)
+		service, mockClient := testDNSService(t)
 
 		expectedResults := []RecordResult{
 			{Name: "www", Type: "A", Status: "success"},
@@ -540,8 +527,6 @@ func TestDNSService_BulkDeleteRecords(t *testing.T) {
 				},
 			}, nil).
 			Once()
-
-		service := NewDNSService(mockClient)
 
 		identifiers := []RecordIdentifier{
 			{Name: "www", Type: "A"},
@@ -573,16 +558,3 @@ func (m mockReadCloser) Read(p []byte) (int, error) {
 func (m mockReadCloser) Close() error {
 	return nil
 }
-
-// mock matchers
-type anythingMatcher struct{}
-
-func (anythingMatcher) Matches(x interface{}) bool {
-	return true
-}
-
-func (anythingMatcher) String() string {
-	return "anything"
-}
-
-var mockAnything = anythingMatcher{}

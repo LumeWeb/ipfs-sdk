@@ -113,7 +113,9 @@ func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) 
 			return nil
 		}
 
-		result = *resp.JSON200
+		// API returns a single zone in ZoneListResponseResponse.Data,
+		// but we need to return a slice
+		result = []internalclient.ZoneListResponse{resp.JSON200.Data}
 		return nil
 	})
 	if err != nil {

@@ -35,24 +35,24 @@ type (
 		byteBuf [1]byte // escapes via io.Reader.Read; preallocate
 	}
 
+	readSeekerAt struct {
+		rs io.ReadSeeker
+		mu sync.Mutex
+	}
+
+	readerAtSeeker struct {
+		ra       io.ReaderAt
+		position int64
+		mu       sync.Mutex
+	}
+)
+
 // ByteReadSeeker is an interface that combines io.ReadSeeker and io.ByteReader.
 // It allows reading individual bytes and seeking within the data.
 type ByteReadSeeker interface {
 	io.ReadSeeker
 	io.ByteReader
 }
-
-	type readSeekerAt struct {
-		rs io.ReadSeeker
-		mu sync.Mutex
-	}
-
-	type readerAtSeeker struct {
-		ra       io.ReaderAt
-		position int64
-		mu       sync.Mutex
-	}
-)
 
 // ToByteReader converts an io.Reader to an io.ByteReader.
 // If the reader already implements io.ByteReader, it is returned unchanged.

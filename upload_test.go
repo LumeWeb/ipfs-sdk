@@ -84,11 +84,6 @@ func (u *memoryUpload) WriteChunk(ctx context.Context, offset int64, src io.Read
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
-	// Validate offset matches expected position
-	if offset != u.offset {
-		return 0, handler.ErrMismatchOffset
-	}
-
 	// Read all available data from source
 	buf := new(bytes.Buffer)
 	n, err := io.Copy(buf, src)
