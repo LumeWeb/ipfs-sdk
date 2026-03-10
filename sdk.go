@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
@@ -49,7 +50,7 @@ func WithRetryConfig(cfg httputil.RetryConfig) ClientOption {
 // NewClient creates a new IPFS SDK client.
 // The baseURL parameter specifies the API endpoint URL.
 // The bearerToken parameter specifies the authentication token.
-func NewClient(baseURL, bearerToken string, opts ...ClientOption) *Client {
+func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, error) {
 	cfg := DefaultClientConfig()
 
 	// Create request editor with JWT
@@ -63,7 +64,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) *Client {
 	// Create internal generated client
 	internalGen, err := internalclient.NewClientWithResponses(baseURL, requestEditor)
 	if err != nil {
-		internalGen = &internalclient.ClientWithResponses{}
+		return nil, fmt.Errorf("failed to create internal client: %w", err)
 	}
 
 	httpClient := &http.Client{}
@@ -89,7 +90,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) *Client {
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
 	c.upload = NewUploadService(baseURL, bearerToken, WithHTTPClient(httpClient))
 
-	return c
+	return c, nil
 }
 
 // Pinning returns the pinning service for managing IPFS content.
@@ -130,9 +131,14 @@ func (c *Client) BaseURL() string {
 
 // SetBaseURL sets a new base URL for the API endpoint.
 // This recreates the internal client with the new URL.
-func (c *Client) SetBaseURL(url string) {
+func (c *Client) SetBaseURL(url string) error {
 	c.baseURL = url
-	c.internalGen, _ = internalclient.NewClientWithResponses(url, c.genClientOpts)
+	var err error
+	c.internalGen, err = internalclient.NewClientWithResponses(url, c.genClientOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create internal client with new URL: %w", err)
+	}
+	return nil
 }
 
 // BearerToken returns the current bearer token.
@@ -141,7 +147,7 @@ func (c *Client) BearerToken() string {
 }
 
 // SetBearerToken sets a new bearer token for authentication.
-func (c *Client) SetBearerToken(token string) {
+func (c *Client) SetBearerToken(token string) error {
 	c.bearerToken = token
 	c.genClientOpts = internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		if token != "" {
@@ -149,5 +155,10 @@ func (c *Client) SetBearerToken(token string) {
 		}
 		return nil
 	})
-	c.internalGen, _ = internalclient.NewClientWithResponses(c.baseURL, c.genClientOpts)
+	var err error
+	c.internalGen, err = internalclient.NewClientWithResponses(c.baseURL, c.genClientOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create internal client with new token: %w", err)
+	}
+	return nil
 }

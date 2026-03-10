@@ -2,9 +2,9 @@ package upload
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/ipfs/boxo/blockstore"
 	chunker "github.com/ipfs/boxo/chunker"
@@ -140,7 +140,7 @@ func (gen *IPFSUnixFSNodeGenerator) CreateUnixFSNode(ctx context.Context, r io.R
 
 	// First attempt with rawLeaves=false
 	node, err := gen.CreateDAGFromReader(ctx, r, maxlinks, chunkSize, false)
-	if err != nil && strings.Contains(err.Error(), verifcid.ErrDigestTooLarge.Error()) {
+	if err != nil && errors.Is(err, verifcid.ErrDigestTooLarge) {
 		// Retry with rawLeaves=true for large content
 		// Seek back to start for retry
 		_, seekErr := r.Seek(0, io.SeekStart)

@@ -43,7 +43,8 @@ func TestWebsitesClient_List_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
 	result, err := client.Websites().List(context.Background())
 
 	require.NoError(t, err)
@@ -63,7 +64,9 @@ func TestWebsitesClient_List_Unauthorized(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "invalid-token")
+	client, err := NewClient(server.URL, "invalid-token")
+	require.NoError(t, err, "NewClient should succeed with any URL")
+	
 	result, err := client.Websites().List(context.Background())
 
 	require.Error(t, err)
@@ -92,7 +95,8 @@ func TestWebsitesClient_Get_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
 	result, err := client.Websites().Get(context.Background(), "1")
 
 	require.NoError(t, err)
@@ -122,7 +126,8 @@ func TestWebsitesClient_Create_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
 	result, err := client.Websites().Create(context.Background(), "example.com", "QmTest", "ipfs")
 
 	require.NoError(t, err)
@@ -151,7 +156,8 @@ func TestWebsitesClient_Update_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
 	result, err := client.Websites().Update(context.Background(), "1", "example.com", "QmUpdated", "ipfs")
 
 	require.NoError(t, err)
@@ -170,8 +176,9 @@ func TestWebsitesClient_Delete_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, getTestToken())
-	err := client.Websites().Delete(context.Background(), "1")
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+	err = client.Websites().Delete(context.Background(), "1")
 
 	require.NoError(t, err)
 }
@@ -197,7 +204,8 @@ func TestWebsitesClient_GetSSLStatus_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
 	result, err := client.Websites().GetSSLStatus(context.Background(), "example.com")
 
 	require.NoError(t, err)

@@ -359,16 +359,26 @@ func TestPinningServiceReplacePin(t *testing.T) {
 
 func TestStatusConstants(t *testing.T) {
 	t.Run("all status constants are defined", func(t *testing.T) {
-		statuses := []boxo.Status{
-			StatusUnknown,
-			StatusQueued,
-			StatusPinning,
-			StatusPinned,
-			StatusFailed,
+		statuses := []struct {
+			name   string
+			status boxo.Status
+		}{
+			{"Unknown", StatusUnknown},
+			{"Queued", StatusQueued},
+			{"Pinning", StatusPinning},
+			{"Pinned", StatusPinned},
+			{"Failed", StatusFailed},
 		}
 
-		for _, status := range statuses {
-			assert.NotNil(t, status)
+		for _, s := range statuses {
+			t.Run(s.name, func(t *testing.T) {
+				// StatusUnknown is intentionally empty (represents undefined state)
+				if s.name == "Unknown" {
+					assert.Equal(t, boxo.Status(""), s.status)
+				} else {
+					assert.NotEmpty(t, s.status)
+				}
+			})
 		}
 	})
 }

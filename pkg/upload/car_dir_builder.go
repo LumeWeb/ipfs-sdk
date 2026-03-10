@@ -147,8 +147,8 @@ func (b *CARBuilder) BuildSummary(ctx context.Context, filesystem fs.FS, wrapInD
 			if parent != nil {
 				parent.Children = append(parent.Children, path)
 			}
-		} else if !entry.IsDir {
-			// Root-level file, add to ROOT
+		} else {
+			// Root-level file or directory, add to ROOT
 			rootChildren := summary.TreeEntries[ROOT].Children
 			summary.TreeEntries[ROOT].Children = append(rootChildren, path)
 		}
@@ -222,7 +222,7 @@ func (b *CARBuilder) BuildSummary(ctx context.Context, filesystem fs.FS, wrapInD
 
 		summary.BlockOrder = append(summary.BlockOrder, dirCID)
 		summary.BlockSizes = append(summary.BlockSizes, blockSize)
-		summary.TotalSize += uint64(dirCID.ByteLen())
+		summary.TotalSize += blockSize
 	}
 
 	root := summary.TreeEntries[ROOT]
@@ -246,6 +246,12 @@ func (b *CARBuilder) BuildSummary(ctx context.Context, filesystem fs.FS, wrapInD
 	}
 
 	sort.Slice(dirPaths, func(i, j int) bool {
+		if dirPaths[i] == ROOT {
+			return false
+		}
+		if dirPaths[j] == ROOT {
+			return true
+		}
 		return pathDepth(dirPaths[i]) > pathDepth(dirPaths[j])
 	})
 
