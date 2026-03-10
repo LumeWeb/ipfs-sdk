@@ -547,7 +547,7 @@ func TestUploadFromFS(t *testing.T) {
 		)
 
 		ctx := context.Background()
-		result, err := service.UploadFromFS(ctx, testFS, "small", nil)
+		result, err := service.UploadFromFS(ctx, testFS, "small.txt", nil)
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)

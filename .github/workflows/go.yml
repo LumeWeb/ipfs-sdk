@@ -29,6 +29,10 @@ jobs:
       run: go build -v ./...
 
     - name: Test
+      env:
+        # Default test secrets - fallback for CI when not set
+        JWT_TEST_SECRET: test-jwt-signing-secret-for-testing
+        TEST_API_TOKEN: test-token
       run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
     - name: Generate coverage report
@@ -51,7 +55,7 @@ jobs:
         body-includes: 'Code Coverage Report'
 
     - name: Create or update coverage comment
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       uses: peter-evans/create-or-update-comment@v5
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}

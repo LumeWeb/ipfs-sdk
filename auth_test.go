@@ -11,6 +11,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// getTestSecret returns a JWT signing secret from environment or falls back to test value
+func getTestSecret() string {
+	if secret := os.Getenv("JWT_TEST_SECRET"); secret != "" {
+		return secret
+	}
+	return "test-jwt-signing-secret-for-testing"
+}
+
 // Test that Provider interface is implemented
 func TestAuthProviderInterface(t *testing.T) {
 	provider := NewJWTProvider("test-token")
@@ -68,7 +76,7 @@ func TestJWTProviderClaimsValidToken(t *testing.T) {
 		"sub":  "user123",
 		"exp":  expTime,
 	})
-	signedToken, _ := token.SignedString([]byte(os.Getenv("JWT_TEST_SECRET") + "secret"))
+	signedToken, _ := token.SignedString([]byte(getTestSecret()))
 	
 	provider := NewJWTProvider(signedToken)
 	
@@ -96,7 +104,7 @@ func TestJWTProviderValid(t *testing.T) {
 		"sub": "user123",
 		"exp": expTime,
 	})
-	signedToken, _ := token.SignedString([]byte(os.Getenv("JWT_TEST_SECRET") + "secret"))
+	signedToken, _ := token.SignedString([]byte(getTestSecret()))
 	
 	provider := NewJWTProvider(signedToken)
 	
@@ -109,7 +117,7 @@ func TestJWTProviderExpiredToken(t *testing.T) {
 		"sub": "user123",
 		"exp": 1, // Unix timestamp of 1 (very old)
 	})
-	signedToken, _ := token.SignedString([]byte(os.Getenv("JWT_TEST_SECRET") + "secret"))
+	signedToken, _ := token.SignedString([]byte(getTestSecret()))
 	
 	provider := NewJWTProvider(signedToken)
 	

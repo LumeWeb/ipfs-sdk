@@ -118,11 +118,12 @@ func (b *CARBuilder) BuildSummary(ctx context.Context, filesystem fs.FS, wrapInD
 			}
 
 			rootCID, blocks, blockSizes, err := b.createUnixFSBlocks(ctx, file)
-			if closeErr := file.Close(); closeErr != nil {
-				return closeErr
-			}
+			closeErr := file.Close()
 			if err != nil {
 				return err
+			}
+			if closeErr != nil {
+				return closeErr
 			}
 
 			entry.CID = rootCID
@@ -131,7 +132,7 @@ func (b *CARBuilder) BuildSummary(ctx context.Context, filesystem fs.FS, wrapInD
 			for i, blockCID := range blocks {
 				summary.BlockOrder = append(summary.BlockOrder, blockCID)
 				summary.BlockSizes = append(summary.BlockSizes, blockSizes[i])
-				summary.TotalSize += uint64(blockCID.ByteLen())
+				summary.TotalSize += blockSizes[i]
 			}
 		}
 
@@ -359,6 +360,11 @@ func (b *CARBuilder) createUnixFSBlocks(ctx context.Context, r io.Reader) (cid.C
 
 	cids = append(cids, nd.Cid())
 	sizes = append(sizes, uint64(len(pbNode.RawData())))
+
+	for _, link := range pbNode.Links() {
+		cids = append(cids, link.Cid)
+		sizes = append(sizes, link.Size)
+	}
 
 	return nd.Cid(), cids, sizes, nil
 }

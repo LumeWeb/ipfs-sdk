@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -21,6 +22,15 @@ import (
 	"go.lumeweb.com/ipfs-sdk/pkg/upload/internal/carv1"
 	"go.lumeweb.com/ipfs-sdk/pkg/upload/internal/encoding"
 )
+
+// getTestContent returns test content string from env or fallback
+func getTestContent(suffix string) string {
+	envKey := "TEST_CONTENT_" + suffix
+	if content := os.Getenv(envKey); content != "" {
+		return content
+	}
+	return "content " + suffix
+}
 
 // TestBuildTreeSummary tests the CARBuilder.BuildSummary function
 func TestBuildTreeSummary(t *testing.T) {
@@ -48,9 +58,9 @@ func TestBuildTreeSummary(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
-				"file3.txt": {Data: []byte("content 3")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
+				"file3.txt": {Data: []byte(getTestContent("3"))},
 			},
 			wrapInDir:   true,
 			expectError: false,
@@ -133,7 +143,7 @@ func TestCalculateCARSize_EmptyDirectories(t *testing.T) {
 		{
 			name: "file_alongside_empty_directory",
 			filesystem: fstest.MapFS{
-				"file.txt":     {Data: []byte("content")},
+				"file.txt":     {Data: []byte(getTestContent("default"))},
 				"emptydir":     {Mode: fs.ModeDir},
 				"nested/.keep": {Data: []byte("")},
 			},
@@ -193,13 +203,13 @@ func TestBuildTreeSummary_ContextCancellation(t *testing.T) {
 	}{
 		{
 			name:       "normal operation",
-			filesystem: fstest.MapFS{"file.txt": {Data: []byte("content")}},
+			filesystem: fstest.MapFS{"file.txt": {Data: []byte(getTestContent("default"))}},
 			cancel:     false,
 			expectErr:  false,
 		},
 		{
 			name:       "cancelled context",
-			filesystem: fstest.MapFS{"file.txt": {Data: []byte("content")}},
+			filesystem: fstest.MapFS{"file.txt": {Data: []byte(getTestContent("default"))}},
 			cancel:     true,
 			expectErr:  true,
 		},
@@ -285,8 +295,8 @@ func TestWriteCARv1FromSummary(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
 			},
 			wrapInDir: true,
 			check: func(t *testing.T, summary *TreeSummary, data []byte) {
@@ -323,9 +333,9 @@ func TestWriteCARv1FromSummary_ContextCancellation(t *testing.T) {
 
 	ctx := context.Background()
 	filesystem := fstest.MapFS{
-		"file1.txt": {Data: []byte("content 1")},
-		"file2.txt": {Data: []byte("content 2")},
-		"file3.txt": {Data: []byte("content 3")},
+		"file1.txt": {Data: []byte(getTestContent("1"))},
+		"file2.txt": {Data: []byte(getTestContent("2"))},
+		"file3.txt": {Data: []byte(getTestContent("3"))},
 	}
 
 	bs, dagService := NewDAGServiceWithMemoryLimit(DefaultMemoryLimit)
@@ -371,8 +381,8 @@ func TestStreamCAR(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
 			},
 			maxMemory: DefaultMemoryLimit,
 			wrapInDir: true,
@@ -416,8 +426,8 @@ func TestStreamCAR_ContextCancellation(t *testing.T) {
 
 	ctx := context.Background()
 	filesystem := fstest.MapFS{
-		"file1.txt": {Data: []byte("content 1")},
-		"file2.txt": {Data: []byte("content 2")},
+		"file1.txt": {Data: []byte(getTestContent("1"))},
+		"file2.txt": {Data: []byte(getTestContent("2"))},
 	}
 
 	// Cancel context before starting
@@ -484,9 +494,9 @@ func TestWriteCAR_ContextCancellation(t *testing.T) {
 	generator := NewUnixFSNodeGenerator(WithUnixFSNodeDAGService(dagService), WithUnixFSNodeBlockstore(bs))
 	builder := NewCARBuilder(bs, dagService, generator)
 	filesystem := fstest.MapFS{
-		"file1.txt": {Data: []byte("content 1")},
-		"file2.txt": {Data: []byte("content 2")},
-		"file3.txt": {Data: []byte("content 3")},
+		"file1.txt": {Data: []byte(getTestContent("1"))},
+		"file2.txt": {Data: []byte(getTestContent("2"))},
+		"file3.txt": {Data: []byte(getTestContent("3"))},
 	}
 	_, err := builder.BuildSummary(ctx, filesystem, true)
 	require.NoError(t, err)
@@ -522,9 +532,9 @@ func TestRoundTripCAR(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
-				"file3.txt": {Data: []byte("content 3")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
+				"file3.txt": {Data: []byte(getTestContent("3"))},
 			},
 			wrapInDir: true,
 		},
@@ -592,9 +602,9 @@ func TestRoundTripCAR_StreamCAR(t *testing.T) {
 	t.Parallel()
 
 	filesystem := fstest.MapFS{
-		"file1.txt":     {Data: []byte("content 1")},
-		"file2.txt":     {Data: []byte("content 2")},
-		"dir/file3.txt": {Data: []byte("content 3")},
+		"file1.txt":     {Data: []byte(getTestContent("1"))},
+		"file2.txt":     {Data: []byte(getTestContent("2"))},
+		"dir/file3.txt": {Data: []byte(getTestContent("3"))},
 	}
 
 	ctx := context.Background()
@@ -638,9 +648,9 @@ func TestRoundTripCAR_WriteCAR(t *testing.T) {
 	generator := NewUnixFSNodeGenerator(WithUnixFSNodeDAGService(dagService), WithUnixFSNodeBlockstore(bs))
 	builder := NewCARBuilder(bs, dagService, generator)
 	filesystem := fstest.MapFS{
-		"file1.txt":     {Data: []byte("content 1")},
-		"file2.txt":     {Data: []byte("content 2")},
-		"dir/file3.txt": {Data: []byte("content 3")},
+		"file1.txt":     {Data: []byte(getTestContent("1"))},
+		"file2.txt":     {Data: []byte(getTestContent("2"))},
+		"dir/file3.txt": {Data: []byte(getTestContent("3"))},
 	}
 	summary, err := builder.BuildSummary(ctx, filesystem, true)
 	require.NoError(t, err)
@@ -684,10 +694,10 @@ func TestRoundTripCAR_VerifyAllData(t *testing.T) {
 	t.Parallel()
 
 	filesystem := fstest.MapFS{
-		"file1.txt":            {Data: []byte("content 1")},
-		"file2.txt":            {Data: []byte("content 2")},
-		"dir/file3.txt":        {Data: []byte("content 3")},
-		"dir/subdir/file4.txt": {Data: []byte("content 4")},
+		"file1.txt":            {Data: []byte(getTestContent("1"))},
+		"file2.txt":            {Data: []byte(getTestContent("2"))},
+		"dir/file3.txt":        {Data: []byte(getTestContent("3"))},
+		"dir/subdir/file4.txt": {Data: []byte(getTestContent("4"))},
 	}
 
 	ctx := context.Background()
@@ -725,8 +735,8 @@ func TestRoundTripCAR_ContextCancellation(t *testing.T) {
 
 	ctx := context.Background()
 	filesystem := fstest.MapFS{
-		"file1.txt": {Data: []byte("content 1")},
-		"file2.txt": {Data: []byte("content 2")},
+		"file1.txt": {Data: []byte(getTestContent("1"))},
+		"file2.txt": {Data: []byte(getTestContent("2"))},
 	}
 
 	var carBuf bytes.Buffer
@@ -753,16 +763,16 @@ func TestRoundTripCAR_LargeDataset(t *testing.T) {
 	t.Parallel()
 
 	filesystem := fstest.MapFS{
-		"file1.txt":              {Data: []byte("content 1")},
-		"file2.txt":              {Data: []byte("content 2")},
-		"file3.txt":              {Data: []byte("content 3")},
-		"file4.txt":              {Data: []byte("content 4")},
-		"file5.txt":              {Data: []byte("content 5")},
-		"dir1/file6.txt":         {Data: []byte("content 6")},
-		"dir1/file7.txt":         {Data: []byte("content 7")},
-		"dir2/file8.txt":         {Data: []byte("content 8")},
-		"dir2/subdir/file9.txt":  {Data: []byte("content 9")},
-		"dir2/subdir/file10.txt": {Data: []byte("content 10")},
+		"file1.txt":              {Data: []byte(getTestContent("1"))},
+		"file2.txt":              {Data: []byte(getTestContent("2"))},
+		"file3.txt":              {Data: []byte(getTestContent("3"))},
+		"file4.txt":              {Data: []byte(getTestContent("4"))},
+		"file5.txt":              {Data: []byte(getTestContent("5"))},
+		"dir1/file6.txt":         {Data: []byte(getTestContent("6"))},
+		"dir1/file7.txt":         {Data: []byte(getTestContent("7"))},
+		"dir2/file8.txt":         {Data: []byte(getTestContent("8"))},
+		"dir2/subdir/file9.txt":  {Data: []byte(getTestContent("9"))},
+		"dir2/subdir/file10.txt": {Data: []byte(getTestContent("10"))},
 	}
 
 	ctx := context.Background()
@@ -811,9 +821,9 @@ func TestCalculateCARSize(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
-				"file3.txt": {Data: []byte("content 3")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
+				"file3.txt": {Data: []byte(getTestContent("3"))},
 			},
 			wrapInDir: true,
 			minSize:   200,
@@ -872,7 +882,7 @@ func TestCalculateCARSize_EdgeCases(t *testing.T) {
 				fs := make(fstest.MapFS)
 				for i := 0; i < 100; i++ {
 					fs[fmt.Sprintf("file%03d.txt", i)] = &fstest.MapFile{
-						Data: []byte(fmt.Sprintf("content %d", i)),
+						Data: []byte(getTestContent(fmt.Sprintf("%d", i))),
 						Mode: 0644,
 					}
 				}
@@ -928,9 +938,9 @@ func TestCalculateCARSize_ActualSizeComparison(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
-				"file3.txt": {Data: []byte("content 3")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
+				"file3.txt": {Data: []byte(getTestContent("3"))},
 			},
 			wrapInDir: true,
 			tolerance: 0.05,
@@ -983,9 +993,9 @@ func TestCalculateCARSize_StreamCARWithSizeIntegration(t *testing.T) {
 		{
 			name: "multiple files",
 			filesystem: fstest.MapFS{
-				"file1.txt": {Data: []byte("content 1")},
-				"file2.txt": {Data: []byte("content 2")},
-				"file3.txt": {Data: []byte("content 3")},
+				"file1.txt": {Data: []byte(getTestContent("1"))},
+				"file2.txt": {Data: []byte(getTestContent("2"))},
+				"file3.txt": {Data: []byte(getTestContent("3"))},
 			},
 			wrapInDir: true,
 		},
@@ -1045,8 +1055,8 @@ func TestStreamCARWithSize_ErrorPaths(t *testing.T) {
 	t.Run("error_when_context_cancelled_during_writeseCAR", func(t *testing.T) {
 		ctx := context.Background()
 		filesystem := fstest.MapFS{
-			"file1.txt": {Data: []byte("content 1")},
-			"file2.txt": {Data: []byte("content 2")},
+			"file1.txt": {Data: []byte(getTestContent("1"))},
+			"file2.txt": {Data: []byte(getTestContent("2"))},
 		}
 
 		var buf bytes.Buffer
