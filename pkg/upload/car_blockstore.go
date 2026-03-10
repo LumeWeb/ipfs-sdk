@@ -133,7 +133,10 @@ func (b *LRUBlockstore) Get(_ context.Context, c cid.Cid) (blocks.Block, error) 
 	}
 
 	b.moveToFront(node)
-	block, _ := blocks.NewBlockWithCid(node.data, c)
+	block, err := blocks.NewBlockWithCid(node.data, c)
+	if err != nil {
+		return nil, err
+	}
 	return block, nil
 }
 

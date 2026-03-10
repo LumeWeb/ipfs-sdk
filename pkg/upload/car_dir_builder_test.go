@@ -552,21 +552,21 @@ func TestCARBuilder_DynamicComplexTree(t *testing.T) {
 			numDirectories:   5,
 			filesPerDir:      3,
 			nestingDepth:     3,
-			expectedMinFiles: 15,
+			expectedMinFiles: 30,
 		},
 		{
 			name:             "medium complex tree",
 			numDirectories:   10,
 			filesPerDir:      5,
 			nestingDepth:     4,
-			expectedMinFiles: 50,
+			expectedMinFiles: 130,
 		},
 		{
 			name:             "large complex tree",
 			numDirectories:   20,
 			filesPerDir:      10,
 			nestingDepth:     5,
-			expectedMinFiles: 200,
+			expectedMinFiles: 605,
 		},
 	}
 

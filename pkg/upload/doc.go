@@ -58,7 +58,7 @@
 //	builder := NewCARBuilder(bs, dagService, generator)
 //
 //	// Pass 1: Build summary
-//	summary, err := builder.BuildSummary(ctx, filesystem, wrapInDir)
+//	_, err := builder.BuildSummary(ctx, filesystem, wrapInDir)
 //	if err != nil {
 //	    return err
 //	}

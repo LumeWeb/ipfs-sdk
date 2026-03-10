@@ -29,7 +29,7 @@ jobs:
       run: go build -v ./...
 
     - name: Test
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./... && go test ./...
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
     - name: Generate coverage report
       run: go tool cover -func=coverage.out
@@ -38,8 +38,8 @@ jobs:
       if: github.event_name == 'pull_request'
       id: coverage
       run: |
-        COVERAGE=$(go test -cover ./ | grep -oP 'coverage: \K[\d.]+%')
-        echo "percent=$COVERAGE" >> $GITHUB_OUTPUT
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | grep -oP '\d+\.\d+')
+        echo "percent=$COVERAGE%" >> $GITHUB_OUTPUT
 
     - name: Find coverage comment
       if: github.event_name == 'pull_request'

@@ -40,6 +40,9 @@ func NewDAGServiceWithMemoryLimit(memoryLimit uint64) (blockstore.Blockstore, fo
 // If wrapInDir is true, the content will be wrapped in a root directory (default behavior).
 // If wrapInDir is false and there's only one file, the file itself will be the root.
 func StreamCAR(ctx context.Context, filesystem fs.FS, w io.Writer, maxMemory uint64, wrapInDir bool) (cid.Cid, error) {
+	if err := ctx.Err(); err != nil {
+		return cid.Cid{}, err
+	}
 	bs, dagService := NewDAGServiceWithMemoryLimit(maxMemory)
 	generator := NewUnixFSNodeGenerator(WithUnixFSNodeDAGService(dagService), WithUnixFSNodeBlockstore(bs))
 
@@ -57,6 +60,9 @@ func StreamCAR(ctx context.Context, filesystem fs.FS, w io.Writer, maxMemory uin
 // If wrapInDir is true, the content will be wrapped in a root directory (default behavior).
 // If wrapInDir is false and there's only one file, the file itself will be the root.
 func StreamCARWithSize(ctx context.Context, filesystem fs.FS, w io.Writer, maxMemory uint64, wrapInDir bool) (cid.Cid, int64, error) {
+	if err := ctx.Err(); err != nil {
+		return cid.Cid{}, 0, err
+	}
 	bs, dagService := NewDAGServiceWithMemoryLimit(maxMemory)
 	generator := NewUnixFSNodeGenerator(WithUnixFSNodeDAGService(dagService), WithUnixFSNodeBlockstore(bs))
 

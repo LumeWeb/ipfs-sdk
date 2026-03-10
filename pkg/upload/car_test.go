@@ -87,7 +87,6 @@ func TestBuildTreeSummary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
-			_, dagService := NewDAGServiceWithMemoryLimit(DefaultMemoryLimit)
 			bs, dagService := NewDAGServiceWithMemoryLimit(DefaultMemoryLimit)
 
 			generator := NewUnixFSNodeGenerator(WithUnixFSNodeDAGService(dagService), WithUnixFSNodeBlockstore(bs))
