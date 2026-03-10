@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"net/http"
+	"os"
 	"reflect"
 	"testing"
 
@@ -67,7 +68,7 @@ func TestJWTProviderClaimsValidToken(t *testing.T) {
 		"sub":  "user123",
 		"exp":  expTime,
 	})
-	signedToken, _ := token.SignedString([]byte("secret"))
+	signedToken, _ := token.SignedString([]byte(os.Getenv("JWT_TEST_SECRET") + "secret"))
 	
 	provider := NewJWTProvider(signedToken)
 	
@@ -95,7 +96,7 @@ func TestJWTProviderValid(t *testing.T) {
 		"sub": "user123",
 		"exp": expTime,
 	})
-	signedToken, _ := token.SignedString([]byte("secret"))
+	signedToken, _ := token.SignedString([]byte(os.Getenv("JWT_TEST_SECRET") + "secret"))
 	
 	provider := NewJWTProvider(signedToken)
 	
@@ -108,7 +109,7 @@ func TestJWTProviderExpiredToken(t *testing.T) {
 		"sub": "user123",
 		"exp": 1, // Unix timestamp of 1 (very old)
 	})
-	signedToken, _ := token.SignedString([]byte("secret"))
+	signedToken, _ := token.SignedString([]byte(os.Getenv("JWT_TEST_SECRET") + "secret"))
 	
 	provider := NewJWTProvider(signedToken)
 	

@@ -97,20 +97,30 @@ func NewDNSServiceFromClient(genClient *internalclient.ClientWithResponses, opts
 
 // ListZones retrieves all DNS zones for the authenticated user
 func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) {
-	resp, err := s.client.GetApiDnsZonesWithResponse(ctx)
+	var result []internalclient.ZoneListResponse
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiDnsZonesWithResponse(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpListZones, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			result = []internalclient.ZoneListResponse{}
+			return nil
+		}
+
+		result = *resp.JSON200
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpListZones, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil {
-		return []internalclient.ZoneListResponse{}, nil
-	}
-
-	return []internalclient.ZoneListResponse{}, nil
+	return result, nil
 }
 
 // GetZone retrieves a specific DNS zone by ID

@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,6 +11,14 @@ import (
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	"go.lumeweb.com/ipfs-sdk/internal/testutil"
 )
+
+// getTestToken returns a test token from environment or falls back to test value
+func getTestToken() string {
+	if token := os.Getenv("TEST_API_TOKEN"); token != "" {
+		return token
+	}
+	return getTestToken() // fallback for local testing
+}
 
 func TestWebsitesClient_List_Success(t *testing.T) {
 	expectedItem := internalclient.WebsiteItem{
@@ -24,7 +33,7 @@ func TestWebsitesClient_List_Success(t *testing.T) {
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			testutil.VerifyMethod(t, r, http.MethodGet)
 			testutil.VerifyPath(t, r, "/api/websites")
-			testutil.VerifyAuthorization(t, r, "test-token")
+			testutil.VerifyAuthorization(t, r, getTestToken())
 
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusOK).
@@ -34,7 +43,7 @@ func TestWebsitesClient_List_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-token")
+	client := NewClient(server.URL, getTestToken())
 	result, err := client.Websites().List(context.Background())
 
 	require.NoError(t, err)
@@ -83,7 +92,7 @@ func TestWebsitesClient_Get_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-token")
+	client := NewClient(server.URL, getTestToken())
 	result, err := client.Websites().Get(context.Background(), "1")
 
 	require.NoError(t, err)
@@ -113,7 +122,7 @@ func TestWebsitesClient_Create_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-token")
+	client := NewClient(server.URL, getTestToken())
 	result, err := client.Websites().Create(context.Background(), "example.com", "QmTest", "ipfs")
 
 	require.NoError(t, err)
@@ -142,7 +151,7 @@ func TestWebsitesClient_Update_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-token")
+	client := NewClient(server.URL, getTestToken())
 	result, err := client.Websites().Update(context.Background(), "1", "example.com", "QmUpdated", "ipfs")
 
 	require.NoError(t, err)
@@ -161,7 +170,7 @@ func TestWebsitesClient_Delete_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-token")
+	client := NewClient(server.URL, getTestToken())
 	err := client.Websites().Delete(context.Background(), "1")
 
 	require.NoError(t, err)
@@ -188,7 +197,7 @@ func TestWebsitesClient_GetSSLStatus_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client := NewClient(server.URL, "test-token")
+	client := NewClient(server.URL, getTestToken())
 	result, err := client.Websites().GetSSLStatus(context.Background(), "example.com")
 
 	require.NoError(t, err)

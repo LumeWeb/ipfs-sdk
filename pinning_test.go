@@ -182,7 +182,8 @@ func TestNewPinningService(t *testing.T) {
 
 func TestLsOptionType(t *testing.T) {
 	t.Run("LsOption returns valid option", func(t *testing.T) {
-		cid, _ := cid.Decode(testCID1)
+		cid, err := cid.Decode(testCID1)
+		require.NoError(t, err)
 		opt := FilterCIDs(cid)
 
 		assert.NotNil(t, opt)

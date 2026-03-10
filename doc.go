@@ -30,7 +30,7 @@
 //
 //	cfg := DefaultClientConfig()
 //	cfg.Retry.MaxAttempts = 5
-//	cfg.Relay.BaseDelay = 100 * time.Millisecond
+//	cfg.Retry.BaseDelay = 100 * time.Millisecond
 //	client := NewClient(baseURL, token, WithRetryConfig(cfg))
 //
 // Error Handling
