@@ -42,12 +42,12 @@ type ByteReadSeeker interface {
 	io.ByteReader
 }
 
-	readSeekerAt struct {
+	type readSeekerAt struct {
 		rs io.ReadSeeker
 		mu sync.Mutex
 	}
 
-	readerAtSeeker struct {
+	type readerAtSeeker struct {
 		ra       io.ReaderAt
 		position int64
 		mu       sync.Mutex

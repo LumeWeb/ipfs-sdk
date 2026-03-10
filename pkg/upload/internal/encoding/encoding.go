@@ -19,7 +19,7 @@ func ToV1(c cid.Cid) cid.Cid {
 		return c
 	default:
 		// Unsupported version
-		return cid.Undefined
+		return cid.Undef
 	}
 }
 
