@@ -1,24 +1,18 @@
-// Package retry provides retry configuration for API calls
-// Copied with modifications from pinner-cli/pkg/ipfs/client/retry.go
+// Package retry provides retry configuration for API calls.
+// Delegates to internal/http for single source of truth.
 package ipfs
 
 import (
 	"context"
-	"time"
 
 	"github.com/avast/retry-go/v4"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 // RetryOptions returns standard retry configuration for API calls.
+// Delegates to internal/http for single source of truth.
 func RetryOptions(ctx context.Context) []retry.Option {
-	return []retry.Option{
-		retry.Attempts(3),
-		retry.LastErrorOnly(true),
-		retry.Context(ctx),
-		retry.DelayType(retry.BackOffDelay),
-		retry.MaxJitter(5 * time.Second),
-		retry.MaxDelay(30 * time.Second),
-	}
+	return httputil.RetryOptions(ctx)
 }
 
 // retryOptions is the internal version used within the package.

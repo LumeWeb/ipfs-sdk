@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/avast/retry-go/v4"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 // Operation identifiers for error message mapping.
@@ -235,22 +236,7 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 }
 
-// isUnrecoverable returns true if the given status code should not be retried.
-// Client errors (4xx) are typically unrecoverable, except for 429 (rate limiting).
-func isUnrecoverable(statusCode int) bool {
-	switch statusCode {
-	case http.StatusBadRequest,
-		http.StatusUnauthorized,
-		http.StatusForbidden,
-		http.StatusNotFound,
-		http.StatusMethodNotAllowed,
-		http.StatusConflict,
-		http.StatusUnprocessableEntity:
-		return true
-	default:
-		return statusCode >= 400 && statusCode < 500 && statusCode != http.StatusTooManyRequests
-	}
-}
+
 
 // handleResponse processes an HTTP response using the global error message map.
 //
@@ -289,7 +275,7 @@ func handleResponse(statusCode int, body []byte, op int, successCodes []int) err
 	}
 
 	// Mark client errors as unrecoverable to prevent retries
-	if isUnrecoverable(statusCode) {
+	if httputil.IsUnrecoverable(statusCode) {
 		return retry.Unrecoverable(err)
 	}
 

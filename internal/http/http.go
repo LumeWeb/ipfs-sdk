@@ -3,6 +3,7 @@ package http
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -24,6 +25,32 @@ func DefaultRetryConfig() RetryConfig {
 		MaxJitter:     5 * time.Second,
 		MaxDelay:      30 * time.Second,
 	}
+}
+
+// UnrecoverableStatusCodes defines which HTTP status codes should not be retried.
+var UnrecoverableStatusCodes = []int{
+	http.StatusBadRequest,
+	http.StatusUnauthorized,
+	http.StatusForbidden,
+	http.StatusNotFound,
+	http.StatusMethodNotAllowed,
+	http.StatusConflict,
+	http.StatusUnprocessableEntity,
+}
+
+// IsUnrecoverable checks if a given HTTP status code should not be retried.
+// Returns true for client errors (4xx) except rate limit (429), false for others.
+func IsUnrecoverable(statusCode int) bool {
+	if statusCode == http.StatusTooManyRequests {
+		// Always retry rate limit errors
+		return false
+	}
+	for _, code := range UnrecoverableStatusCodes {
+		if statusCode == code {
+			return true
+		}
+	}
+	return statusCode >= 400 && statusCode < 500
 }
 
 // RetryContext executes a function with retry behavior using given configuration.
