@@ -125,145 +125,216 @@ func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) 
 
 // GetZone retrieves a specific DNS zone by ID
 func (s *dnsService) GetZone(ctx context.Context, id string) (*ZoneResponse, error) {
-	resp, err := s.client.GetApiDnsZonesIdWithResponse(ctx, id)
+	var result *ZoneResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiDnsZonesIdWithResponse(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetZone, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			result = nil
+			return ErrBadRequest(opsString(OpGetZone) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpGetZone, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil {
-		return nil, ErrBadRequest(opsString(OpGetZone) + " no response data")
-	}
-
-	return resp.JSON200, nil
+	return result, nil
 }
 
 // CreateZone creates a new DNS zone for a domain
 func (s *dnsService) CreateZone(ctx context.Context, domain string, nameservers []string) (*ZoneResponse, error) {
+	var result *ZoneResponse
 	req := ZoneRequest{
 		Domain:      domain,
 		Nameservers: &nameservers,
 	}
 
-	resp, err := s.client.PostApiDnsZonesWithResponse(ctx, req)
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiDnsZonesWithResponse(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateZone, []int{http.StatusCreated}); err != nil {
+			return err
+		}
+
+		if resp.JSON201 == nil {
+			result = nil
+			return ErrBadRequest(opsString(OpCreateZone) + " no response data")
+		}
+
+		result = resp.JSON201
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateZone, []int{http.StatusCreated}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON201 == nil {
-		return nil, ErrBadRequest(opsString(OpCreateZone) + " no response data")
-	}
-
-	return resp.JSON201, nil
+	return result, nil
 }
 
 // DeleteZone removes a DNS zone and all its records
 func (s *dnsService) DeleteZone(ctx context.Context, id string) error {
-	resp, err := s.client.DeleteApiDnsZonesIdWithResponse(ctx, id)
-	if err != nil {
-		return err
-	}
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.DeleteApiDnsZonesIdWithResponse(ctx, id)
+		if err != nil {
+			return err
+		}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpDeleteZone, []int{http.StatusOK, http.StatusNoContent}); err != nil {
-		return err
-	}
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpDeleteZone, []int{http.StatusOK, http.StatusNoContent}); err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
+	return err
 }
 
 // ListRecords retrieves all DNS records for a zone
 func (s *dnsService) ListRecords(ctx context.Context, zoneID string) ([]RecordResponse, error) {
-	resp, err := s.client.GetApiDnsZonesIdRecordsWithResponse(ctx, zoneID)
+	var result []RecordResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiDnsZonesIdRecordsWithResponse(ctx, zoneID)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpListRecords, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			result = []RecordResponse{}
+			return nil
+		}
+
+		// Return the single record from the response wrapped in a slice
+		// The API returns one record per call with Total indicating pagination support
+		result = []RecordResponse{resp.JSON200.Data}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpListRecords, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil {
-		return []RecordResponse{}, nil
-	}
-
-	// Return the single record from the response wrapped in a slice
-	// The API returns one record per call with Total indicating pagination support
-	return []RecordResponse{resp.JSON200.Data}, nil
+	return result, nil
 }
 
 // CreateRecord creates a new DNS record in a zone
 func (s *dnsService) CreateRecord(ctx context.Context, zoneID string, record RecordRequest) (*RecordResponse, error) {
-	resp, err := s.client.PostApiDnsZonesIdRecordsWithResponse(ctx, zoneID, record)
+	var result *RecordResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiDnsZonesIdRecordsWithResponse(ctx, zoneID, record)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateRecord, []int{http.StatusCreated}); err != nil {
+			return err
+		}
+
+		if resp.JSON201 == nil {
+			result = nil
+			return ErrBadRequest(opsString(OpCreateRecord) + " no response data")
+		}
+
+		result = resp.JSON201
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateRecord, []int{http.StatusCreated}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON201 == nil {
-		return nil, ErrBadRequest(opsString(OpCreateRecord) + " no response data")
-	}
-
-	return resp.JSON201, nil
+	return result, nil
 }
 
 // GetRecord retrieves a specific DNS record
 func (s *dnsService) GetRecord(ctx context.Context, zoneID string, name string, recordType string) (*RecordResponse, error) {
-	resp, err := s.client.GetApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType)
+	var result *RecordResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetRecord, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			result = nil
+			return ErrBadRequest(opsString(OpGetRecord) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpGetRecord, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil {
-		return nil, ErrBadRequest(opsString(OpGetRecord) + " no response data")
-	}
-
-	return resp.JSON200, nil
+	return result, nil
 }
 
 // UpdateRecord updates an existing DNS record
 func (s *dnsService) UpdateRecord(ctx context.Context, zoneID string, name string, recordType string, record RecordRequest) (*RecordResponse, error) {
-	resp, err := s.client.PutApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType, record)
+	var result *RecordResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PutApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType, record)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpUpdateRecord, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			result = nil
+			return ErrBadRequest(opsString(OpUpdateRecord) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpUpdateRecord, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil {
-		return nil, ErrBadRequest(opsString(OpUpdateRecord) + " no response data")
-	}
-
-	return resp.JSON200, nil
+	return result, nil
 }
 
 // DeleteRecord deletes a DNS record
 func (s *dnsService) DeleteRecord(ctx context.Context, zoneID string, name string, recordType string) error {
-	resp, err := s.client.DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType)
-	if err != nil {
-		return err
-	}
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType)
+		if err != nil {
+			return err
+		}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpDeleteRecord, []int{http.StatusOK, http.StatusNoContent}); err != nil {
-		return err
-	}
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpDeleteRecord, []int{http.StatusOK, http.StatusNoContent}); err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
+	return err
 }
 
 // BulkCreateRecords creates multiple DNS records at once
@@ -272,24 +343,34 @@ func (s *dnsService) BulkCreateRecords(ctx context.Context, zoneID string, recor
 		return []RecordResponse{}, nil
 	}
 
+	var result []RecordResponse
 	bulkReq := BulkRecordRequest{
 		Records: records,
 	}
 
-	resp, err := s.client.PostApiDnsZonesIdRecordsBulkWithResponse(ctx, zoneID, bulkReq)
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiDnsZonesIdRecordsBulkWithResponse(ctx, zoneID, bulkReq)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpBulkCreateRecords, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil || resp.JSON200.Records == nil {
+			result = []RecordResponse{}
+			return nil
+		}
+
+		result = resp.JSON200.Records
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpBulkCreateRecords, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil || resp.JSON200.Records == nil {
-		return []RecordResponse{}, nil
-	}
-
-	return resp.JSON200.Records, nil
+	return result, nil
 }
 
 // BulkDeleteRecords deletes multiple DNS records at once
@@ -298,22 +379,32 @@ func (s *dnsService) BulkDeleteRecords(ctx context.Context, zoneID string, ident
 		return []RecordResult{}, nil
 	}
 
+	var result []RecordResult
 	bulkReq := BulkDeleteRequest{
 		Records: identifiers,
 	}
 
-	resp, err := s.client.PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx, zoneID, bulkReq)
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx, zoneID, bulkReq)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpBulkDeleteRecords, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil || resp.JSON200.Results == nil {
+			result = []RecordResult{}
+			return nil
+		}
+
+		result = resp.JSON200.Results
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := handleResponse(resp.StatusCode(), resp.Body, OpBulkDeleteRecords, []int{http.StatusOK}); err != nil {
-		return nil, err
-	}
-
-	if resp.JSON200 == nil || resp.JSON200.Results == nil {
-		return []RecordResult{}, nil
-	}
-
-	return resp.JSON200.Results, nil
+	return result, nil
 }
