@@ -107,12 +107,16 @@ result, _ := client.Upload().Upload(ctx, file, "file.txt", ipfs.UploadOptions{
 ## Configuration
 
 ```go
-import httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+import (
+    "time"
+
+    httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+)
 
 retryConfig := httputil.RetryConfig{
     Attempts:      5,
-    MaxJitter:     10 * 1000000000,
-    MaxDelay:      60 * 1000000000,
+    MaxJitter:     10 * time.Second,
+    MaxDelay:      60 * time.Second,
 }
 
 client, _ := ipfs.NewClient(
