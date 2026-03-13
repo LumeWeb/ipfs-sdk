@@ -1,6 +1,6 @@
 module go.lumeweb.com/ipfs-sdk // v0.1.0
 
-go 1.25.0
+go 1.26.0
 
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 
@@ -9,6 +9,7 @@ require (
 	github.com/bdragon300/tusgo v0.1.2
 	github.com/docker/go-units v0.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/google/uuid v1.6.0
 	github.com/h2non/filetype v1.1.3
 	github.com/ipfs/boxo v0.37.0
 	github.com/ipfs/go-block-format v0.2.3
@@ -25,6 +26,7 @@ require (
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
+	github.com/tus/tusd/v2 v2.9.1
 )
 
 require (
@@ -47,7 +49,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
@@ -88,7 +89,6 @@ require (
 	github.com/speakeasy-api/openapi-overlay v0.10.2 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/tus/tusd/v2 v2.9.1 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/whyrusleeping/cbor v0.0.0-20171005072247-63513f603b11 // indirect
