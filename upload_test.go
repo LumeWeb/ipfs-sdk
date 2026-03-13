@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -191,8 +192,10 @@ func TestUploadService_Upload_Success(t *testing.T) {
 		testName := "test.txt"
 
 		// Create upload service with TUS endpoint pointing to mock server
+		// Set upload limit to 1 byte to force TUS routing
 		service := NewUploadService("https://api.example.com", "test-token",
 			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
 
 		// Upload
@@ -215,8 +218,10 @@ func TestUploadService_Upload_Incomplete(t *testing.T) {
 		testSize := int64(100) // Claim larger than actual
 		testName := "test.txt"
 
+		// Set upload limit to force TUS routing
 		service := NewUploadService("https://api.example.com", "test-token",
 			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
 
 		ctx := context.Background()
@@ -239,8 +244,10 @@ func TestUploadService_Upload_CreateFailure(t *testing.T) {
 
 		testData := []byte("test content")
 
+		// Set upload limit to force TUS routing
 		service := NewUploadService("https://api.example.com", "test-token",
 			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
 
 		ctx := context.Background()
@@ -249,6 +256,70 @@ func TestUploadService_Upload_CreateFailure(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create TUS upload")
+	})
+}
+
+func TestUploadService_Upload_RoutesBySize(t *testing.T) {
+	t.Run("small file uses POST multipart (default 100MB limit)", func(t *testing.T) {
+		server := setupPOSTTest(t)
+		defer server.Close()
+
+		// Create small test data (< 100MB)
+		testData := []byte("small file content for POST test")
+		testSize := int64(len(testData))
+		testName := "small.txt"
+
+		// Use default upload limit (100MB) - should route to POST
+		service := NewUploadService(server.URL, "test-token",
+			WithUploadLimit(100*units.MiB),
+		)
+
+		ctx := context.Background()
+		reader := bytes.NewReader(testData)
+		result, err := service.Upload(ctx, reader, testName, testSize)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, int64(len(testData)), result.Size)
+	})
+
+	t.Run("large file uses TUS (default 100MB limit)", func(t *testing.T) {
+		server, _, _ := setupTUSTest(t)
+		defer server.Close()
+
+		// Create test data and set limit to force TUS routing
+		largeData := bytes.Repeat([]byte("x"), 1000) // 1KB data
+		testSize := int64(len(largeData))
+		testName := "large.txt"
+
+		// Set upload limit to 1 byte to force TUS routing
+		service := NewUploadService("https://api.example.com", "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1),
+		)
+
+		ctx := context.Background()
+		reader := bytes.NewReader(largeData)
+		result, err := service.Upload(ctx, reader, testName, testSize)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, int64(len(largeData)), result.Size)
+	})
+}
+
+func TestUploadService_Upload_DefaultLimit(t *testing.T) {
+	t.Run("uses 100MiB default limit when not specified", func(t *testing.T) {
+		server, _, _ := setupTUSTest(t)
+		defer server.Close()
+
+		// Create service without specifying upload limit
+		service := NewUploadService("https://api.example.com", "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+		)
+
+		// Verify default limit is 100MiB
+		assert.Equal(t, int64(100*units.MiB), service.uploadLimit)
 	})
 }
 
@@ -442,8 +513,10 @@ func TestUploadService_IntegrationCompleteFlow(t *testing.T) {
 		baseURL, err := url.Parse(server.URL)
 		require.NoError(t, err)
 
+		// Set upload limit to 1 byte to force TUS routing
 		service := NewUploadService(baseURL.String(), "test-token",
 			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
 
 		ctx := context.Background()
