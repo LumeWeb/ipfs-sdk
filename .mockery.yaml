@@ -12,3 +12,9 @@ packages:
       DNSClientWithResponsesInterface: {}
       IPNSClientWithResponsesInterface: {}
       WebsitesClientWithResponsesInterface: {}
+  go.lumeweb.com/ipfs-sdk/pkg/archive:
+    config:
+      dir: ./pkg/archive
+      pkgname: "archive"
+    interfaces:
+      ArchiveExtractor: {}
