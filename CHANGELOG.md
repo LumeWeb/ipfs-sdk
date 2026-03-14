@@ -1,3 +1,14 @@
+## 0.1.2 (2026-03-14)
+
+### Features
+
+- add archive processing configuration
+
+### Fixes
+
+- extract StreamToPipe helper to simplify CAR generation streaming
+- address PR review feedback
+
 ## 0.1.1 (2026-03-14)
 
 ### Features
