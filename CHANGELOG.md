@@ -1,3 +1,13 @@
+## 0.1.5 (2026-03-14)
+
+### Features
+
+- add host override cascade support and switch to generated pinning client
+
+### Fixes
+
+- address PR review feedback
+
 ## 0.1.4 (2026-03-14)
 
 ### Fixes
