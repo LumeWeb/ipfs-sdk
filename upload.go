@@ -141,7 +141,7 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *U
 
 	// Default TUS endpoint is /api/upload/tus
 	if s.tusEndpoint == "" {
-		s.tusEndpoint = baseURL + "/api/upload/tus"
+		s.tusEndpoint = s.buildEndpoint("/api/upload/tus")
 	}
 
 	// Default upload limit
@@ -414,7 +414,7 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 	}()
 
 	// Upload as multipart form
-	uploadEndpoint := s.baseURL + "/api/upload"
+	uploadEndpoint := s.buildEndpoint("/api/upload")
 	uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig)
 
 	// If the upload fails, the reading side of the pipe is abandoned.
@@ -584,6 +584,19 @@ func (s *UploadService) SetAuthToken(token string) {
 // GetAuthToken returns the current authentication token.
 func (s *UploadService) GetAuthToken() string {
 	return s.authToken
+}
+
+// buildEndpoint constructs a full endpoint URL from the base URL and a relative path.
+// It ensures the base URL is properly parsed and any existing path is cleared before
+// joining the new path. This method handles various base URL formats (with/without
+// trailing slash, with/without existing paths) to ensure consistent endpoint construction.
+func (s *UploadService) buildEndpoint(path string) string {
+	parsedURL, err := url.Parse(s.baseURL)
+	if err != nil {
+		parsedURL = &url.URL{Scheme: "https", Host: s.baseURL}
+	}
+	parsedURL.Path = ""
+	return parsedURL.JoinPath(path).String()
 }
 
 // UploadBytes uploads byte data by wrapping it in CAR format and uploading.
