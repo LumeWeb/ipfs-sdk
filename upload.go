@@ -15,6 +15,28 @@ import (
 	"go.lumeweb.com/ipfs-content/car"
 )
 
+// StreamToPipe runs a blocking function in a goroutine that writes to a pipe.
+// This allows you to generate data (e.g., CAR files) without blocking the calling
+// thread. The pipe reader is returned immediately for consumption.
+//
+// Error from fn is propagated via CloseWithError on the pipe. This helper is useful
+// when you have a blocking function that writes to an io.Writer and you want to
+// stream the output as it's being generated.
+func StreamToPipe(fn func(io.Writer) error) io.ReadCloser {
+	pr, pw := io.Pipe()
+	
+	go func() {
+		err := fn(pw)
+		if err != nil {
+			_ = pw.CloseWithError(err)
+		} else {
+			_ = pw.Close()
+		}
+	}()
+	
+	return pr
+}
+
 // DefaultUploadLimit is the default upload limit in bytes (100MB).
 const DefaultUploadLimit = 100 * units.MiB
 
@@ -252,8 +274,7 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 		wrapInDir = true
 	}
 
-	// Create pipe for streaming CAR generation
-	pr, pw := io.Pipe()
+	var pr io.ReadCloser
 
 	// Pass 1: Build tree summary to get root CID and calculate CAR size
 	builder, summary, err := car.PrepareCAR(ctx, filesystem, memoryLimit, wrapInDir)
@@ -267,15 +288,10 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 		return nil, fmt.Errorf("failed to calculate upload size: %w", err)
 	}
 
-	// Pass 2: Create pipe for streaming CAR generation
-	go func() {
-		err := builder.WriteCAR(ctx, pw)
-		if err != nil {
-			_ = pw.CloseWithError(err)
-		} else {
-			_ = pw.Close()
-		}
-	}()
+	// Pass 2: Stream CAR generation to pipe
+	pr = StreamToPipe(func(w io.Writer) error {
+		return builder.WriteCAR(ctx, w)
+	})
 
 	// Route based on CAR size vs upload limit
 	uploadLimit := opts.UploadLimit
