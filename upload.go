@@ -193,7 +193,7 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 	// Set default memory limit if not provided
 	memoryLimit := opts.MemoryLimit
 	if memoryLimit == 0 {
-		memoryLimit = 100 * 1024 * 1024 // Default 100MB
+		memoryLimit = car.DefaultMemoryLimit // Default 100MB
 	}
 
 	// Check if filesystem wraps a directory
