@@ -1,3 +1,13 @@
+## 0.1.3 (2026-03-14)
+
+### Features
+
+- add UploadBytes API and fix upload limit routing
+
+### Fixes
+
+- return actual file size in DirEntry.Info
+
 ## 0.1.2 (2026-03-14)
 
 ### Features
