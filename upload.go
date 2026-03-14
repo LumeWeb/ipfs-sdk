@@ -141,7 +141,12 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *U
 
 	// Default TUS endpoint is /api/upload/tus
 	if s.tusEndpoint == "" {
-		s.tusEndpoint = baseURL + "/api/upload/tus"
+		parsedURL, err := url.Parse(baseURL)
+		if err != nil {
+			parsedURL = &url.URL{Scheme: "https", Host: baseURL}
+		}
+		parsedURL.Path = ""
+		s.tusEndpoint = parsedURL.JoinPath("/api/upload/tus").String()
 	}
 
 	// Default upload limit
@@ -414,7 +419,12 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 	}()
 
 	// Upload as multipart form
-	uploadEndpoint := s.baseURL + "/api/upload"
+	parsedURL, err := url.Parse(s.baseURL)
+	if err != nil {
+		parsedURL = &url.URL{Scheme: "https", Host: s.baseURL}
+	}
+	parsedURL.Path = ""
+	uploadEndpoint := parsedURL.JoinPath("/api/upload").String()
 	uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig)
 
 	// If the upload fails, the reading side of the pipe is abandoned.
