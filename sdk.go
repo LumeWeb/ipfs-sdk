@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
@@ -53,6 +54,18 @@ func WithRetryConfig(cfg httputil.RetryConfig) ClientOption {
 func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, error) {
 	cfg := DefaultClientConfig()
 
+	// Normalize URL to ensure consistent behavior across all services
+	// Parse the base URL and clear any path components to avoid incorrect
+	// URL construction when endpoints are joined with operation paths
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		// If parsing fails, construct a URL with the baseURL as the host
+		// and assume HTTPS for better security defaults
+		parsedURL = &url.URL{Scheme: "https", Host: baseURL}
+	}
+	parsedURL.Path = ""
+	normalizedURL := parsedURL.String()
+
 	// Create request editor with JWT
 	requestEditor := internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		if bearerToken != "" {
@@ -62,7 +75,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	})
 
 	// Create internal generated client
-	internalGen, err := internalclient.NewClientWithResponses(baseURL, requestEditor)
+	internalGen, err := internalclient.NewClientWithResponses(normalizedURL, requestEditor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create internal client: %w", err)
 	}
@@ -71,7 +84,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 
 	c := &Client{
 		httpClient:    httpClient,
-		baseURL:       baseURL,
+		baseURL:       normalizedURL,
 		bearerToken:   bearerToken,
 		internalGen:   internalGen,
 		genClientOpts: requestEditor,
@@ -84,11 +97,11 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	}
 
 	// Initialize services
-	c.pinning = NewPinningService(baseURL, bearerToken)
+	c.pinning = NewPinningService(normalizedURL, bearerToken)
 	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
 	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
-	c.upload = NewUploadService(baseURL, bearerToken, WithHTTPClient(httpClient))
+	c.upload = NewUploadService(normalizedURL, bearerToken, WithHTTPClient(httpClient))
 
 	return c, nil
 }
