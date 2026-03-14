@@ -29,6 +29,9 @@ go tool cover -func=coverage.out
 # Generate OpenAPI client from swagger.yaml
 go generate ./internal/client
 
+# Generate Pinning Service client from IPFS pinning service spec
+go generate ./internal/pinning
+
 # Generate mocks for interfaces
 mockery
 ```
@@ -56,26 +59,33 @@ This is a Go SDK for interacting with IPFS HTTP gateway services. The SDK uses a
 
 ### Key Services
 The `Client` struct provides access to five specialized services:
-1. **PinningService** - Wraps `github.com/ipfs/boxo` client for pinning content
+1. **PinningService** - Generated client from IPFS Pinning Service API spec for pinning content
 2. **DNSService** - Manage DNS zones and records (DNSLink support)
 3. **IPNSService** - Inter-Planetary Naming System key management
 4. **WebsitesService** - Gateway website deployment
 5. **UploadService** - File upload via TUS resumable upload protocol
 
 ### Code Generation Pattern
-The SDK uses OpenAPI specification to generate HTTP client code:
+The SDK uses OpenAPI specifications to generate HTTP client code:
 
+**Main API Client:**
 1. **OpenAPI Spec**: `swagger.yaml` defines all API endpoints
 2. **Generated Client**: `internal/client/client.gen.go` is generated via `go tool oapi-codegen`
 3. **Adapter Interfaces**: Each service (DNS, IPNS, Websites) defines its own interface that wraps the generated client
 4. **Mock Generation**: `mockery` generates test mocks from these adapter interfaces
+
+**Pinning Service Client:**
+1. **OpenAPI Spec**: `internal/pinning/swagger.yaml` (from official IPFS Pinning Service API)
+2. **Generated Client**: `internal/pinning/client.gen.go` is generated via `go tool oapi-codegen`
+3. **Type Aliases**: Types are exposed cleanly via type aliases to avoid import cycles
+4. **Mock Generation**: `mockery` generates test mocks from the PinningService interface
 
 This pattern isolates the generated code, allows for clean API surfaces on each service, and enables dependency injection for testing.
 
 ### Directory Organization
 ```
 ├── sdk.go, auth.go, retry.go, errors.go, options.go              # Core SDK infrastructure
-├── pinning.go                                                # Pinning service (boxo wrapper)
+├── pinning.go                                                # Pinning service (generated from IPFS pinning service spec)
 ├── dns.go                                                    # DNS service
 ├── ipns.go                                                   # IPNS service
 ├── websites.go                                               # Websites service
@@ -87,6 +97,11 @@ This pattern isolates the generated code, allows for clean API surfaces on each 
 │   │   └── oai-codegen.yaml                                # Codegen config
 │   ├── http/
 │   │   └── http.go                                          # Retry utilities (UnrecoverableStatusCodes)
+│   ├── pinning/
+│   │   ├── client.gen.go                                    # Generated OpenAPI client (IPFS Pinning Service)
+│   │   ├── doc.go                                           # go:generate directive
+│   │   ├── oai-codegen.yaml                                # Codegen config
+│   │   └── swagger.yaml                                     # IPFS pinning service spec
 │   ├── dnsreq/
 │   │   └── types.go                                        # DNS types isolated to avoid import cycles
 │   └── testutil/
@@ -131,7 +146,9 @@ Services use type aliases to expose generated types from the internal client pac
 
 ## Important Constraints
 
-1. **Code Generation**: `internal/client/client.gen.go` is auto-generated. Do not edit it manually. Run `go generate ./internal/client` after modifying `swagger.yaml`.
+1. **Code Generation**: Generated files are auto-generated. Do not edit them manually.
+   - `internal/client/client.gen.go` - run `go generate ./internal/client` after modifying `swagger.yaml`
+   - `internal/pinning/client.gen.go` - run `go generate ./internal/pinning` after modifying `internal/pinning/swagger.yaml`
 
 2. **Mock Generation**: Mocks are generated using mockery. Configure interfaces in `.mockery.yaml`.
 
@@ -145,4 +162,4 @@ Services use type aliases to expose generated types from the internal client pac
 
 7. **Error Handling**: Service methods return standard Go errors. Check for `context.Canceled` when operations fail with context cancellation.
 
-8. **Testing**: Use the generated mocks in the `mocks` package with `testify/mock` assertions. See existing test files for patterns.
+8. **Testing**: Use the generated mocks in the `mocks` package with `testify/mock` assertions. See existing test files for patterns. Use `NewPinningService` with `WithPinningHTTPClient` for testing with custom HTTP clients.

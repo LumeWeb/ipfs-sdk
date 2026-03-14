@@ -9,7 +9,7 @@ A Go SDK for interacting with IPFS HTTP gateway services. Provides a clean, idio
 
 ## Features
 
-- **Pinning Service** - Pin and unpin content using.boxo client
+- **Pinning Service** - Pin and unpin content using generated client from IPFS Pinning Service API spec
 - **DNS Service** - Manage DNS zones and records with DNSLink support
 - **IPNS Service** - Inter-Planetary Naming System key management
 - **Websites Service** - Deploy and manage gateway websites
@@ -126,6 +126,25 @@ client, _ := ipfs.NewClient(
 )
 ```
 
+### Host Override
+
+For testing with vhost configurations, you can override the Host header while connecting to a specific IP address:
+
+```go
+client, _ := ipfs.NewClient(
+    "https://api.example.com",
+    "your-token",
+    ipfs.WithHostOverride("api.example.com", "127.0.0.1:8080"),
+)
+```
+
+This is useful for:
+- Testing locally against remote API contracts
+- Developing with vhost-based routing
+- Integration testing with custom domains
+
+**Note**: Host override now applies to all services including PinningService.
+
 ### Retry Behavior
 
 Default retry configuration:
@@ -142,10 +161,14 @@ Client Entry Point (Pinning, DNS, IPNS, Websites, Upload)
     ↓
 Service Interfaces (Type-safe adapters)
     ↓
-Generated OpenAPI Client (swagger.yaml → oapi-codegen)
+Generated OpenAPI Clients
+    ├── Main API (swagger.yaml → oapi-codegen)
+    └── Pinning Service (ipfs-pinning-service.yaml → oapi-codegen)
     ↓
 HTTP Infrastructure (Retry, Auth, net/http)
 ```
+
+The PinningService is generated from the official [IPFS Pinning Service API spec](https://github.com/ipfs/pinning-services-api-spec) for full compliance and maximum flexibility.
 
 ### Upload Package
 
@@ -167,6 +190,7 @@ go tool cover -func=coverage.out
 
 # Generate code
 go generate ./internal/client
+go generate ./internal/pinning
 mockery
 
 # Dependencies
