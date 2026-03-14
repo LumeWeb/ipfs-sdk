@@ -175,6 +175,11 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		retry:         cfg.Retry,
 	}
 
+	// Apply client options first (including hostOverride)
+	for _, opt := range opts {
+		opt(c)
+	}
+
 	// Create internal generated client
 	// If host override is configured, use custom HTTP client with host override round tripper
 	if c.hostOverride != nil {
@@ -191,11 +196,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		if err != nil {
 			return nil, fmt.Errorf("failed to create internal client with host override: %w", err)
 		}
-	}
-
-	// Apply client options
-	for _, opt := range opts {
-		opt(c)
+		c.internalGen = internalGen
 	}
 
 	// Initialize services

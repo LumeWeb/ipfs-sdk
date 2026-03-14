@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -87,14 +88,14 @@ func TestWithListMeta(t *testing.T) {
 
 func TestNewPinningService(t *testing.T) {
 	t.Run("creates service with URL and token", func(t *testing.T) {
-		s := NewPinningService("http://localhost:5001", "test-token")
+		s := NewPinningService("http://localhost:5001", os.Getenv("TEST_PINNING_TOKEN"))
 
 		assert.NotNil(t, s)
 	})
 
 	t.Run("creates service with custom HTTP client", func(t *testing.T) {
 		httpClient := &http.Client{}
-		s := NewPinningService("http://localhost:5001", "test-token", WithPinningHTTPClient(httpClient))
+		s := NewPinningService("http://localhost:5001", os.Getenv("TEST_PINNING_TOKEN"), WithPinningHTTPClient(httpClient))
 
 		assert.NotNil(t, s)
 	})
