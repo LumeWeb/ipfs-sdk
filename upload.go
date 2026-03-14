@@ -18,6 +18,38 @@ import (
 // DefaultUploadLimit is the default upload limit in bytes (100MB).
 const DefaultUploadLimit = 100 * units.MiB
 
+// ArchiveMode represents the archive processing mode for uploads.
+type ArchiveMode string
+
+const (
+	// ArchiveModeAuto enables automatic archive processing (default).
+	// Archives are unpacked and converted to CAR format by the server.
+	ArchiveModeAuto ArchiveMode = "true"
+
+	// ArchiveModeRaw disables archive processing.
+	// Files are uploaded as-is without unpacking. ZIP files treated as raw files.
+	ArchiveModeRaw ArchiveMode = "false"
+)
+
+// String returns the string representation of the archive mode.
+func (m ArchiveMode) String() string {
+	return string(m)
+}
+
+// AutoArchive returns a pointer to ArchiveModeAuto for use with UploadOptions.
+// This enables automatic archive processing (unpacked and converted to CAR).
+func AutoArchive() *ArchiveMode {
+	auto := ArchiveModeAuto
+	return &auto
+}
+
+// RawArchive returns a pointer to ArchiveModeRaw for use with UploadOptions.
+// This disables archive processing (files uploaded as-is).
+func RawArchive() *ArchiveMode {
+	raw := ArchiveModeRaw
+	return &raw
+}
+
 // UploadDataType represents the type of data being uploaded (regular data or CAR format).
 type UploadDataType string
 
@@ -57,6 +89,17 @@ type UploadOptions struct {
 	// Smaller files will use HTTP POST upload.
 	// If 0, DefaultUploadLimit is used.
 	UploadLimit int64
+
+	// ArchiveConfig controls whether uploaded content should be processed by the server.
+	// Use ArchiveModeAuto to enable processing (archives unpacked and converted to CAR format).
+	// Use ArchiveModeRaw to disable processing (files uploaded as-is, ZIP treated as raw).
+	//
+	// For CAR format uploads, this setting is ignored by the server (bypassed).
+	// For POST uploads with raw files, the CID returned IS correct (in-memory processing).
+	// For TUS uploads with raw files, the CID may be incorrect due to background processing.
+	//
+	// Default: ArchiveModeAuto (process/unpack files on server)
+	ArchiveConfig *ArchiveMode
 }
 
 // NewUploadService creates a new UploadService.
@@ -120,13 +163,14 @@ type UploadResult struct {
 // It encapsulates the upload configuration and can be executed via the Execute() method
 // which routes to the appropriate upload protocol (POST or TUS) based on file size.
 type uploadTask struct {
-	service  *UploadService
-	ctx      context.Context
-	reader   io.Reader
-	name     string
-	size     int64
-	cid      cid.Cid
-	isCAR    bool
+	service       *UploadService
+	ctx           context.Context
+	reader        io.Reader
+	name          string
+	size          int64
+	cid           cid.Cid
+	isCAR         bool
+	archiveConfig *ArchiveMode
 }
 
 // Execute performs the actual upload, routing to POST or TUS based on size.
@@ -137,9 +181,9 @@ func (t *uploadTask) Execute() (*UploadResult, error) {
 	var err error
 
 	if t.size <= uploadLimit {
-		result, err = t.service.uploadViaPOST(t.ctx, t.reader, t.name, t.size, t.isCAR)
+		result, err = t.service.uploadViaPOST(t.ctx, t.reader, t.name, t.size, t.isCAR, t.archiveConfig)
 	} else {
-		result, err = t.service.uploadViaTUS(t.ctx, t.reader, t.name, t.size)
+		result, err = t.service.uploadViaTUS(t.ctx, t.reader, t.name, t.size, t.archiveConfig)
 	}
 
 	if err != nil {
@@ -241,19 +285,20 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 
 	// Create upload task for CAR upload
 	task := &uploadTask{
-		service: s,
-		ctx:     ctx,
-		reader:  pr,
-		name:    name,
-		size:    carSize,
-		cid:     summary.RootCID,
-		isCAR:   true,
+		service:       s,
+		ctx:           ctx,
+		reader:        pr,
+		name:          name,
+		size:          carSize,
+		cid:           summary.RootCID,
+		isCAR:         true,
+		archiveConfig: opts.ArchiveConfig,
 	}
 	return task.Execute()
 }
 
 // uploadViaTUS uploads data via TUS resumable upload protocol.
-func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name string, size int64) (*UploadResult, error) {
+func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name string, size int64, archiveConfig *ArchiveMode) (*UploadResult, error) {
 	baseURL, err := url.Parse(s.tusEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse TUS endpoint: %w", err)
@@ -261,9 +306,17 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 
 	tusClient := tusgo.NewClient(s.httpClient, baseURL).WithContext(ctx)
 
+	// Build TUS metadata from archive config
+	var metadata map[string]string
+	if archiveConfig != nil {
+		metadata = map[string]string{
+			"archive": string(*archiveConfig),
+		}
+	}
+
 	// Create upload on server - upload object gets populated with Location
 	upload := &tusgo.Upload{}
-	_, err = tusClient.CreateUpload(upload, size, false, nil)
+	_, err = tusClient.CreateUpload(upload, size, false, metadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TUS upload: %w", err)
 	}
@@ -288,7 +341,7 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 
 // uploadViaPOST uploads data via HTTP POST as multipart form.
 // This is used for smaller files that fit within the upload limit.
-func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, name string, size int64, isCAR bool) (*UploadResult, error) {
+func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, name string, size int64, isCAR bool, archiveConfig *ArchiveMode) (*UploadResult, error) {
 	// Create a pipe for streaming multipart form
 	pr, pw := io.Pipe()
 	writer := multipart.NewWriter(pw)
@@ -342,7 +395,7 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 
 	// Upload as multipart form
 	uploadEndpoint := s.baseURL + "/api/upload"
-	uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType())
+	uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig)
 
 	// If the upload fails, the reading side of the pipe is abandoned.
 	// We must close the pipe writer to unblock the writing goroutine, allowing it to terminate gracefully.
@@ -369,9 +422,22 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 }
 
 // postUpload sends the CAR data via HTTP POST as multipart form.
-func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io.Reader, contentType string) error {
+func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io.Reader, contentType string, archiveConfig *ArchiveMode) error {
+	// Build query parameters with archive config
+	fullEndpoint := endpoint
+	if archiveConfig != nil {
+		parsedURL, err := url.Parse(fullEndpoint)
+		if err != nil {
+			return fmt.Errorf("failed to parse endpoint URL: %w", err)
+		}
+		q := parsedURL.Query()
+		q.Set("archive", string(*archiveConfig))
+		parsedURL.RawQuery = q.Encode()
+		fullEndpoint = parsedURL.String()
+	}
+
 	// Create HTTP request with streaming body
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullEndpoint, body)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
