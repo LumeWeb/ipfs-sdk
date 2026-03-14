@@ -13,6 +13,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"go.lumeweb.com/ipfs-content/car"
+	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 )
 
 // StreamToPipe runs a blocking function in a goroutine that writes to a pipe.
@@ -66,7 +67,7 @@ func AutoArchive() *ArchiveMode {
 }
 
 // RawArchive returns a pointer to ArchiveModeRaw for use with UploadOptions.
-// This disables archive processing (files uploaded as-is).
+// This disables archive processing (files uploaded as-is, ZIP treated as raw).
 func RawArchive() *ArchiveMode {
 	raw := ArchiveModeRaw
 	return &raw
@@ -193,14 +194,15 @@ type uploadTask struct {
 	cid           cid.Cid
 	isCAR         bool
 	archiveConfig *ArchiveMode
+	uploadLimit   int64
 }
 
 // Execute performs the actual upload, routing to POST or TUS based on size.
 func (t *uploadTask) Execute() (*UploadResult, error) {
-	uploadLimit := t.service.uploadLimit
-
 	var result *UploadResult
 	var err error
+
+	uploadLimit := t.uploadLimit
 
 	if t.size <= uploadLimit {
 		result, err = t.service.uploadViaPOST(t.ctx, t.reader, t.name, t.size, t.isCAR, t.archiveConfig)
@@ -230,12 +232,13 @@ func (t *uploadTask) Execute() (*UploadResult, error) {
 // size is the total size of the data in bytes.
 func (s *UploadService) Upload(ctx context.Context, reader io.Reader, name string, size int64) (*UploadResult, error) {
 	task := &uploadTask{
-		service: s,
-		ctx:     ctx,
-		reader:  reader,
-		name:    name,
-		size:    size,
-		isCAR:   false,
+		service:     s,
+		ctx:         ctx,
+		reader:      reader,
+		name:        name,
+		size:        size,
+		isCAR:       false,
+		uploadLimit: s.uploadLimit,
 	}
 	return task.Execute()
 }
@@ -247,7 +250,7 @@ func (s *UploadService) Upload(ctx context.Context, reader io.Reader, name strin
 // - On-the-fly block regeneration when blocks are evicted from cache
 //
 // ctx is the context for the operation.
-// filesystem is the filesystem to upload (e.g., os.DirFS, memfs).
+// filesystem is the filesystem to upload (e.g., os.DirFS, testing/fstest.MapFS).
 // name is the name for the upload.
 // opts configures upload behavior (memory limit, dir wrapping, upload limit).
 func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name string, opts *UploadOptions) (*UploadResult, error) {
@@ -309,6 +312,7 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 		cid:           summary.RootCID,
 		isCAR:         true,
 		archiveConfig: opts.ArchiveConfig,
+		uploadLimit:   uploadLimit,
 	}
 	return task.Execute()
 }
@@ -580,4 +584,18 @@ func (s *UploadService) SetAuthToken(token string) {
 // GetAuthToken returns the current authentication token.
 func (s *UploadService) GetAuthToken() string {
 	return s.authToken
+}
+
+// UploadBytes uploads byte data by wrapping it in CAR format and uploading.
+// This is a convenience method for the common case of uploading byte slices.
+// It automatically wraps the data in a CAR file and uploads via the appropriate
+// method (POST or TUS) based on the resulting CAR size.
+//
+// ctx is the context for the operation.
+// data is the byte data to upload.
+// filename is the name for the uploaded file (without .car extension).
+// opts configures upload behavior (memory limit, wrap-in-dir, upload limit).
+func (s *UploadService) UploadBytes(ctx context.Context, data []byte, filename string, opts *UploadOptions) (*UploadResult, error) {
+	filesystem := go_fs.NewBytesFS(data, filename)
+	return s.UploadFromFS(ctx, filesystem, filename, opts)
 }
