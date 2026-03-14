@@ -1,3 +1,11 @@
+## 0.1.4 (2026-03-14)
+
+### Fixes
+
+- use url.JoinPath for proper URL construction in upload service
+- normalize base URL in NewClient for consistent URL handling
+- return error instead of constructing malformed URL on parse failure
+
 ## 0.1.3 (2026-03-14)
 
 ### Features
