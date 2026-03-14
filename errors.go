@@ -42,22 +42,25 @@ const (
 	OpValidateWebsite
 	OpGetSSLStatus
 
-	// Pinning operations (boxo - may not use this pattern)
-	// Note: Boxo client has its own error handling
+	// Pinning operations
+	OpListPins
+	OpAddPin
+	OpGetPin
+	OpRemovePin
 )
 
 // operationString maps operation IDs to human-readable names.
 var operationString = map[int]string{
 	// DNS operations
-	OpListZones:        "list DNS zones",
-	OpCreateZone:       "create DNS zone",
-	OpGetZone:          "get DNS zone",
-	OpDeleteZone:       "delete DNS zone",
-	OpListRecords:      "list DNS records",
-	OpGetRecord:        "get DNS record",
-	OpCreateRecord:     "create DNS record",
-	OpUpdateRecord:     "update DNS record",
-	OpDeleteRecord:     "delete DNS record",
+	OpListZones:         "list DNS zones",
+	OpCreateZone:        "create DNS zone",
+	OpGetZone:           "get DNS zone",
+	OpDeleteZone:        "delete DNS zone",
+	OpListRecords:       "list DNS records",
+	OpGetRecord:         "get DNS record",
+	OpCreateRecord:      "create DNS record",
+	OpUpdateRecord:      "update DNS record",
+	OpDeleteRecord:      "delete DNS record",
 	OpBulkCreateRecords: "bulk create DNS records",
 	OpBulkDeleteRecords: "bulk delete DNS records",
 
@@ -71,13 +74,19 @@ var operationString = map[int]string{
 	OpResolveIPNS:   "resolve IPNS name",
 
 	// Websites operations
-	OpListWebsites:   "list websites",
-	OpGetWebsite:     "get website",
-	OpCreateWebsite:  "create website",
-	OpUpdateWebsite:  "update website",
-	OpDeleteWebsite:  "delete website",
+	OpListWebsites:    "list websites",
+	OpGetWebsite:      "get website",
+	OpCreateWebsite:   "create website",
+	OpUpdateWebsite:   "update website",
+	OpDeleteWebsite:   "delete website",
 	OpValidateWebsite: "validate website",
-	OpGetSSLStatus:   "get SSL status",
+	OpGetSSLStatus:    "get SSL status",
+
+	// Pinning operations
+	OpListPins:  "list pins",
+	OpAddPin:    "add pin",
+	OpGetPin:    "get pin",
+	OpRemovePin: "remove pin",
 }
 
 // Named error types for error comparison.
@@ -88,8 +97,8 @@ var (
 
 // errorFactory is a helper for creating errors with optional wrapping.
 type errorFactory struct {
-	wrapErr  bool
-	message  string
+	wrapErr bool
+	message string
 }
 
 // Error creates the actual error.
@@ -235,8 +244,6 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusNotFound:     plainErr("website not found"),
 	},
 }
-
-
 
 // handleResponse processes an HTTP response using the global error message map.
 //

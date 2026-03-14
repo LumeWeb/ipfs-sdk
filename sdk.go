@@ -5,25 +5,37 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
+// HostOverride holds the configuration for host header override.
+// This is useful for testing with vhosts where you need to connect to an IP address
+// but send a different hostname in the Host header.
+type HostOverride struct {
+	// Host is the hostname to use in the Host header (e.g., "ipfs.pinner.xyz")
+	Host string
+	// Target is the IP address to connect to (e.g., "127.0.0.1:8080")
+	Target string
+}
+
 // Client is the main SDK client that provides access to all IPFS services.
 type Client struct {
-	pinning *PinningService
-	dns     DNSService
-	ipns    IPNSService
+	pinning  PinningService
+	dns      DNSService
+	ipns     IPNSService
 	websites WebsitesService
-	upload  *UploadService
+	upload   *UploadService
 
-	httpClient  *http.Client
-	baseURL     string
-	bearerToken string
-	internalGen *internalclient.ClientWithResponses
+	httpClient    *http.Client
+	baseURL       string
+	bearerToken   string
+	internalGen   *internalclient.ClientWithResponses
 	genClientOpts internalclient.ClientOption
-	retry       httputil.RetryConfig
+	retry         httputil.RetryConfig
+	hostOverride  *HostOverride
 }
 
 // ClientConfig holds configuration for the main SDK client
@@ -46,6 +58,80 @@ func WithRetryConfig(cfg httputil.RetryConfig) ClientOption {
 	return func(c *Client) {
 		c.retry = cfg
 	}
+}
+
+// WithHostOverride sets up host header override for testing with vhosts.
+// This allows connecting to a specific IP address while sending a different hostname in the Host header.
+//
+// Parameters:
+//   - host: The hostname to use in the Host header (e.g., "api.example.com")
+//   - target: The IP address:port to connect to (e.g., "127.0.0.1:8080")
+//
+// Example:
+//
+//	client, err := ipfs.NewClient(
+//	    "https://api.example.com",
+//	    "token",
+//	    ipfs.WithHostOverride("api.example.com", "127.0.0.1:8080"),
+//	)
+func WithHostOverride(host, target string) ClientOption {
+	return func(c *Client) {
+		c.hostOverride = &HostOverride{
+			Host:   host,
+			Target: target,
+		}
+	}
+}
+
+// hostOverrideRoundTripper is a custom http.RoundTripper that overrides the Host header
+// and redirects requests to a target IP address. This is useful for testing with vhosts.
+type hostOverrideRoundTripper struct {
+	transport http.RoundTripper
+	host      string
+	target    string
+}
+
+// RoundTrip implements the http.RoundTripper interface.
+// It modifies the request to use the target URL while keeping the original Host header.
+func (h *hostOverrideRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Create a copy of the request to avoid modifying the original
+	reqCopy := req.Clone(req.Context())
+
+	// Override the Host header with the configured host
+	reqCopy.Host = h.host
+
+	// Parse the original URL
+	originalURL := req.URL
+
+	// Create a new URL with the target address
+	// If target doesn't have a scheme, use the original request's scheme
+	targetStr := h.target
+	if !strings.Contains(targetStr, "://") {
+		targetStr = originalURL.Scheme + "://" + targetStr
+	}
+	targetURL, err := url.Parse(targetStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid target URL %q: %w", h.target, err)
+	}
+
+	// Replace the URL scheme, host, and port with the target
+	reqCopy.URL.Scheme = targetURL.Scheme
+	reqCopy.URL.Host = targetURL.Host
+
+	// Keep the original path, query, and fragment
+	reqCopy.URL.Path = originalURL.Path
+	reqCopy.URL.RawQuery = originalURL.RawQuery
+	reqCopy.URL.Fragment = originalURL.Fragment
+
+	// Ensure we don't lose the Host header over HTTP/2
+	// The Host field is already set above, but we need to make sure
+	// it's not lost when the request is sent
+	if h.host != "" {
+		reqCopy.Host = h.host
+	}
+
+	// Perform the request using the custom transport
+	return h.transport.RoundTrip(reqCopy)
 }
 
 // NewClient creates a new IPFS SDK client.
@@ -89,13 +175,36 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		retry:         cfg.Retry,
 	}
 
+	// Create internal generated client
+	// If host override is configured, use custom HTTP client with host override round tripper
+	if c.hostOverride != nil {
+		// Create custom transport with host override
+		customTransport := &hostOverrideRoundTripper{
+			transport: http.DefaultTransport,
+			host:      c.hostOverride.Host,
+			target:    c.hostOverride.Target,
+		}
+		httpClient.Transport = customTransport
+
+		// Create internal generated client with custom HTTP client
+		internalGen, err = internalclient.NewClientWithResponses(normalizedURL, requestEditor, internalclient.WithHTTPClient(httpClient))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create internal client with host override: %w", err)
+		}
+	}
+
 	// Apply client options
 	for _, opt := range opts {
 		opt(c)
 	}
 
 	// Initialize services
-	c.pinning = NewPinningService(normalizedURL, bearerToken)
+	// PinningService now supports host override when custom HTTP client is provided
+	if c.hostOverride != nil {
+		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(httpClient))
+	} else {
+		c.pinning = NewPinningService(normalizedURL, bearerToken)
+	}
 	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
 	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
@@ -105,7 +214,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 }
 
 // Pinning returns the pinning service for managing IPFS content.
-func (c *Client) Pinning() *PinningService {
+func (c *Client) Pinning() PinningService {
 	return c.pinning
 }
 
