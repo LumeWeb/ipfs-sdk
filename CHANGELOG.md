@@ -1,3 +1,15 @@
+## 0.1.1 (2026-03-14)
+
+### Features
+
+- add archive package with format detection and extraction
+
+### Fixes
+
+- add upload data type enum and comprehensive upload route tests
+- migrate pkg modules to ipfs-content library
+- use DefaultMemoryLimit constant instead of hardcoded value
+
 ## 0.1.0 (2026-03-12)
 
 ### Breaking Changes
