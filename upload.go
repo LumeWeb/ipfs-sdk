@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -334,17 +335,67 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 		}
 	}
 
-	// Create upload on server - upload object gets populated with Location
+	// Create upload on server and send initial data to initialize multipart upload
 	upload := &tusgo.Upload{}
-	_, err = tusClient.CreateUpload(upload, size, false, metadata)
+	
+	// For certain backends, we need to use CreateUploadWithData to initialize the upload
+	// Send initial chunk with default 2MB chunk size
+	const initialChunkSize = 2 * units.MiB
+	
+	var initialChunk []byte
+	var n int
+	
+	// Calculate how much to read in initial chunk (don't exceed file size)
+	readSize := int64(min(initialChunkSize, size))
+
+	if readSize > 0 {
+		initialChunk = make([]byte, readSize)
+		var readErr error
+		n, readErr = io.ReadFull(reader, initialChunk)
+		
+		// If we hit EOF or ErrUnexpectedEOF, it means the reader has less data than claimed
+		if readErr == io.EOF || readErr == io.ErrUnexpectedEOF {
+			return nil, fmt.Errorf("upload incomplete: reader ended after %d bytes, expected %d bytes", n, size)
+		}
+		
+		if readErr != nil {
+			return nil, fmt.Errorf("failed to read initial chunk: %w", readErr)
+		}
+		
+		// Slice to actual bytes read
+		initialChunk = initialChunk[:n]
+	}
+	
+	// Create upload with initial data (required for some backends)
+	// The server will initialize the multipart upload with this request
+	uploadedBytes, resp, err := tusClient.CreateUploadWithData(upload, initialChunk, size, false, metadata)
+	if resp != nil {
+		resp.Body.Close()
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TUS upload: %w", err)
 	}
-
-	// Upload data using stream
+	
+	// If the entire file was uploaded in the initial request, return early
+	if int64(n) == size {
+		return &UploadResult{
+			CID:  "",
+			Size: uploadedBytes,
+		}, nil
+	}
+	
+	// For remaining data, use MultiReader to combine initial chunk with remaining reader
+	// This avoids reading the same data twice
+	remainingReader := io.MultiReader(
+		bytes.NewReader(initialChunk),
+		reader,
+	)
+	
+	// Upload remaining data using stream
+	// The upload is already initialized on the server, so we can start streaming
 	stream := tusgo.NewUploadStream(tusClient, upload)
 
-	written, err := io.Copy(stream, reader)
+	written, err := io.Copy(stream, remainingReader)
 	if err != nil {
 		return nil, fmt.Errorf("upload interrupted: %w", err)
 	}
