@@ -12,7 +12,7 @@ import (
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
-	"go.lumeweb.com/ipfs-sdk/pkg/upload"
+	"go.lumeweb.com/ipfs-content/car"
 )
 
 // DefaultUploadLimit is the default upload limit in bytes (100MB).
@@ -175,7 +175,7 @@ func (s *UploadService) Upload(ctx context.Context, reader io.Reader, name strin
 }
 
 // UploadFromFS uploads a file or directory by generating a CAR file and uploading via the appropriate method.
-// This method uses pkg/upload for CAR generation which provides:
+// This method uses go.lumeweb.com/ipfs-content for CAR generation which provides:
 // - Two-pass CAR generation (BuildSummary + WriteCAR)
 // - LRU memory-constrained blockstore for efficient memory usage
 // - On-the-fly block regeneration when blocks are evicted from cache
@@ -193,7 +193,7 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 	// Set default memory limit if not provided
 	memoryLimit := opts.MemoryLimit
 	if memoryLimit == 0 {
-		memoryLimit = upload.DefaultMemoryLimit
+		memoryLimit = 100 * 1024 * 1024 // Default 100MB
 	}
 
 	// Check if filesystem wraps a directory
@@ -208,27 +208,22 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 		wrapInDir = true
 	}
 
+	// Create pipe for streaming CAR generation
+	pr, pw := io.Pipe()
+
 	// Pass 1: Build tree summary to get root CID and calculate CAR size
-	bs, dagService := upload.NewDAGServiceWithMemoryLimit(memoryLimit)
-	generator := upload.NewUnixFSNodeGenerator(
-		upload.WithUnixFSNodeDAGService(dagService),
-		upload.WithUnixFSNodeBlockstore(bs),
-	)
-	builder := upload.NewCARBuilder(bs, dagService, generator)
-	summary, err := builder.BuildSummary(ctx, filesystem, wrapInDir)
+	builder, summary, err := car.PrepareCAR(ctx, filesystem, memoryLimit, wrapInDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare upload: %w. Try reducing memory limit if this is a large directory", err)
 	}
 
 	// Calculate CAR size to determine upload method
-	carSize, err := upload.CalculateCARSize(summary)
+	carSize, err := car.CalculateCARSize(summary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate upload size: %w", err)
 	}
 
 	// Pass 2: Create pipe for streaming CAR generation
-	pr, pw := io.Pipe()
-
 	go func() {
 		err := builder.WriteCAR(ctx, pw)
 		if err != nil {
