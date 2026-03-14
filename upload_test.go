@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/docker/go-units"
@@ -563,8 +563,9 @@ func TestUploadFromFS(t *testing.T) {
 		defer server.Close()
 
 		// Create a test filesystem with a single file
-		testFS := newMemFS()
-		testFS.AddFile("test.txt", "Hello, World!")
+		testFS := fstest.MapFS{
+			"test.txt": {Data: []byte("Hello, World!")},
+		}
 
 		// Set upload limit to 1 byte so it routes to TUS (CAR size > 1 byte)
 		service := NewUploadService("https://api.example.com", "test-token",
@@ -586,10 +587,10 @@ func TestUploadFromFS(t *testing.T) {
 		defer server.Close()
 
 		// Create a test filesystem with a directory
-		testFS := newMemFS()
-		testFS.AddDir("dir")
-		testFS.AddFile("dir/file1.txt", "content 1")
-		testFS.AddFile("dir/file2.txt", "content 2")
+		testFS := fstest.MapFS{
+			"dir/file1.txt": {Data: []byte("content 1")},
+			"dir/file2.txt": {Data: []byte("content 2")},
+		}
 
 		// Set upload limit to 1 byte so it routes to TUS
 		service := NewUploadService("https://api.example.com", "test-token",
@@ -611,8 +612,9 @@ func TestUploadFromFS(t *testing.T) {
 		defer server.Close()
 
 		// Create a test filesystem with a small file
-		testFS := newMemFS()
-		testFS.AddFile("small.txt", "small")
+		testFS := fstest.MapFS{
+			"small.txt": {Data: []byte("small")},
+		}
 
 		// Set upload limit high so CAR (small) routes to POST
 		service := NewUploadService(server.URL, "test-token",
@@ -632,8 +634,9 @@ func TestUploadFromFS(t *testing.T) {
 		defer server.Close()
 
 		// Create a test filesystem with a larger file
-		testFS := newMemFS()
-		testFS.AddFile("large.txt", "This is a larger file that should use TUS upload")
+		testFS := fstest.MapFS{
+			"large.txt": {Data: []byte("This is a larger file that should use TUS upload")},
+		}
 
 		// Set upload limit to 1 byte so everything uses TUS
 		service := NewUploadService("https://api.example.com", "test-token",
@@ -648,240 +651,176 @@ func TestUploadFromFS(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.NotEmpty(t, result.CID)
 	})
-}
 
-// memfs is a simple in-memory filesystem for testing.
-// It implements fs.FS for use with UploadFromFS.
-type memfs struct {
-	files map[string]string
-	dirs  map[string][]string
-}
+	t.Run("respects upload limit for large files (TUS)", func(t *testing.T) {
+		server, _, _ := setupTUSTest(t)
+		defer server.Close()
 
-// newMemFS creates a new in-memory filesystem.
-func newMemFS() *memfs {
-	return &memfs{
-		files: make(map[string]string),
-		dirs:  make(map[string][]string),
-	}
-}
-
-// AddFile adds a file to the filesystem.
-func (m *memfs) AddFile(path, data string) {
-	m.files[path] = data
-
-	// Track directory structure
-	dir := getDir(path)
-	if dir != "." {
-		m.dirs[dir] = append(m.dirs[dir], getBasename(path))
-	}
-}
-
-// AddDir adds a directory to the filesystem.
-func (m *memfs) AddDir(path string) {
-	if _, ok := m.dirs[path]; !ok {
-		m.dirs[path] = []string{}
-	}
-}
-
-// Open implements fs.FS.Open for memfs.
-func (m *memfs) Open(name string) (fs.File, error) {
-	// Handle root directory
-	if name == "." {
-		// Collect all top-level entries
-		var entries []string
-		for path := range m.files {
-			dir := getDir(path)
-			if dir == "." {
-				entries = append(entries, getBasename(path))
-			}
+		// Create a test filesystem with a larger file
+		testFS := fstest.MapFS{
+			"large.txt": {Data: []byte("This is a larger file that should use TUS upload")},
 		}
-		for dir := range m.dirs {
-			parent := getDir(dir)
-			if parent == "." && dir != "." {
-				entries = append(entries, getBasename(dir))
-			}
+
+		// Set upload limit to 1 byte so everything uses TUS
+		service := NewUploadService("https://api.example.com", "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1),
+		)
+
+		ctx := context.Background()
+		result, err := service.UploadFromFS(ctx, testFS, "large.txt", nil)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.NotEmpty(t, result.CID)
+	})
+	t.Run("respects opts uploadLimit", func(t *testing.T) {
+		// Regression test: opts.UploadLimit should be used, not ignored
+		server, _, store := setupTUSTest(t)
+		defer server.Close()
+
+		testFS := fstest.MapFS{
+			"test.txt": {Data: []byte("test")},
 		}
-		return &memdir{name: ".", entries: entries}, nil
-	}
 
-	// Check if it's a directory
-	if entries, isDir := m.dirs[name]; isDir {
-		// Collect entries from files in this directory
-		var dirEntries []string
-		entries = append(entries, dirEntries...)
-		return &memdir{name: name, entries: entries}, nil
-	}
+		// Set UploadLimit in opts to 1 byte (should force TUS routing)
+		opts := &UploadOptions{
+			UploadLimit: 1,
+		}
 
-	// Check if it's a file
-	data, ok := m.files[name]
-	if !ok {
-		return nil, fs.ErrNotExist
-	}
-	return &memfile{name: name, data: data}, nil
+		// Set service default limit to 100MB (should be ignored when opts are provided)
+		service := NewUploadService(server.URL, "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(100*1024*1024),
+		)
+
+		ctx := context.Background()
+		result, err := service.UploadFromFS(ctx, testFS, "test.txt", opts)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		
+		// Verify TUS was used (not POST) by checking store has upload
+		// If POST was used incorrectly, upload would fail on invalid URL
+		uploads := store.uploads
+		assert.Len(t, uploads, 1, "should have exactly 1 TUS upload when opts.UploadLimit is 1")
+	})
 }
 
-// memdir implements fs.File and fs.ReadDirFile for in-memory directories.
-type memdir struct {
-	name     string
-	entries  []string
-	pos      int
-}
+func TestUploadBytes(t *testing.T) {
+	t.Run("uploads bytes via TUS for large content", func(t *testing.T) {
+		server, _, _ := setupTUSTest(t)
+		defer server.Close()
 
-// Stat implements fs.File.Stat for memdir.
-func (d *memdir) Stat() (fs.FileInfo, error) {
-	return &fileInfo{size: 0, isDir: true}, nil
-}
+		// Test data
+		testData := []byte("Hello, World! This is byte data for testing UploadBytes.")
 
-// Read implements io.Reader for memdir (returns EOF - directories can't be read as data).
-func (d *memdir) Read([]byte) (int, error) {
-	return 0, io.EOF
-}
+		// Force TUS routing
+		service := NewUploadService("https://api.example.com", "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1),
+		)
 
-// Close implements fs.File.Close for memdir.
-func (d *memdir) Close() error {
-	return nil
-}
+		ctx := context.Background()
+		result, err := service.UploadBytes(ctx, testData, "test.txt", nil)
 
-// ReadDir implements fs.ReadDirFile.ReadDir for memdir.
-func (d *memdir) ReadDir(n int) ([]fs.DirEntry, error) {
-	if d.pos >= len(d.entries) {
-		return nil, io.EOF
-	}
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.NotEmpty(t, result.CID)
+		assert.Greater(t, result.Size, int64(0))
+	})
 
-	var entries []fs.DirEntry
-	end := d.pos + n
-	if n <= 0 {
-		end = len(d.entries)
-	} else if end > len(d.entries) {
-		end = len(d.entries)
-	}
+	t.Run("uploads bytes via POST for small content", func(t *testing.T) {
+		server := setupPOSTTest(t)
+		defer server.Close()
 
-	for i := d.pos; i < end; i++ {
-		entries = append(entries, &direntry{name: d.entries[i]})
-	}
+		// Test data
+		testData := []byte("small")
 
-	d.pos = end
-	return entries, nil
-}
+		// Force POST routing
+		service := NewUploadService(server.URL, "test-token",
+			WithUploadLimit(1000),
+		)
 
-// direntry implements fs.DirEntry for memfs.
-type direntry struct {
-	name string
-}
+		ctx := context.Background()
+		result, err := service.UploadBytes(ctx, testData, "small.txt", nil)
 
-// Name implements fs.DirEntry.Name.
-func (d *direntry) Name() string {
-	return d.name
-}
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Greater(t, result.Size, int64(0))
+	})
 
-// Type implements fs.DirEntry.Type.
-func (d *direntry) Type() fs.FileMode {
-	return 0
-}
+	t.Run("supports custom UploadOptions", func(t *testing.T) {
+		server, _, _ := setupTUSTest(t)
+		defer server.Close()
 
-// Info implements fs.DirEntry.Info.
-func (d *direntry) Info() (fs.FileInfo, error) {
-	return &fileInfo{}, nil
-}
+		// Test data
+		testData := []byte("custom options test")
 
-// IsDir implements fs.DirEntry.IsDir.
-func (d *direntry) IsDir() bool {
-	return false
-}
+		// Create custom options
+		opts := &UploadOptions{
+			MemoryLimit: 50 * 1024 * 1024, // 50MB
+			WrapInDir:   false,
+			UploadLimit: 1,
+		}
 
-// memfile implements fs.File for in-memory files.
-type memfile struct {
-	name string
-	data string
-	pos  int64
-}
+		service := NewUploadService(server.URL, "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+		)
 
-// Stat implements fs.File.Stat for memfile.
-func (f *memfile) Stat() (fs.FileInfo, error) {
-	return &fileInfo{size: int64(len(f.data))}, nil
-}
+		ctx := context.Background()
+		result, err := service.UploadBytes(ctx, testData, "test.txt", opts)
 
-// Read implements io.Reader for memfile.
-func (f *memfile) Read(p []byte) (int, error) {
-	if f.pos >= int64(len(f.data)) {
-		return 0, io.EOF
-	}
-	n := copy(p, []byte(f.data[f.pos:]))
-	f.pos += int64(n)
-	return n, nil
-}
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Greater(t, result.Size, int64(0))
+	})
+	t.Run("uses TUS when CAR size exceeds upload limit", func(t *testing.T) {
+		// Regression test: opts.UploadLimit should control routing (not service default)
+		// CAR size (~216 bytes) > opts.UploadLimit (1 byte) should route to TUS
+		server, _, store := setupTUSTest(t)
+		defer server.Close()
 
-// Close implements fs.File.Close for memfile.
-func (f *memfile) Close() error {
-	return nil
-}
+		testData := []byte("test data")
 
-// fileInfo implements fs.FileInfo for in-memory files.
-type fileInfo struct {
-	size  int64
-	isDir bool
-}
+		// Set UploadLimit to 1 byte to force TUS routing (CAR size > 1 byte)
+		opts := &UploadOptions{
+			UploadLimit: 1,
+		}
 
-// Name implements fs.FileInfo.Name.
-func (f *fileInfo) Name() string {
-	return ""
-}
+		service := NewUploadService(server.URL, "test-token",
+			WithTUSEndpoint(server.URL+"/tus"),
+		)
 
-// Size implements fs.FileInfo.Size.
-func (f *fileInfo) Size() int64 {
-	return f.size
-}
+		ctx := context.Background()
+		result, err := service.UploadBytes(ctx, testData, "test.txt", opts)
 
-// Mode implements fs.FileInfo.Mode.
-func (f *fileInfo) Mode() fs.FileMode {
-	if f.isDir {
-		return fs.ModeDir | 0755
-	}
-	return 0644
-}
+		require.NoError(t, err)
+		assert.NotNil(t, result)
 
-// ModTime implements fs.FileInfo.ModTime.
-func (f *fileInfo) ModTime() time.Time {
-	return time.Time{}
-}
+		// Verify the upload was actually stored in the TUS store (not POST)
+		uploads := store.uploads
+		assert.Len(t, uploads, 1, "should have exactly 1 TUS upload")
 
-// IsDir implements fs.FileInfo.IsDir.
-func (f *fileInfo) IsDir() bool {
-	return f.isDir
-}
+	})
+	t.Run("uses POST when CAR size is under upload limit", func(t *testing.T) {
+		// Regression test: verify opts.UploadLimit works for POST routing too
+		server := setupPOSTTest(t)
+		defer server.Close()
 
-// Sys implements fs.FileInfo.Sys.
-func (f *fileInfo) Sys() interface{} {
-	return nil
-}
+		testData := []byte("small")
 
-// getDir returns the directory part of a path.
-func getDir(path string) string {
-	lastSlash := strings.LastIndex(path, "/")
-	if lastSlash == -1 {
-		return "."
-	}
-	if lastSlash == 0 {
-		return "/"
-	}
-	return path[:lastSlash]
-}
+		// Set UploadLimit high to force POST routing
+		opts := &UploadOptions{
+			UploadLimit: 1000,
+		}
 
-// getBasename returns the basename of a path.
-func getBasename(path string) string {
-	lastSlash := strings.LastIndex(path, "/")
-	if lastSlash == -1 {
-		return path
-	}
-	return path[lastSlash+1:]
-}
+		service := NewUploadService(server.URL, "test-token")
 
-// extractUploadID extracts the upload ID from a TUS location URL
-func extractUploadID(location string) string {
-	// Extract the last part of the URL path which should be the upload ID
-	parts := strings.Split(location, "/")
-	if len(parts) > 0 {
-		return parts[len(parts)-1]
-	}
-	return ""
+		ctx := context.Background()
+		result, err := service.UploadBytes(ctx, testData, "test.txt", opts)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
 }

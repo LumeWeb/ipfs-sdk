@@ -18,7 +18,7 @@ func (h HTTPTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // ServerResponse holds the configuration for building a test server response
 type ServerResponse struct {
 	StatusCode int
-	Body       interface{}
+	Body       any
 	Headers    map[string]string
 }
 
@@ -26,7 +26,7 @@ type ServerResponse struct {
 type HTTPTestServerConfig struct {
 	Handler      HTTPTestHandler
 	StatusCode   int
-	ResponseBody interface{}
+	ResponseBody any
 	Headers      map[string]string
 }
 
@@ -64,7 +64,7 @@ func defaultHandler(t *testing.T, cfg HTTPTestServerConfig) HTTPTestHandler {
 }
 
 // WriteJSON writes JSON response with status code
-func WriteJSON(t *testing.T, w http.ResponseWriter, statusCode int, body interface{}) {
+func WriteJSON(t *testing.T, w http.ResponseWriter, statusCode int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if body != nil {
@@ -101,7 +101,7 @@ func VerifyAuthorization(t *testing.T, r *http.Request, expectedToken string) {
 type JSONResponseBuilder struct {
 	statusCode int
 	headers    map[string]string
-	body       interface{}
+	body       any
 }
 
 // NewJSONResponse creates a new JSON response builder
@@ -125,7 +125,7 @@ func (b *JSONResponseBuilder) WithHeader(key, value string) *JSONResponseBuilder
 }
 
 // WithBody sets the response body
-func (b *JSONResponseBuilder) WithBody(body interface{}) *JSONResponseBuilder {
+func (b *JSONResponseBuilder) WithBody(body any) *JSONResponseBuilder {
 	b.body = body
 	return b
 }
