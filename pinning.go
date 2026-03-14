@@ -14,9 +14,9 @@ type PinningService struct {
 }
 
 // NewPinningService creates a wrapper around boxo's existing client
-func NewPinningService(url, bearerToken string) *PinningService {
+func NewPinningService(baseURL, bearerToken string) *PinningService {
 	return &PinningService{
-		client: boxo.NewClient(url, bearerToken),
+		client: boxo.NewClient(baseURL, bearerToken),
 	}
 }
 
