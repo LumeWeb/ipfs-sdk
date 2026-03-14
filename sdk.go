@@ -59,9 +59,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	// URL construction when endpoints are joined with operation paths
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
-		// If parsing fails, construct a URL with the baseURL as the host
-		// and assume HTTPS for better security defaults
-		parsedURL = &url.URL{Scheme: "https", Host: baseURL}
+		return nil, fmt.Errorf("invalid base URL: %w", err)
 	}
 	parsedURL.Path = ""
 	normalizedURL := parsedURL.String()
