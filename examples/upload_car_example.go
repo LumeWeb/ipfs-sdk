@@ -30,7 +30,11 @@ import (
 // This method automatically generates a CAR file from the file and uploads it.
 func UploadSimpleFileExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -70,7 +74,11 @@ func UploadSimpleFileExample() error {
 // The directory will be converted to a CAR file and uploaded as a single unit.
 func UploadDirectoryExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -108,7 +116,11 @@ func UploadDirectoryExample() error {
 // that requires the TUS resumable upload protocol.
 func UploadLargeDirectoryExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -149,7 +161,11 @@ func UploadLargeDirectoryExample() error {
 // and want to upload it directly without CAR generation or filesystem operations.
 func UploadRawStreamExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}

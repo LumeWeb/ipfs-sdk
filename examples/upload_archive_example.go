@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"go.lumeweb.com/ipfs-sdk"
 )
@@ -17,7 +18,11 @@ import (
 // to CAR format.
 func UploadZipAutoProcessExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -58,7 +63,11 @@ func UploadZipAutoProcessExample() error {
 // without processing. The file will be stored as-is without unpacking.
 func UploadZipRawExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -102,7 +111,11 @@ func UploadZipRawExample() error {
 // resumable upload protocol.
 func UploadLargeZipExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -146,7 +159,11 @@ func UploadLargeZipExample() error {
 // in sequence.
 func UploadMultipleArchivesExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -197,7 +214,11 @@ func UploadMultipleArchivesExample() error {
 // timeouts and cancellation.
 func UploadArchiveWithContextExample() error {
 	// Create the SDK client
-	client, err := ipfs.NewClient("https://api.example.com", "your-auth-token")
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
@@ -220,7 +241,7 @@ func UploadArchiveWithContextExample() error {
 	}
 	
 	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*60) // 5 minute timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) // 5 minute timeout
 	defer cancel()
 	
 	// Upload with timeout

@@ -244,7 +244,7 @@ import (
 
 func main() {
     // Run single file upload example
-    if err := examples.UploadSingleFileExample(); err != nil {
+    if err := examples.UploadSimpleFileExample(); err != nil {
         log.Fatal(err)
     }
 }
@@ -294,7 +294,7 @@ import "github.com/avast/retry-go/v4"
 
 err := retry.Do(
     func() error {
-        result, err := uploadService.Upload(ctx, reader, "file", size)
+        _, err := uploadService.Upload(ctx, reader, "file", size)
         return err
     },
     retry.Attempts(3),
