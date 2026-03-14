@@ -22,7 +22,7 @@ func NewBytesFS(data []byte, filename string) *BytesFS {
 // Only the root "." and the single filename are valid paths.
 func (b *BytesFS) Open(name string) (fs.File, error) {
 	if name == "." {
-		return &bytesDir{filename: b.filename}, nil
+		return &bytesDir{filename: b.filename, size: int64(len(b.data))}, nil
 	}
 	if name == b.filename {
 		return &bytesFile{name: b.filename, data: b.data}, nil
@@ -60,6 +60,7 @@ func (f *bytesFile) Close() error {
 // bytesDir implements fs.File and fs.ReadDirFile for a directory containing a single file.
 type bytesDir struct {
 	filename string
+	size     int64
 	offset   int
 }
 
@@ -84,7 +85,7 @@ func (d *bytesDir) ReadDir(n int) ([]fs.DirEntry, error) {
 		return nil, io.EOF
 	}
 	d.offset++
-	return []fs.DirEntry{&bytesDirEntry{name: d.filename}}, nil
+	return []fs.DirEntry{&bytesDirEntry{name: d.filename, size: d.size}}, nil
 }
 
 // bytesFileInfo implements fs.FileInfo.
@@ -103,12 +104,13 @@ func (fi *bytesFileInfo) Sys() any   { return nil }
 // bytesDirEntry implements fs.DirEntry for BytesFS.
 type bytesDirEntry struct {
 	name string
+	size int64
 }
 
 func (de *bytesDirEntry) Name() string           { return de.name }
 func (de *bytesDirEntry) Type() fs.FileMode      { return 0 }
 func (de *bytesDirEntry) Info() (fs.FileInfo, error) {
-	return &bytesFileInfo{size: 0, isDir: false}, nil
+	return &bytesFileInfo{size: de.size, isDir: false}, nil
 }
 func (de *bytesDirEntry) IsDir() bool {
 	return false

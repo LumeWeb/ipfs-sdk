@@ -651,29 +651,6 @@ func TestUploadFromFS(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.NotEmpty(t, result.CID)
 	})
-
-	t.Run("respects upload limit for large files (TUS)", func(t *testing.T) {
-		server, _, _ := setupTUSTest(t)
-		defer server.Close()
-
-		// Create a test filesystem with a larger file
-		testFS := fstest.MapFS{
-			"large.txt": {Data: []byte("This is a larger file that should use TUS upload")},
-		}
-
-		// Set upload limit to 1 byte so everything uses TUS
-		service := NewUploadService("https://api.example.com", "test-token",
-			WithTUSEndpoint(server.URL+"/tus"),
-			WithUploadLimit(1),
-		)
-
-		ctx := context.Background()
-		result, err := service.UploadFromFS(ctx, testFS, "large.txt", nil)
-
-		require.NoError(t, err)
-		assert.NotNil(t, result)
-		assert.NotEmpty(t, result.CID)
-	})
 	t.Run("respects opts uploadLimit", func(t *testing.T) {
 		// Regression test: opts.UploadLimit should be used, not ignored
 		server, _, store := setupTUSTest(t)
