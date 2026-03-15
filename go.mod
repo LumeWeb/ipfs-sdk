@@ -10,12 +10,11 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
-	github.com/ipfs/boxo v0.37.0
 	github.com/ipfs/go-cid v0.6.0
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tus/tusd/v2 v2.9.1
-	go.lumeweb.com/ipfs-content v0.1.1
+	go.lumeweb.com/ipfs-content v0.1.2
 )
 
 require (
@@ -34,6 +33,7 @@ require (
 	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
+	github.com/ipfs/boxo v0.37.0 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
 	github.com/ipfs/go-block-format v0.2.3 // indirect
 	github.com/ipfs/go-cidutil v0.1.1 // indirect
@@ -56,7 +56,6 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.1.0 // indirect
 	github.com/multiformats/go-base36 v0.2.0 // indirect
-	github.com/multiformats/go-multiaddr v0.16.1 // indirect
 	github.com/multiformats/go-multibase v0.2.0 // indirect
 	github.com/multiformats/go-multicodec v0.10.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
@@ -85,7 +84,6 @@ require (
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
 	golang.org/x/mod v0.33.0 // indirect
-	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
