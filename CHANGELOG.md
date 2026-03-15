@@ -1,3 +1,13 @@
+## 0.1.7 (2026-03-15)
+
+### Features
+
+- add io.Seeker support to BytesFS
+
+### Fixes
+
+- update car API usage for compatibility
+
 ## 0.1.6 (2026-03-15)
 
 ### Fixes
