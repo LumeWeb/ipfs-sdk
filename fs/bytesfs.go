@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"time"
@@ -57,6 +58,30 @@ func (f *bytesFile) Close() error {
 	return nil
 }
 
+// Seek implements io.Seeker for repositioning within the file.
+// Supports SeekStart, SeekCurrent, and SeekEnd.
+func (f *bytesFile) Seek(offset int64, whence int) (int64, error) {
+	var newOffset int64
+
+	switch whence {
+	case io.SeekStart:
+		newOffset = offset
+	case io.SeekCurrent:
+		newOffset = f.pos + offset
+	case io.SeekEnd:
+		newOffset = int64(len(f.data)) + offset
+	default:
+		return 0, fmt.Errorf("invalid whence parameter")
+	}
+
+	if newOffset < 0 {
+		newOffset = 0
+	}
+
+	f.pos = newOffset
+	return newOffset, nil
+}
+
 // bytesDir implements fs.File and fs.ReadDirFile for a directory containing a single file.
 type bytesDir struct {
 	filename string
@@ -77,6 +102,11 @@ func (d *bytesDir) Read([]byte) (int, error) {
 // Close implements fs.File.Close (no-op).
 func (d *bytesDir) Close() error {
 	return nil
+}
+
+// Seek implements io.Seeker for bytesDir (no-op, directories cannot be seeked).
+func (d *bytesDir) Seek(offset int64, whence int) (int64, error) {
+	return 0, fmt.Errorf("seek not supported on directories")
 }
 
 // ReadDir implements fs.ReadDirFile.ReadDir.
