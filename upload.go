@@ -262,7 +262,7 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 	// Set default memory limit if not provided
 	memoryLimit := opts.MemoryLimit
 	if memoryLimit == 0 {
-		memoryLimit = car.DefaultMemoryLimit // Default 100MB
+		memoryLimit = 100 * uint64(units.MiB) // Default 100MB
 	}
 
 	// Check if filesystem wraps a directory
@@ -280,7 +280,7 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 	var pr io.ReadCloser
 
 	// Pass 1: Build tree summary to get root CID and calculate CAR size
-	builder, summary, err := car.PrepareCAR(ctx, filesystem, memoryLimit, wrapInDir)
+	builder, summary, err := car.PrepareCAR(ctx, filesystem, wrapInDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare upload: %w. Try reducing memory limit if this is a large directory", err)
 	}
