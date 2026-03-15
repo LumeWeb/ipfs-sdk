@@ -1,7 +1,6 @@
 package ipfs
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -383,14 +382,11 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 			Size: uploadedBytes,
 		}, nil
 	}
-	
-	// For remaining data, use MultiReader to combine initial chunk with remaining reader
-	// This avoids reading the same data twice
-	remainingReader := io.MultiReader(
-		bytes.NewReader(initialChunk),
-		reader,
-	)
-	
+
+	// Upload remaining data using only the reader, which already has the remaining data
+	// The initial chunk was already sent via CreateUploadWithData
+	remainingReader := reader
+
 	// Upload remaining data using stream
 	// The upload is already initialized on the server, so we can start streaming
 	stream := tusgo.NewUploadStream(tusClient, upload)
