@@ -1,3 +1,10 @@
+## 0.1.6 (2026-03-15)
+
+### Fixes
+
+- initialize multipart upload with initial data
+- remove double-upload bug in TUS upload
+
 ## 0.1.5 (2026-03-14)
 
 ### Features
