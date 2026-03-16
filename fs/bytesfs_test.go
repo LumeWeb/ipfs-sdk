@@ -2,6 +2,7 @@ package fs
 
 import (
 	"io"
+	"io/fs"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,15 +11,15 @@ import (
 
 func TestBytesFSBasic(t *testing.T) {
 	data := []byte("Hello, World!")
-	fs := NewBytesFS(data, "test.txt")
+	bytesFS := NewBytesFS(data, "test.txt")
 
 	// Open directory
-	dir, err := fs.Open(".")
+	dir, err := bytesFS.Open(".")
 	require.NoError(t, err)
 	assert.Nil(t, dir.Close())
 
 	// Open file
-	file, err := fs.Open("test.txt")
+	file, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 	defer file.Close()
 
@@ -31,9 +32,9 @@ func TestBytesFSBasic(t *testing.T) {
 
 func TestBytesFileSeek(t *testing.T) {
 	data := []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	fs := NewBytesFS(data, "test.txt")
+	bytesFS := NewBytesFS(data, "test.txt")
 
-	file, err := fs.Open("test.txt")
+	file, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 	defer file.Close()
 
@@ -70,9 +71,9 @@ func TestBytesFileSeek(t *testing.T) {
 
 func TestBytesFileSeekOutOfBounds(t *testing.T) {
 	data := []byte("Hello, World!")
-	fs := NewBytesFS(data, "test.txt")
+	bytesFS := NewBytesFS(data, "test.txt")
 
-	file, err := fs.Open("test.txt")
+	file, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 	defer file.Close()
 
@@ -99,9 +100,9 @@ func TestBytesFileSeekOutOfBounds(t *testing.T) {
 
 func TestBytesFileSeekInvalidWhence(t *testing.T) {
 	data := []byte("test")
-	fs := NewBytesFS(data, "test.txt")
+	bytesFS := NewBytesFS(data, "test.txt")
 
-	file, err := fs.Open("test.txt")
+	file, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 	defer file.Close()
 
@@ -113,28 +114,12 @@ func TestBytesFileSeekInvalidWhence(t *testing.T) {
 	assert.Equal(t, "invalid whence parameter", err.Error())
 }
 
-func TestBytesDirNoSeek(t *testing.T) {
-	data := []byte("test")
-	fs := NewBytesFS(data, "test.txt")
-
-	dir, err := fs.Open(".")
-	require.NoError(t, err)
-	defer dir.Close()
-
-	seeker, ok := dir.(io.Seeker)
-	require.True(t, ok, "dir should implement io.Seeker")
-
-	_, err = seeker.Seek(0, io.SeekStart)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "seek not supported")
-}
-
 func TestBytesFileReOpen(t *testing.T) {
 	data := []byte("Hello, World!")
-	fs := NewBytesFS(data, "test.txt")
+	bytesFS := NewBytesFS(data, "test.txt")
 
 	// First open and read
-	file1, err := fs.Open("test.txt")
+	file1, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 
 	buf1 := make([]byte, 5)
@@ -147,7 +132,7 @@ func TestBytesFileReOpen(t *testing.T) {
 	err = file1.Close()
 	require.NoError(t, err)
 
-	file2, err := fs.Open("test.txt")
+	file2, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 	defer file2.Close()
 
@@ -161,10 +146,10 @@ func TestBytesFileReOpen(t *testing.T) {
 func TestBytesFSReOpeningDuringCARGeneration(t *testing.T) {
 	// Simulate the two-pass CAR generation pattern with BytesFS
 	data := []byte("This is a larger file to test re-opening behavior pattern")
-	fs := NewBytesFS(data, "test.txt")
+	bytesFS := NewBytesFS(data, "test.txt")
 
 	// Pass 1: Read during BuildSummary
-	file1, err := fs.Open("test.txt")
+	file1, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 
 	buf1 := make([]byte, len(data))
@@ -175,7 +160,7 @@ func TestBytesFSReOpeningDuringCARGeneration(t *testing.T) {
 	_ = n1 // Data was read and stored in blockstore
 
 	// Pass 2: Reopen for regeneration
-	file2, err := fs.Open("test.txt")
+	file2, err := bytesFS.Open("test.txt")
 	require.NoError(t, err)
 	defer file2.Close()
 
@@ -186,4 +171,27 @@ func TestBytesFSReOpeningDuringCARGeneration(t *testing.T) {
 	// Verify we get the same data
 	assert.Equal(t, len(data), n2)
 	assert.Equal(t, data, buf2)
+}
+
+func TestBytesFSRootIsNotADirectory(t *testing.T) {
+	// Test that BytesFS root "." is correctly identified as a file, not a directory.
+	// This is critical for UploadBytes which uses fs.Stat(filesystem, ".") to determine
+	// wrapInDir value. If root returns IsDir()=true, files get incorrectly wrapped in a directory.
+	data := []byte("test content for upload")
+	bytesFS := NewBytesFS(data, "test-file.bin")
+
+	// Stat the root of the filesystem (this is what UploadFromFS does in upload.go)
+	info, err := fs.Stat(bytesFS, ".")
+	require.NoError(t, err, "fs.Stat should not fail on root")
+
+	// The root of BytesFS represents a single file, so IsDir() should be false
+	assert.False(t, info.IsDir(), "Root of BytesFS should not be a directory, it represents a single file")
+
+	// Verify we can also get the file by name
+	fileInfo, err := fs.Stat(bytesFS, "test-file.bin")
+	require.NoError(t, err)
+	assert.False(t, fileInfo.IsDir(), "Named file should also not be a directory")
+
+	// Verify the file has correct size
+	assert.Equal(t, int64(len(data)), info.Size())
 }
