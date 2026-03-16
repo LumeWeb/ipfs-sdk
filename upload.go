@@ -41,6 +41,9 @@ func StreamToPipe(fn func(io.Writer) error) io.ReadCloser {
 // DefaultUploadLimit is the default upload limit in bytes (100MB).
 const DefaultUploadLimit = 100 * units.MiB
 
+// AuthSchemeBearer is the authentication scheme used for Bearer tokens.
+const AuthSchemeBearer = "Bearer"
+
 // ArchiveMode represents the archive processing mode for uploads.
 type ArchiveMode string
 
@@ -231,7 +234,7 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	// Add Authorization header if token is present
 	if a.authToken != "" {
-		reqCopy.Header.Set("Authorization", "Bearer "+a.authToken)
+		reqCopy.Header.Set("Authorization", AuthSchemeBearer+" "+a.authToken)
 	}
 
 	// Forward the request to the underlying transport

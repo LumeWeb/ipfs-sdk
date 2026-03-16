@@ -262,7 +262,7 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 		assert.NotEmpty(t, receivedAuthHeaders, "at least one Authorization header should have been sent")
 
 		// Verify the Authorization header contains the expected token
-		expectedAuth := "Bearer " + expectedToken
+		expectedAuth := AuthSchemeBearer + " " + expectedToken
 		for _, auth := range receivedAuthHeaders {
 			assert.Equal(t, expectedAuth, auth,
 				"Authorization header should contain 'Bearer <token>' format")
@@ -652,7 +652,7 @@ func setupPOSTTest(t *testing.T) *httptest.Server {
 
 		// Check authorization
 		auth := r.Header.Get("Authorization")
-		if auth != "Bearer test-token" {
+		if auth != AuthSchemeBearer+" test-token" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
