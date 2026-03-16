@@ -1,3 +1,12 @@
+## 0.1.8 (2026-03-16)
+
+### Fixes
+
+- return file from root, not directory
+- add authorization header support to TUS uploads
+- extract AuthSchemeBearer constant to eliminate duplication
+- add mutex synchronization to authRoundTripper for thread safety
+
 ## 0.1.7 (2026-03-15)
 
 ### Features
