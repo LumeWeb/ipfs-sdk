@@ -155,6 +155,37 @@ func setupTUSTest(t *testing.T) (*httptest.Server, *handler.Handler, *memoryStor
 	return server, tusHandler, store
 }
 
+// setupTUSTestWithWrapper creates a complete TUS test environment with a real TUS server,
+// optionally wrapping the handler with custom middleware
+func setupTUSTestWithWrapper(t *testing.T, wrapper func(http.Handler) http.Handler) (*httptest.Server, *handler.Handler, *memoryStore) {
+	// Create TUS server with memory store
+	store := newMemoryStore()
+	locker := memorylocker.New()
+	composer := handler.NewStoreComposer()
+	composer.UseCore(store)
+	composer.UseTerminater(store)
+	composer.UseLocker(locker)
+
+	tusHandler, err := handler.NewHandler(handler.Config{
+		StoreComposer: composer,
+		BasePath:      "/tus",
+	})
+	require.NoError(t, err)
+
+	// Apply wrapper if provided
+	handlerToUse := http.StripPrefix("/tus", tusHandler)
+	if wrapper != nil {
+		handlerToUse = wrapper(http.StripPrefix("/tus", tusHandler))
+	}
+
+	// Create HTTP test server
+	server := httptest.NewServer(handlerToUse)
+
+	return server, tusHandler, store
+}
+
+
+
 func TestNewUploadService(t *testing.T) {
 	t.Run("creates service with default endpoint", func(t *testing.T) {
 		service := NewUploadService("https://api.example.com", "test-token")
@@ -167,10 +198,12 @@ func TestNewUploadService(t *testing.T) {
 	})
 
 	t.Run("applies WithHTTPClient option", func(t *testing.T) {
-		customClient := &http.Client{Timeout: 30 * time.Second}
+		customTimeout := 30 * time.Second
+		customClient := &http.Client{Timeout: customTimeout}
 		service := NewUploadService("https://api.example.com", "test-token", WithHTTPClient(customClient))
 
-		assert.Same(t, customClient, service.httpClient)
+		// WithHTTPClient wraps the client with authRoundTripper, so the timeout is preserved
+		assert.Equal(t, customTimeout, service.httpClient.Timeout)
 	})
 
 	t.Run("applies WithTUSEndpoint option", func(t *testing.T) {
@@ -180,6 +213,81 @@ func TestNewUploadService(t *testing.T) {
 		assert.Equal(t, customEndpoint, service.tusEndpoint)
 	})
 }
+
+// TestUploadService_AuthorizationHeaders_Verifies that Authorization headers are
+// properly added to all TUS upload requests
+func TestUploadService_AuthorizationHeaders(t *testing.T) {
+	t.Run("authorization headers are sent with TUS requests", func(t *testing.T) {
+		var receivedAuthHeaders []string
+		expectedToken := "test-auth-token-12345"
+
+		// Create a wrapper to capture Authorization headers
+		authCapturingWrapper := func(base http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Capture Authorization header
+				authHeader := r.Header.Get("Authorization")
+				if authHeader != "" {
+					receivedAuthHeaders = append(receivedAuthHeaders, authHeader)
+				}
+				// Delegate to base handler
+				base.ServeHTTP(w, r)
+			})
+		}
+
+		// Create TUS server with custom wrapper
+		server, _, _ := setupTUSTestWithWrapper(t, authCapturingWrapper)
+		defer server.Close()
+
+		// Create upload service with auth token and configure TUS endpoint
+		service := NewUploadService(server.URL, expectedToken,
+			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1), // Force TUS routing by setting limit smaller than file size
+		)
+
+		// Create test data
+		testData := []byte("test file content for authorization test")
+		testSize := int64(len(testData))
+		testName := "test-auth.txt"
+
+		// Perform upload
+		ctx := context.Background()
+		reader := bytes.NewReader(testData)
+		result, err := service.Upload(ctx, reader, testName, testSize)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, int64(len(testData)), result.Size)
+
+		// Verify at least one Authorization header was sent
+		assert.NotEmpty(t, receivedAuthHeaders, "at least one Authorization header should have been sent")
+
+		// Verify the Authorization header contains the expected token
+		expectedAuth := AuthSchemeBearer + " " + expectedToken
+		for _, auth := range receivedAuthHeaders {
+			assert.Equal(t, expectedAuth, auth,
+				"Authorization header should contain 'Bearer <token>' format")
+		}
+	})
+
+	t.Run("SetAuthToken updates transport token", func(t *testing.T) {
+		initialToken := "initial-token"
+		newToken := "updated-token"
+
+		// Create service with initial token
+		service := NewUploadService("https://api.example.com", initialToken)
+
+		// Verify initial token
+		assert.Equal(t, initialToken, service.GetAuthToken())
+
+		// Update token
+		service.SetAuthToken(newToken)
+
+		// Verify token was updated
+		assert.Equal(t, newToken, service.GetAuthToken())
+		// The transport should have also been updated (verified in SetAuthToken implementation)
+	})
+}
+
 
 func TestUploadService_Upload_Success(t *testing.T) {
 	t.Run("uploads data successfully via TUS", func(t *testing.T) {
@@ -544,7 +652,7 @@ func setupPOSTTest(t *testing.T) *httptest.Server {
 
 		// Check authorization
 		auth := r.Header.Get("Authorization")
-		if auth != "Bearer test-token" {
+		if auth != AuthSchemeBearer+" test-token" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
@@ -40,6 +41,9 @@ func StreamToPipe(fn func(io.Writer) error) io.ReadCloser {
 
 // DefaultUploadLimit is the default upload limit in bytes (100MB).
 const DefaultUploadLimit = 100 * units.MiB
+
+// AuthSchemeBearer is the authentication scheme used for Bearer tokens.
+const AuthSchemeBearer = "Bearer"
 
 // ArchiveMode represents the archive processing mode for uploads.
 type ArchiveMode string
@@ -90,11 +94,11 @@ func (t UploadDataType) String() string {
 
 // UploadService provides file upload functionality using TUS and HTTP POST.
 type UploadService struct {
-	httpClient  *http.Client
-	baseURL     string
-	authToken   string
-	tusEndpoint string
-	uploadLimit int64
+	httpClient    *http.Client
+	baseURL       string
+	authToken     string
+	tusEndpoint   string
+	uploadLimit   int64
 }
 
 // UploadOptions configures an upload operation.
@@ -132,7 +136,12 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *U
 	s := &UploadService{
 		baseURL:   baseURL,
 		authToken: authToken,
-		httpClient: &http.Client{},
+		httpClient: &http.Client{
+			Transport: &authRoundTripper{
+				transport: http.DefaultTransport,
+				authToken: authToken,
+			},
+		},
 	}
 
 	for _, opt := range opts {
@@ -156,11 +165,36 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *U
 type UploadServiceOption func(*UploadService)
 
 // WithHTTPClient sets a custom HTTP client for the upload service.
+// It wraps the client's transport with authRoundTripper to add authorization headers.
 func WithHTTPClient(client *http.Client) UploadServiceOption {
 	return func(s *UploadService) {
-		s.httpClient = client
+		if client != nil {
+			wrappedClient := &http.Client{
+				Timeout: client.Timeout,
+				CheckRedirect: client.CheckRedirect,
+				Jar: client.Jar,
+				Transport: &authRoundTripper{
+					transport: getTransport(client),
+					authToken: s.authToken,
+				},
+			}
+			s.httpClient = wrappedClient
+		}
 	}
 }
+
+// getTransport extracts the http.RoundTripper from an http.Client,
+// returning DefaultTransport if none is set.
+func getTransport(client *http.Client) http.RoundTripper {
+	if client == nil {
+		return http.DefaultTransport
+	}
+	if client.Transport == nil {
+		return http.DefaultTransport
+	}
+	return client.Transport
+}
+
 
 // WithTUSEndpoint sets a custom TUS endpoint URL.
 func WithTUSEndpoint(endpoint string) UploadServiceOption {
@@ -175,6 +209,46 @@ func WithUploadLimit(limit int64) UploadServiceOption {
 		s.uploadLimit = limit
 	}
 }
+
+// TokenAwareTransport is the interface for transports that can update their auth token.
+type TokenAwareTransport interface {
+	SetAuthToken(token string)
+}
+
+// authRoundTripper is a custom http.RoundTripper that adds authorization headers
+// to HTTP requests. This is used to inject Bearer token authentication into TUS upload requests.
+type authRoundTripper struct {
+	transport http.RoundTripper
+	mu        sync.RWMutex
+	authToken string
+}
+
+// SetAuthToken updates the authentication token.
+func (a *authRoundTripper) SetAuthToken(token string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.authToken = token
+}
+
+// RoundTrip implements the http.RoundTripper interface.
+// It adds an Authorization header with the Bearer token to each request.
+func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Clone the request to avoid modifying the original
+	reqCopy := req.Clone(req.Context())
+
+	// Add Authorization header if token is present
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	token := a.authToken
+
+	if token != "" {
+		reqCopy.Header.Set("Authorization", AuthSchemeBearer+" "+token)
+	}
+
+	// Forward the request to the underlying transport
+	return a.transport.RoundTrip(reqCopy)
+}
+
 
 // UploadResult contains the result of an upload operation.
 type UploadResult struct {
@@ -626,6 +700,10 @@ func MaxChunkSize() int64 {
 // SetAuthToken sets a new authentication token.
 func (s *UploadService) SetAuthToken(token string) {
 	s.authToken = token
+	// Update the token in the RoundTripper if it supports TokenAwareTransport
+	if rt, ok := s.httpClient.Transport.(TokenAwareTransport); ok {
+		rt.SetAuthToken(token)
+	}
 }
 
 // GetAuthToken returns the current authentication token.
