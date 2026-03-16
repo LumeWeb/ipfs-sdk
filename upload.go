@@ -470,13 +470,14 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 		return nil, fmt.Errorf("upload interrupted: %w", err)
 	}
 
-	if written != size {
-		return nil, fmt.Errorf("upload incomplete: expected %d bytes, wrote %d", size, written)
+	totalWritten := int64(n) + written
+	if totalWritten != size {
+		return nil, fmt.Errorf("upload incomplete: expected %d bytes, wrote %d", size, totalWritten)
 	}
 
 	return &UploadResult{
 		CID:  "", // Will be filled by the server response
-		Size: written,
+		Size: totalWritten,
 	}, nil
 }
 
