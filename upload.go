@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"sync"
 
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
@@ -218,11 +219,14 @@ type TokenAwareTransport interface {
 // to HTTP requests. This is used to inject Bearer token authentication into TUS upload requests.
 type authRoundTripper struct {
 	transport http.RoundTripper
+	mu        sync.RWMutex
 	authToken string
 }
 
 // SetAuthToken updates the authentication token.
 func (a *authRoundTripper) SetAuthToken(token string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	a.authToken = token
 }
 
@@ -233,8 +237,12 @@ func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	reqCopy := req.Clone(req.Context())
 
 	// Add Authorization header if token is present
-	if a.authToken != "" {
-		reqCopy.Header.Set("Authorization", AuthSchemeBearer+" "+a.authToken)
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	token := a.authToken
+
+	if token != "" {
+		reqCopy.Header.Set("Authorization", AuthSchemeBearer+" "+token)
 	}
 
 	// Forward the request to the underlying transport
