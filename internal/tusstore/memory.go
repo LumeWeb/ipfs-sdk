@@ -198,8 +198,6 @@ func (store *MemoryStore) UseIn(composer *handler.StoreComposer) {
 
 // NewUpload creates a new upload
 func (store *MemoryStore) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
 
 	if info.ID == "" {
 		info.ID = generateID()

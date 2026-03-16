@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -104,6 +105,7 @@ func setupTUSTestWithWrapper(t *testing.T, wrapper func(http.Handler) http.Handl
 func TestUploadService_AuthorizationHeaders(t *testing.T) {
 	t.Run("authorization headers are sent with TUS requests", func(t *testing.T) {
 		var receivedAuthHeaders []string
+		var mu sync.Mutex
 		expectedToken := "test-auth-token-12345"
 
 		// Create a wrapper to capture Authorization headers
@@ -112,6 +114,8 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 				// Capture Authorization header
 				authHeader := r.Header.Get("Authorization")
 				if authHeader != "" {
+					mu.Lock()
+					defer mu.Unlock()
 					receivedAuthHeaders = append(receivedAuthHeaders, authHeader)
 				}
 				// Delegate to base handler
@@ -579,7 +583,11 @@ func setupPOSTTest(t *testing.T) *httptest.Server {
 
 		// Check authorization
 		auth := r.Header.Get("Authorization")
-		if auth != AuthSchemeBearer+" test-token" {
+		testToken := os.Getenv("TEST_AUTH_TOKEN")
+		if testToken == "" {
+			testToken = "test-token"
+		}
+		if auth != AuthSchemeBearer+" "+testToken {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
