@@ -1,3 +1,11 @@
+## 0.1.9 (2026-03-16)
+
+### Fixes
+
+- TUS upload size validation and memory store implementation
+- address PR review feedback
+- resolve test timeout by removing deadlock in NewUpload
+
 ## 0.1.8 (2026-03-16)
 
 ### Fixes
