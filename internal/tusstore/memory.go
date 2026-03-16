@@ -32,6 +32,8 @@ func (f *MemoryFile) GetInfo(ctx context.Context) (handler.FileInfo, error) {
 }
 
 func (f *MemoryFile) WriteChunk(ctx context.Context, offset int64, src io.Reader) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.store.mu.Lock()
 	defer f.store.mu.Unlock()
 
@@ -106,6 +108,8 @@ func (f *MemoryFile) GetReader(ctx context.Context) (io.ReadCloser, error) {
 }
 
 func (f *MemoryFile) ConcatUploads(ctx context.Context, uploads []handler.Upload) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.store.mu.Lock()
 	defer f.store.mu.Unlock()
 
@@ -194,6 +198,9 @@ func (store *MemoryStore) UseIn(composer *handler.StoreComposer) {
 
 // NewUpload creates a new upload
 func (store *MemoryStore) NewUpload(ctx context.Context, info handler.FileInfo) (handler.Upload, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
 	if info.ID == "" {
 		info.ID = generateID()
 	}
@@ -232,6 +239,9 @@ func (store *MemoryStore) NewUpload(ctx context.Context, info handler.FileInfo) 
 
 // GetUpload retrieves an existing upload
 func (store *MemoryStore) GetUpload(ctx context.Context, id string) (handler.Upload, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
 	metadata, exists := store.metadata[id]
 	if !exists {
 		return nil, handler.ErrNotFound
@@ -252,9 +262,10 @@ func (store *MemoryStore) GetUpload(ctx context.Context, id string) (handler.Upl
 	info.Offset = int64(len(data))
 
 	upload := &MemoryFile{
-		info:    info,
-		binPath: store.path + "/" + id,
-		store:   store,
+		info:       info,
+		binPath:    store.path + "/" + id,
+		store:      store,
+		isComplete: info.Offset == info.Size,
 	}
 
 	return upload, nil
@@ -262,9 +273,12 @@ func (store *MemoryStore) GetUpload(ctx context.Context, id string) (handler.Upl
 
 // GetReader returns an io.ReadCloser for the upload content
 func (store *MemoryStore) GetReader(hCtx context.Context, info handler.FileInfo) (io.ReadCloser, error) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+
 	data, exists := store.data[info.ID]
 	if !exists {
-		return nil, os.ErrNotExist
+		return nil, handler.ErrNotFound
 	}
 	return io.NopCloser(bytes.NewReader(data)), nil
 }
