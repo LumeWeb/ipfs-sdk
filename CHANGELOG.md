@@ -1,3 +1,13 @@
+## 0.1.12 (2026-03-17)
+
+### Features
+
+- add UploadFile convenience method with SingleFileFS
+
+### Fixes
+
+- address PR review feedback from kody-ai[bot]
+
 ## 0.1.11 (2026-03-17)
 
 ### Fixes
