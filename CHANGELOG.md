@@ -1,3 +1,14 @@
+## 0.1.10 (2026-03-17)
+
+### Features
+
+- add trustless download service using boxo gateway patterns
+
+### Fixes
+
+- address all code review feedback from PR #23
+- use package-level auth token variables instead of os.Getenv calls
+
 ## 0.1.9 (2026-03-16)
 
 ### Fixes
