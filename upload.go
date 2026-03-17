@@ -8,12 +8,12 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
 	"go.lumeweb.com/ipfs-content/car"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 )
 
@@ -41,9 +41,6 @@ func StreamToPipe(fn func(io.Writer) error) io.ReadCloser {
 
 // DefaultUploadLimit is the default upload limit in bytes (100MB).
 const DefaultUploadLimit = 100 * units.MiB
-
-// AuthSchemeBearer is the authentication scheme used for Bearer tokens.
-const AuthSchemeBearer = "Bearer"
 
 // ArchiveMode represents the archive processing mode for uploads.
 type ArchiveMode string
@@ -137,10 +134,7 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *U
 		baseURL:   baseURL,
 		authToken: authToken,
 		httpClient: &http.Client{
-			Transport: &authRoundTripper{
-				transport: http.DefaultTransport,
-				authToken: authToken,
-			},
+			Transport: httputil.NewAuthRoundTripper(http.DefaultTransport, authToken),
 		},
 	}
 
@@ -173,10 +167,7 @@ func WithHTTPClient(client *http.Client) UploadServiceOption {
 				Timeout: client.Timeout,
 				CheckRedirect: client.CheckRedirect,
 				Jar: client.Jar,
-				Transport: &authRoundTripper{
-					transport: getTransport(client),
-					authToken: s.authToken,
-				},
+				Transport: httputil.NewAuthRoundTripper(getTransport(client), s.authToken),
 			}
 			s.httpClient = wrappedClient
 		}
@@ -213,40 +204,6 @@ func WithUploadLimit(limit int64) UploadServiceOption {
 // TokenAwareTransport is the interface for transports that can update their auth token.
 type TokenAwareTransport interface {
 	SetAuthToken(token string)
-}
-
-// authRoundTripper is a custom http.RoundTripper that adds authorization headers
-// to HTTP requests. This is used to inject Bearer token authentication into TUS upload requests.
-type authRoundTripper struct {
-	transport http.RoundTripper
-	mu        sync.RWMutex
-	authToken string
-}
-
-// SetAuthToken updates the authentication token.
-func (a *authRoundTripper) SetAuthToken(token string) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.authToken = token
-}
-
-// RoundTrip implements the http.RoundTripper interface.
-// It adds an Authorization header with the Bearer token to each request.
-func (a *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Clone the request to avoid modifying the original
-	reqCopy := req.Clone(req.Context())
-
-	// Add Authorization header if token is present
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	token := a.authToken
-
-	if token != "" {
-		reqCopy.Header.Set("Authorization", AuthSchemeBearer+" "+token)
-	}
-
-	// Forward the request to the underlying transport
-	return a.transport.RoundTrip(reqCopy)
 }
 
 

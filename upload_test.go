@@ -16,6 +16,7 @@ import (
 	"github.com/docker/go-units"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	"github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/memorylocker"
 	"go.lumeweb.com/ipfs-sdk/internal/tusstore"
@@ -151,7 +152,7 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 		assert.NotEmpty(t, receivedAuthHeaders, "at least one Authorization header should have been sent")
 
 		// Verify the Authorization header contains the expected token
-		expectedAuth := AuthSchemeBearer + " " + expectedToken
+		expectedAuth := httputil.AuthSchemeBearer + " " + expectedToken
 		for _, auth := range receivedAuthHeaders {
 			assert.Equal(t, expectedAuth, auth,
 				"Authorization header should contain 'Bearer <token>' format")
@@ -587,7 +588,7 @@ func setupPOSTTest(t *testing.T) *httptest.Server {
 		if testToken == "" {
 			testToken = "test-token"
 		}
-		if auth != AuthSchemeBearer+" "+testToken {
+		if auth != httputil.AuthSchemeBearer+" "+testToken {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

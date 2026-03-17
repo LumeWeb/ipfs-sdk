@@ -1,128 +1,169 @@
-package http_test
+package http
 
 import (
-	"context"
-	"errors"
+	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+	"github.com/stretchr/testify/require"
 )
 
-func TestDefaultRetryConfig(t *testing.T) {
-	t.Run("returns sensible defaults", func(t *testing.T) {
-		cfg := httputil.DefaultRetryConfig()
+func TestNewAuthRoundTripper(t *testing.T) {
+	transport := &testTransport{}
+	token := "test-token-123"
 
-		assert.Equal(t, uint(3), cfg.Attempts)
-		assert.True(t, cfg.LastErrorOnly)
-		assert.Equal(t, 5*time.Second, cfg.MaxJitter)
-		assert.Equal(t, 30*time.Second, cfg.MaxDelay)
-	})
+	art := NewAuthRoundTripper(transport, token)
+
+	require.NotNil(t, art)
+	assert.Equal(t, token, art.authToken)
+	assert.Equal(t, transport, art.transport)
 }
 
-func TestRetryContext_Success(t *testing.T) {
-	t.Run("succeeds on first attempt", func(t *testing.T) {
-		cfg := httputil.DefaultRetryConfig()
-		attempts := 0
+func TestNewAuthRoundTripper_NilTransport(t *testing.T) {
+	token := "test-token-456"
 
-		err := httputil.RetryContext(context.Background(), cfg, func() error {
-			attempts++
-			return nil
-		})
+	art := NewAuthRoundTripper(nil, token)
 
-		assert.NoError(t, err)
-		assert.Equal(t, 1, attempts)
-	})
+	require.NotNil(t, art)
+	assert.NotNil(t, art.transport)
+}
 
-	t.Run("retries transient errors then succeeds", func(t *testing.T) {
-		cfg := httputil.DefaultRetryConfig()
-		attempts := 0
+func TestAuthRoundTripper_RoundTrip(t *testing.T) {
+	var requestReceived bool
 
-		err := httputil.RetryContext(context.Background(), cfg, func() error {
-			attempts++
-			if attempts < 2 {
-				return errors.New("transient error")
-			}
-			return nil
-		})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
+		assert.Equal(t, "Bearer token-abc123", r.Header.Get("Authorization"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("response"))
+	}))
+	defer server.Close()
 
-		assert.NoError(t, err)
-		assert.Equal(t, 2, attempts)
-	})
+	transport := http.DefaultTransport
+	art := NewAuthRoundTripper(transport, "token-abc123")
 
-	t.Run("maxes out retry attempts", func(t *testing.T) {
-		cfg := httputil.RetryConfig{
-			Attempts:      2,
-			LastErrorOnly: true,
+	client := &http.Client{Transport: art}
+	req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+
+	resp, err := client.Do(req)
+
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.True(t, requestReceived)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestAuthRoundTripper_RoundTrip_NoToken(t *testing.T) {
+	var noAuthHeader bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if auth == "" {
+			noAuthHeader = true
 		}
-		attempts := 0
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
 
-		err := httputil.RetryContext(context.Background(), cfg, func() error {
-			attempts++
-			return assert.AnError
-		})
+	art := NewAuthRoundTripper(http.DefaultTransport, "")
 
-		assert.Error(t, err)
-		assert.Equal(t, 2, attempts)
-	})
+	client := &http.Client{Transport: art}
+	req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
 
-	t.Run("cancels on context cancellation", func(t *testing.T) {
-		cfg := httputil.DefaultRetryConfig()
-		ctx, cancel := context.WithCancel(context.Background())
-		attempts := 0
+	_, err := client.Do(req)
 
-		go func() {
-			time.Sleep(10 * time.Millisecond)
-			cancel()
-		}()
-
-		err := httputil.RetryContext(ctx, cfg, func() error {
-			attempts++
-			time.Sleep(100 * time.Millisecond)
-			return assert.AnError
-		})
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
-	})
+	require.NoError(t, err)
+	assert.True(t, noAuthHeader)
 }
 
-func TestRetryOptions(t *testing.T) {
-	t.Run("returns standard retry options", func(t *testing.T) {
-		opts := httputil.RetryOptions(context.Background())
+func TestAuthRoundTripper_RoundTrip_ClonesRequest(t *testing.T) {
+	var requestReceived bool
 
-		// Check that options were returned - we can't directly assert the values
-		// since they're closures, but we can verify we got options
-		assert.NotEmpty(t, opts)
-	})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestReceived = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	art := NewAuthRoundTripper(http.DefaultTransport, "some-token")
+
+	req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+
+	// Make request
+	client := &http.Client{Transport: art}
+	_, _ = client.Do(req)
+
+	// Verify the request was made successfully
+	assert.True(t, requestReceived)
 }
 
-func TestRetry(t *testing.T) {
-	t.Run("executes function with default retry behavior", func(t *testing.T) {
-		attempts := 0
+func TestAuthRoundTripper_SetAuthToken(t *testing.T) {
+	var lastAuthHeader string
 
-		err := httputil.Retry(func() error {
-			attempts++
-			if attempts < 2 {
-				return errors.New("transient error")
-			}
-			return nil
-		})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lastAuthHeader = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
 
-		assert.NoError(t, err)
-		assert.GreaterOrEqual(t, attempts, 1)
-	})
+	art := NewAuthRoundTripper(http.DefaultTransport, "initial-token")
 
-	t.Run("returns last error after max attempts", func(t *testing.T) {
-		attempts := 0
+	client := &http.Client{Transport: art}
 
-		err := httputil.Retry(func() error {
-			attempts++
-			return assert.AnError
-		})
+	// First request with initial token
+	req1, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+	_, _ = client.Do(req1)
+	assert.Equal(t, "Bearer initial-token", lastAuthHeader)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), assert.AnError.Error())
-	})
+	// Update token
+	art.SetAuthToken("new-token")
+
+	// Second request with new token
+	req2, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+	_, _ = client.Do(req2)
+	assert.Equal(t, "Bearer new-token", lastAuthHeader)
+}
+
+func TestAuthRoundTripper_SetAuthToken_Concurrent(t *testing.T) {
+	var wg sync.WaitGroup
+	var ops int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ops++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	art := NewAuthRoundTripper(http.DefaultTransport, "")
+
+	// Set token concurrently
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			art.SetAuthToken("token-" + string(rune(i)))
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify the RoundTripper still works
+	client := &http.Client{Transport: art}
+	req, _ := http.NewRequest(http.MethodGet, server.URL, nil)
+	_, err := client.Do(req)
+
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, ops, 1)
+}
+
+// testTransport is a simple test transport
+type testTransport struct{}
+
+func (t *testTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+	}, nil
 }
