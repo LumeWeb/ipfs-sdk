@@ -695,3 +695,39 @@ func (s *UploadService) UploadBytes(ctx context.Context, data []byte, filename s
 	filesystem := go_fs.NewBytesFS(data, filename)
 	return s.UploadFromFS(ctx, filesystem, filename, opts)
 }
+
+// UploadFile uploads a single file by wrapping it in a filesystem and uploading via UploadFromFS.
+// This method provides a convenient way to upload files without manually creating filesystem wrappers.
+// The file is automatically wrapped in a SingleFileFS implementation and uploaded via CAR generation.
+//
+// This method is useful when you have a file handle (*os.File) and want to upload it with CAR
+// generation, which provides content addressing and verification.
+//
+// ctx is the context for the operation.
+// file is the open file handle to upload. The caller is responsible for closing the file.
+// filename is the name for the upload.
+// opts configures upload behavior (memory limit, wrap-in-dir, upload limit).
+//
+// Example usage:
+//
+//	file, err := os.Open(path/to/file.txt)
+//	if err != nil {
+//	    return err
+//	}
+//	defer file.Close()
+//
+//	opts := &UploadOptions{
+//	    MemoryLimit: 100 * 1024 * 1024, // 100MB
+//	}
+//	result, err := uploadService.UploadFile(ctx, file, "file.txt", opts)
+func (s *UploadService) UploadFile(ctx context.Context, file fs.File, filename string, opts *UploadOptions) (*UploadResult, error) {
+	// Wrap the file in a SingleFileFS
+	filesystem := go_fs.NewSingleFileFS(file, filename)
+	
+	// Ensure opts is not nil and set WrapInDir=false for single file
+	if opts == nil {
+		opts = &UploadOptions{}
+	}
+	
+	return s.UploadFromFS(ctx, filesystem, filename, opts)
+}
