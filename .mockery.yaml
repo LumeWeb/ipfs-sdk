@@ -12,9 +12,10 @@ packages:
       DNSClientWithResponsesInterface: {}
       IPNSClientWithResponsesInterface: {}
       WebsitesClientWithResponsesInterface: {}
-  go.lumeweb.com/ipfs-sdk/pkg/archive:
+  go.lumeweb.com/ipfs-sdk/internal/testing:
     config:
-      dir: ./pkg/archive
-      pkgname: "archive"
+      dir: ./internal/testing/mocks
+      pkgname: "testingmocks"
     interfaces:
-      ArchiveExtractor: {}
+      Blockstore: {}
+

@@ -4,10 +4,14 @@ package http
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
 )
+
+// AuthSchemeBearer is the authentication scheme used for Bearer tokens.
+const AuthSchemeBearer = "Bearer"
 
 // RetryConfig defines retry behavior for HTTP requests.
 type RetryConfig struct {
@@ -86,4 +90,49 @@ func RetryOptions(ctx context.Context) []retry.Option {
 // retryOptions is the internal version used within the package.
 func retryOptions(ctx context.Context) []retry.Option {
 	return RetryOptions(ctx)
+}
+
+// AuthRoundTripper wraps an HTTP transport to inject Bearer token authentication.
+// It adds an Authorization header with the Bearer token to each request.
+type AuthRoundTripper struct {
+	transport http.RoundTripper
+	mu        sync.RWMutex
+	authToken string
+}
+
+// NewAuthRoundTripper creates a new AuthRoundTripper with the given transport and auth token.
+func NewAuthRoundTripper(transport http.RoundTripper, authToken string) *AuthRoundTripper {
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	return &AuthRoundTripper{
+		transport: transport,
+		authToken: authToken,
+	}
+}
+
+// SetAuthToken updates the authentication token.
+func (a *AuthRoundTripper) SetAuthToken(token string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.authToken = token
+}
+
+// RoundTrip implements the http.RoundTripper interface.
+// It adds an Authorization header with the Bearer token to each request.
+func (a *AuthRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Clone the request to avoid modifying the original
+	reqCopy := req.Clone(req.Context())
+
+	// Add Authorization header if token is present
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	token := a.authToken
+
+	if token != "" {
+		reqCopy.Header.Set("Authorization", AuthSchemeBearer+" "+token)
+	}
+
+	// Forward the request to the underlying transport
+	return a.transport.RoundTrip(reqCopy)
 }
