@@ -1,3 +1,9 @@
+## 0.1.11 (2026-03-17)
+
+### Fixes
+
+- update ipfs-content
+
 ## 0.1.10 (2026-03-17)
 
 ### Features
