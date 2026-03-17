@@ -96,7 +96,7 @@ updatedSite, _ := client.Websites().Update(ctx, site.Id, domain, cid, protocol)
 
 ```go
 // Upload from filesystem (CAR generation with automatic TUS/POST selection)
-filesytem := os.DirFS("path/to/directory")
+filesystem := os.DirFS("path/to/directory")
 result, _ := client.Upload().UploadFromFS(ctx, filesystem, "directory-name", &ipfs.UploadOptions{
     MemoryLimit: 100 * 1024 * 1024,
 })

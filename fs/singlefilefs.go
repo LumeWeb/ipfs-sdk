@@ -51,7 +51,9 @@ func (s *SingleFileFS) Open(name string) (fs.File, error) {
 	if name == "." || name == s.filename {
 		// Seek to the beginning so reopens start from a clean state
 		if seeker, ok := s.file.(io.Seeker); ok {
-			_, _ = seeker.Seek(0, io.SeekStart)
+			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+				return nil, fmt.Errorf("failed to reset file position for CAR generation: %w", err)
+			}
 		}
 		return s.file, nil
 	}
@@ -115,7 +117,7 @@ func (fi *singleFileInfo) Size() int64        { return fi.size }
 func (fi *singleFileInfo) Mode() fs.FileMode  { return fi.mode }
 func (fi *singleFileInfo) ModTime() time.Time { return fi.mtime }
 func (fi *singleFileInfo) IsDir() bool        { return fi.isDir }
-func (fi *singleFileInfo) Sys() any           { return fi.Sys() }
+func (fi *singleFileInfo) Sys() any           { return nil }
 
 // FileFromStat wraps a file Stat result to ensure IsDir returns false.
 // This is useful when you have a *os.File and want to use it with
