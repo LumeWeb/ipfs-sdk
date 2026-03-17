@@ -63,7 +63,7 @@ The `Client` struct provides access to five specialized services:
 2. **DNSService** - Manage DNS zones and records (DNSLink support)
 3. **IPNSService** - Inter-Planetary Naming System key management
 4. **WebsitesService** - Gateway website deployment
-5. **UploadService** - File upload via TUS resumable upload protocol
+5. **UploadService** - File upload via TUS resumable upload protocol and HTTP POST
 
 ### Code Generation Pattern
 The SDK uses OpenAPI specifications to generate HTTP client code:
@@ -89,7 +89,12 @@ This pattern isolates the generated code, allows for clean API surfaces on each 
 ├── dns.go                                                    # DNS service
 ├── ipns.go                                                   # IPNS service
 ├── websites.go                                               # Websites service
-├── upload.go                                                 # Upload service (TUS & HTTP POST)
+├── upload.go                                                 # Upload service (TUS & HTTP POST + UploadFile)
+├── fs/
+│   ├── bytesfs.go                                            # fs.FS implementation for byte slices
+│   ├── singlefilefs.go                                       # fs.FS implementation for file handles
+│   ├── doc.go                                                # Package docs
+│   └── *_test.go                                             # Tests
 ├── internal/
 │   ├── client/
 │   │   ├── client.gen.go                                   # Generated OpenAPI client
@@ -130,6 +135,34 @@ The `pkg/upload` package implements a two-pass CAR generation approach for handl
 2. **Pass 2**: Generate CARv1 file by regenerating blocks from filesystem on demand
 
 This uses an LRU blockstore (`LRUBlockstore`) with configurable memory limits (default 100MB), enabling processing of content larger than available RAM.
+
+### Upload Service Methods
+
+The UploadService provides two upload approaches:
+
+1. **fs.FS-based Uploads** (recommended for files and directories)
+   - `UploadFromFS()` - Accepts any `fs.FS` implementation for CAR generation
+   - `UploadFile()` - Convenience method wrapping file handles in `SingleFileFS`
+   - Automatically generates CAR files with content addressing
+   - Examples: `os.DirFS`, testing/fstest.MapFS, `fs.BytesFS`, `fs.SingleFileFS`
+
+2. **io.Reader-based Uploads** (for streams)
+   - `Upload()` - Accepts any `io.Reader` without CAR generation
+   - Direct streaming for existing data streams
+   - Simpler when you don't need CAR format validation
+   - Examples: HTTP responses, network data, in-memory streams
+
+### Filesystem Package (`fs`)
+
+The `fs` package provides `fs.FS` implementations for the upload service:
+
+- **BytesFS** - Wraps a byte slice as a single-file filesystem for uploading bytes
+- **SingleFileFS** - Wraps an open file handle (`*os.File`) as a filesystem
+  - Returns the same file handle on each `Open()` call
+  - Automatically seeks to position 0 on each open to support CAR generation's two-pass pattern
+  - `IsDir()` always returns `false` to prevent incorrect directory wrapping
+
+Both implementations implement `fs.FS` and `fs.File` interfaces, making them compatible with `UploadFromFS()` for automatic CAR generation and upload.
 
 ### Authentication
 All services use Bearer token authentication passed via `Authorization` header. The token is set on the main `Client` and used by internal request editors.

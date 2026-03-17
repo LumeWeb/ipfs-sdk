@@ -95,12 +95,23 @@ updatedSite, _ := client.Websites().Update(ctx, site.Id, domain, cid, protocol)
 ### Upload Service
 
 ```go
-// Upload files with automatic TUS/POST selection
-file, _ := os.Open("path/to/file.txt")
-result, _ := client.Upload().Upload(ctx, file, "file.txt", ipfs.UploadOptions{
+// Upload from filesystem (CAR generation with automatic TUS/POST selection)
+filesytem := os.DirFS("path/to/directory")
+result, _ := client.Upload().UploadFromFS(ctx, filesystem, "directory-name", &ipfs.UploadOptions{
     MemoryLimit: 100 * 1024 * 1024,
-    WrapInDir:   true,
 })
+
+// Upload a single file (convenience method - wraps file in filesystem)
+file, _ := os.Open("path/to/file.txt")
+defer file.Close()
+result, _ := client.Upload().UploadFile(ctx, file, "file.txt", &ipfs.UploadOptions{
+    MemoryLimit: 100 * 1024 * 1024,
+})
+
+// Upload raw data stream (no CAR generation)
+reader := strings.NewReader("your data")
+size := int64(len("your data"))
+result, _ := client.Upload().Upload(ctx, reader, "stream.txt", size)
 // result.CID contains the uploaded content CID
 ```
 

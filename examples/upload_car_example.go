@@ -228,6 +228,58 @@ func StreamToPipeExample() error {
 	return nil
 }
 
+// UploadFileExample demonstrates uploading a single file using the UploadFile method.
+// This method provides a convenient way to upload open file handles without manually
+// creating filesystem wrappers.
+func UploadFileExample() error {
+	// Create the SDK client
+	authToken := os.Getenv("IPFS_AUTH_TOKEN")
+	if authToken == "" {
+		return fmt.Errorf("IPFS_AUTH_TOKEN environment variable not set")
+	}
+	client, err := ipfs.NewClient("https://api.example.com", authToken)
+	if err != nil {
+		return fmt.Errorf("failed to create client: %w", err)
+	}
+	
+	// Get the upload service
+	uploadService := client.Upload()
+	
+	// Open the file
+	filePath := "path/to/your/file.txt"
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+	
+	// Get file info
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file info: %w", err)
+	}
+	
+	// Create upload options
+	opts := &ipfs.UploadOptions{
+		MemoryLimit: 100 * 1024 * 1024, // 100MB memory limit
+	}
+	
+	// Upload the file directly - UploadFile handles filesystem wrapping and CAR generation
+	ctx := context.Background()
+	fileName := filepath.Base(filePath)
+	result, err := uploadService.UploadFile(ctx, file, fileName, opts)
+	if err != nil {
+		return fmt.Errorf("failed to upload file: %w", err)
+	}
+	
+	fmt.Printf("Successfully uploaded file!\n")
+	fmt.Printf("  CID: %s\n", result.CID)
+	fmt.Printf("  Size: %d bytes\n", result.Size)
+	fmt.Printf("  Original file size: %d bytes\n", fileInfo.Size())
+	
+	return nil
+}
+
 // RunCarExamples runs all CAR upload examples
 func RunCarExamples() {
 	examples := []struct {
@@ -239,6 +291,7 @@ func RunCarExamples() {
 		{"Upload Large Directory (TUS)", UploadLargeDirectoryExample},
 		{"Upload Raw Stream", UploadRawStreamExample},
 		{"StreamToPipe Helper", StreamToPipeExample},
+		{"Upload File", UploadFileExample},
 	}
 	
 	for _, example := range examples {
