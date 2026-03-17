@@ -210,7 +210,13 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
 	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
-	c.upload = NewUploadService(normalizedURL, bearerToken, WithHTTPClient(httpClient))
+	
+	upload, err := NewUploadService(normalizedURL, bearerToken, WithHTTPClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create upload service: %w", err)
+	}
+	c.upload = upload
+	
 	download, err := NewDownloadService(normalizedURL, bearerToken, WithDownloadHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create download service: %w", err)

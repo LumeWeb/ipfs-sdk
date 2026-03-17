@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/ipfs/go-cid"
@@ -14,25 +15,39 @@ import (
 	testingmocks "go.lumeweb.com/ipfs-sdk/internal/testing/mocks"
 )
 
+var (
+	testAPIToken  string
+	testAuthToken string
+)
+
+func init() {
+	testAPIToken = os.Getenv("TEST_API_TOKEN")
+	if testAPIToken == "" {
+		testAPIToken = "test-token-12345"
+	}
+	testAuthToken = os.Getenv("TEST_AUTH_TOKEN")
+	if testAuthToken == "" {
+		testAuthToken = "test-auth-token-67890"
+	}
+}
+
 func TestNewDownloadService(t *testing.T) {
 	t.Run("creates service with base URL and token", func(t *testing.T) {
 		baseURL := "https://api.example.com"
-		token := "test-token"
 
-		service, err := NewDownloadService(baseURL, token)
+		service, err := NewDownloadService(baseURL, testAPIToken)
 
 		require.NoError(t, err)
 		assert.NotNil(t, service)
 		assert.Equal(t, baseURL, service.baseURL)
-		assert.Equal(t, token, service.authToken)
+		assert.Equal(t, testAPIToken, service.authToken)
 	})
 
 	t.Run("creates service with custom HTTP client", func(t *testing.T) {
 		baseURL := "https://api.example.com"
-		token := "test-token"
 		customClient := &http.Client{}
 
-		service, err := NewDownloadService(baseURL, token, WithDownloadHTTPClient(customClient))
+		service, err := NewDownloadService(baseURL, testAPIToken, WithDownloadHTTPClient(customClient))
 
 		require.NoError(t, err)
 		assert.NotNil(t, service)
@@ -42,9 +57,8 @@ func TestNewDownloadService(t *testing.T) {
 	t.Run("fails with invalid base URL", func(t *testing.T) {
 		// This test verifies that invalid URLs are handled
 		baseURL := "://invalid-url"
-		token := "test-token"
 
-		service, err := NewDownloadService(baseURL, token)
+		service, err := NewDownloadService(baseURL, testAPIToken)
 
 		// The NewRemoteBlockstore should handle URL validation
 		// For now we just ensure the service is created
@@ -56,85 +70,85 @@ func TestNewDownloadService(t *testing.T) {
 
 func TestDownloadService_Block(t *testing.T) {
 	t.Run("retrieves block successfully", func(t *testing.T) {
-		service, _ := NewDownloadService("https://api.example.com", "token")
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 
 		// This test would require mocking the underlying blockstore
 		// For now we just verify the method signature
 		ctx := context.Background()
-		c, _ := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		c, err := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		require.NoError(t, err)
 
-		// This would normally call the blockstore, which would need to be mocked
-		// We can't easily mock the boxo NewRemoteBlockstore without more setup
-		_ = ctx
-		_ = c
 		_, _ = service.Block(ctx, c)
 	})
 }
 
 func TestDownloadService_Has(t *testing.T) {
 	t.Run("checks block existence", func(t *testing.T) {
-		// Similar to Block test, would need mocking
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 		ctx := context.Background()
-		service, _ := NewDownloadService("https://api.example.com", "token")
-		c, _ := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		c, err := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		require.NoError(t, err)
 
-		_ = ctx
-		_ = c
 		_, _ = service.Has(ctx, c)
 	})
 }
 
 func TestDownloadService_BlockSize(t *testing.T) {
 	t.Run("gets block size", func(t *testing.T) {
-		// Similar to Block test, would need mocking
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 		ctx := context.Background()
-		service, _ := NewDownloadService("https://api.example.com", "token")
-		c, _ := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		c, err := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		require.NoError(t, err)
 
-		_ = ctx
-		_ = c
 		_, _ = service.BlockSize(ctx, c)
 	})
 }
 
 func TestDownloadService_Raw(t *testing.T) {
 	t.Run("gets raw block data", func(t *testing.T) {
-		// Similar to Block test, would need mocking
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 		ctx := context.Background()
-		service, _ := NewDownloadService("https://api.example.com", "token")
-		c, _ := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		c, err := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		require.NoError(t, err)
 
-		_ = ctx
-		_ = c
 		_, _ = service.Raw(ctx, c)
 	})
 }
 
 func TestDownloadService_CopyBlock(t *testing.T) {
 	t.Run("writes block to writer", func(t *testing.T) {
-		// Similar to Block test, would need mocking
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 		ctx := context.Background()
-		service, _ := NewDownloadService("https://api.example.com", "token")
-		c, _ := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		c, err := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
+		require.NoError(t, err)
 		var buf bytes.Buffer
 
-		_ = ctx
-		_ = c
-		_ = buf
 		_ = service.CopyBlock(ctx, c, &buf)
 	})
 }
 
 func TestDownloadService_AuthToken(t *testing.T) {
 	t.Run("returns authentication token", func(t *testing.T) {
-		token := "test-token-123"
-		service, _ := NewDownloadService("https://api.example.com", token)
+		service, err := NewDownloadService("https://api.example.com", testAPIToken)
+		require.NoError(t, err)
 
-		assert.Equal(t, token, service.AuthToken())
+		assert.Equal(t, testAPIToken, service.AuthToken())
 	})
 
 	t.Run("sets authentication token", func(t *testing.T) {
-		service, _ := NewDownloadService("https://api.example.com", "initial-token")
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 
 		newToken := "new-token-456"
 		service.SetAuthToken(newToken)
@@ -143,15 +157,13 @@ func TestDownloadService_AuthToken(t *testing.T) {
 	})
 
 	t.Run("sets token on HTTP client transport", func(t *testing.T) {
-		// Create a service with a custom transport that we can verify
-		token := "test-token"
-		service, _ := NewDownloadService("https://api.example.com", token)
+		token := testAPIToken
+		service, err := NewDownloadService("https://api.example.com", token)
+		require.NoError(t, err)
 
-		// Update token
 		newToken := "updated-token"
 		service.SetAuthToken(newToken)
 
-		// The token should be updated in the AuthRoundTripper
 		assert.Equal(t, newToken, service.AuthToken())
 	})
 }
@@ -163,7 +175,7 @@ func TestDownloadService_Integration(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Verify authorization header is set
 			auth := r.Header.Get("Authorization")
-			assert.Equal(t, "Bearer test-token", auth)
+			assert.Equal(t, "Bearer "+testAPIToken, auth)
 
 			w.WriteHeader(http.StatusOK)
 			w.Write(testData)
@@ -171,7 +183,7 @@ func TestDownloadService_Integration(t *testing.T) {
 		defer server.Close()
 
 		// Create service
-		service, err := NewDownloadService(server.URL, "test-token")
+		service, err := NewDownloadService(server.URL, testAPIToken)
 
 		if err != nil {
 			// If service creation fails (e.g., invalid URL format), skip this test

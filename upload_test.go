@@ -26,7 +26,8 @@ import (
 
 func TestNewUploadService(t *testing.T) {
 	t.Run("creates service with default endpoint", func(t *testing.T) {
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		require.NoError(t, err)
 
 		require.NotNil(t, service)
 		assert.Equal(t, "https://api.example.com", service.baseURL)
@@ -38,7 +39,8 @@ func TestNewUploadService(t *testing.T) {
 	t.Run("applies WithHTTPClient option", func(t *testing.T) {
 		customTimeout := 30 * time.Second
 		customClient := &http.Client{Timeout: customTimeout}
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"), WithHTTPClient(customClient))
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"), WithHTTPClient(customClient))
+		require.NoError(t, err)
 
 		// WithHTTPClient wraps the client with authRoundTripper, so the timeout is preserved
 		assert.Equal(t, customTimeout, service.httpClient.Timeout)
@@ -46,7 +48,8 @@ func TestNewUploadService(t *testing.T) {
 
 	t.Run("applies WithTUSEndpoint option", func(t *testing.T) {
 		customEndpoint := "https://custom.example.com/tus"
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"), WithTUSEndpoint(customEndpoint))
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"), WithTUSEndpoint(customEndpoint))
+		require.NoError(t, err)
 
 		assert.Equal(t, customEndpoint, service.tusEndpoint)
 	})
@@ -129,10 +132,11 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 		defer server.Close()
 
 		// Create upload service with auth token and configure TUS endpoint
-		service := NewUploadService(server.URL, expectedToken,
+		service, err := NewUploadService(server.URL, expectedToken,
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1), // Force TUS routing by setting limit smaller than file size
 		)
+		require.NoError(t, err)
 
 		// Create test data
 		testData := []byte("test file content for authorization test")
@@ -164,7 +168,8 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 		newToken := "updated-token"
 
 		// Create service with initial token
-		service := NewUploadService("https://api.example.com", initialToken)
+		service, err := NewUploadService("https://api.example.com", initialToken)
+		require.NoError(t, err)
 
 		// Verify initial token
 		assert.Equal(t, initialToken, service.GetAuthToken())
@@ -191,10 +196,11 @@ func TestUploadService_Upload_Success(t *testing.T) {
 
 		// Create upload service with TUS endpoint pointing to mock server
 		// Set upload limit to 1 byte to force TUS routing
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
+		require.NoError(t, err)
 
 		// Upload
 		ctx := context.Background()
@@ -217,14 +223,15 @@ func TestUploadService_Upload_Incomplete(t *testing.T) {
 		testName := "test.txt"
 
 		// Set upload limit to force TUS routing
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		reader := bytes.NewReader(testData)
-		_, err := service.Upload(ctx, reader, testName, testSize)
+		_, err = service.Upload(ctx, reader, testName, testSize)
 
 		// Should fail because written bytes don't match expected size
 		assert.Error(t, err)
@@ -243,14 +250,15 @@ func TestUploadService_Upload_CreateFailure(t *testing.T) {
 		testData := []byte("test content")
 
 		// Set upload limit to force TUS routing
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		reader := bytes.NewReader(testData)
-		_, err := service.Upload(ctx, reader, "test.txt", int64(len(testData)))
+		_, err = service.Upload(ctx, reader, "test.txt", int64(len(testData)))
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to create TUS upload")
@@ -268,9 +276,10 @@ func TestUploadService_Upload_RoutesBySize(t *testing.T) {
 		testName := "small.txt"
 
 		// Use default upload limit (100MB) - should route to POST
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
 			WithUploadLimit(100*units.MiB),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		reader := bytes.NewReader(testData)
@@ -291,10 +300,11 @@ func TestUploadService_Upload_RoutesBySize(t *testing.T) {
 		testName := "large.txt"
 
 		// Set upload limit to 1 byte to force TUS routing
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		reader := bytes.NewReader(largeData)
@@ -312,9 +322,10 @@ func TestUploadService_Upload_DefaultLimit(t *testing.T) {
 		defer server.Close()
 
 		// Create service without specifying upload limit
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		// Verify default limit is 100MiB
 		assert.Equal(t, int64(100*units.MiB), service.uploadLimit)
@@ -342,9 +353,10 @@ func TestUploadService_GetUploadStatus(t *testing.T) {
 		uploadID := uploadInfo.ID
 
 		// Create service
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		// Get upload status using the full URL
 		location := server.URL + "/tus/" + uploadID
@@ -356,22 +368,24 @@ func TestUploadService_GetUploadStatus(t *testing.T) {
 	})
 
 	t.Run("returns error when location is empty", func(t *testing.T) {
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		require.NoError(t, err)
 
 		ctx := context.Background()
-		_, err := service.GetUploadStatus(ctx, "")
+		_, err = service.GetUploadStatus(ctx, "")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "location cannot be empty")
 	})
 
 	t.Run("returns error when TUS endpoint is invalid", func(t *testing.T) {
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint("://invalid-url"),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
-		_, err := service.GetUploadStatus(ctx, "https://example.com/files/upload123")
+		_, err = service.GetUploadStatus(ctx, "https://example.com/files/upload123")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse TUS endpoint")
@@ -380,10 +394,11 @@ func TestUploadService_GetUploadStatus(t *testing.T) {
 
 func TestUploadService_CancelUpload(t *testing.T) {
 	t.Run("returns error when location is empty", func(t *testing.T) {
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		require.NoError(t, err)
 
 		ctx := context.Background()
-		err := service.CancelUpload(ctx, "")
+		err = service.CancelUpload(ctx, "")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "location cannot be empty")
@@ -396,12 +411,13 @@ func TestUploadService_CancelUpload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
-		err := service.CancelUpload(ctx, server.URL+"/tus/upload123")
+		err = service.CancelUpload(ctx, server.URL+"/tus/upload123")
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to cancel upload")
@@ -437,9 +453,10 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create service
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		// Resume upload
 		location := server.URL + "/tus/" + uploadID
@@ -451,10 +468,11 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 	})
 
 	t.Run("returns error when location is empty", func(t *testing.T) {
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		require.NoError(t, err)
 
 		ctx := context.Background()
-		_, err := service.ResumeUpload(ctx, "", strings.NewReader("data"))
+		_, err = service.ResumeUpload(ctx, "", strings.NewReader("data"))
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "location cannot be empty")
@@ -467,12 +485,13 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
-		_, err := service.ResumeUpload(ctx, server.URL+"/tus/upload123", strings.NewReader("data"))
+		_, err = service.ResumeUpload(ctx, server.URL+"/tus/upload123", strings.NewReader("data"))
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get upload info")
@@ -481,7 +500,8 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 
 func TestUploadService_VerifyUploadIntegrity(t *testing.T) {
 	t.Run("currently returns true as placeholder", func(t *testing.T) {
-		_ = NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		_, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"))
+		require.NoError(t, err)
 		// This is a placeholder implementation
 		// Full implementation would check against server
 		assert.True(t, true, "placeholder test")
@@ -512,10 +532,11 @@ func TestTUSUploadSizeValidationRegression(t *testing.T) {
 		reader := bytes.NewReader(data)
 
 		// Create upload service configured to use TUS
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1), // Force TUS for any size
 		)
+		require.NoError(t, err)
 
 		// Perform upload via TUS (forcing TUS routing by setting upload limit)
 		filename := "test_large_file.dat"
@@ -554,10 +575,11 @@ func TestUploadService_IntegrationCompleteFlow(t *testing.T) {
 		require.NoError(t, err)
 
 		// Set upload limit to 1 byte to force TUS routing
-		service := NewUploadService(baseURL.String(), os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(baseURL.String(), os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1), // Force TUS by setting limit smaller than file size
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 
@@ -612,10 +634,11 @@ func TestUploadFromFS(t *testing.T) {
 		}
 
 		// Set upload limit to 1 byte so it routes to TUS (CAR size > 1 byte)
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadFromFS(ctx, testFS, "test.txt", nil)
@@ -637,10 +660,11 @@ func TestUploadFromFS(t *testing.T) {
 		}
 
 		// Set upload limit to 1 byte so it routes to TUS
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadFromFS(ctx, testFS, "dir", nil)
@@ -661,9 +685,10 @@ func TestUploadFromFS(t *testing.T) {
 		}
 
 		// Set upload limit high so CAR (small) routes to POST
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
 			WithUploadLimit(1000),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadFromFS(ctx, testFS, "small.txt", nil)
@@ -683,10 +708,11 @@ func TestUploadFromFS(t *testing.T) {
 		}
 
 		// Set upload limit to 1 byte so everything uses TUS
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadFromFS(ctx, testFS, "large.txt", nil)
@@ -695,7 +721,7 @@ func TestUploadFromFS(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.NotEmpty(t, result.CID)
 	})
-	t.Run("respects opts uploadLimit", func(t *testing.T) {
+ t.Run("respects opts uploadLimit", func(t *testing.T) {
 		// Regression test: opts.UploadLimit should be used, not ignored
 		server, _, store := setupTUSTest(t)
 		defer server.Close()
@@ -710,10 +736,11 @@ func TestUploadFromFS(t *testing.T) {
 		}
 
 		// Set service default limit to 100MB (should be ignored when opts are provided)
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(100*1024*1024),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadFromFS(ctx, testFS, "test.txt", opts)
@@ -735,10 +762,11 @@ func TestUploadBytes(t *testing.T) {
 		testData := []byte("Hello, World! This is byte data for testing UploadBytes.")
 
 		// Force TUS routing
-		service := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService("https://api.example.com", os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 			WithUploadLimit(1),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadBytes(ctx, testData, "test.txt", nil)
@@ -757,9 +785,10 @@ func TestUploadBytes(t *testing.T) {
 		testData := []byte("small")
 
 		// Force POST routing
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
 			WithUploadLimit(1000),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadBytes(ctx, testData, "small.txt", nil)
@@ -783,9 +812,10 @@ func TestUploadBytes(t *testing.T) {
 			UploadLimit: 1,
 		}
 
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadBytes(ctx, testData, "test.txt", opts)
@@ -794,7 +824,7 @@ func TestUploadBytes(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Greater(t, result.Size, int64(0))
 	})
-	t.Run("uses TUS when CAR size exceeds upload limit", func(t *testing.T) {
+ t.Run("uses TUS when CAR size exceeds upload limit", func(t *testing.T) {
 		// Regression test: opts.UploadLimit should control routing (not service default)
 		// CAR size (~216 bytes) > opts.UploadLimit (1 byte) should route to TUS
 		server, _, _ := setupTUSTest(t)
@@ -807,9 +837,10 @@ func TestUploadBytes(t *testing.T) {
 			UploadLimit: 1,
 		}
 
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"),
 			WithTUSEndpoint(server.URL+"/tus"),
 		)
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadBytes(ctx, testData, "test.txt", opts)
@@ -820,7 +851,7 @@ func TestUploadBytes(t *testing.T) {
 		// Upload succeeded - routing to TUS was correct
 		// POST would have failed because it doesn't have a proper upload endpoint
 	})
-	t.Run("uses POST when CAR size is under upload limit", func(t *testing.T) {
+ t.Run("uses POST when CAR size is under upload limit", func(t *testing.T) {
 		// Regression test: verify opts.UploadLimit works for POST routing too
 		server := setupPOSTTest(t)
 		defer server.Close()
@@ -832,7 +863,8 @@ func TestUploadBytes(t *testing.T) {
 			UploadLimit: 1000,
 		}
 
-		service := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"))
+		service, err := NewUploadService(server.URL, os.Getenv("TEST_AUTH_TOKEN"))
+		require.NoError(t, err)
 
 		ctx := context.Background()
 		result, err := service.UploadBytes(ctx, testData, "test.txt", opts)

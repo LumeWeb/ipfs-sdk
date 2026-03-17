@@ -129,7 +129,7 @@ type UploadOptions struct {
 // NewUploadService creates a new UploadService.
 // baseURL is the base URL of the API server (e.g., "https://api.example.com").
 // authToken is the authentication bearer token.
-func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *UploadService {
+func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) (*UploadService, error) {
 	s := &UploadService{
 		baseURL:   baseURL,
 		authToken: authToken,
@@ -152,7 +152,7 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) *U
 		s.uploadLimit = DefaultUploadLimit
 	}
 
-	return s
+	return s, nil
 }
 
 // UploadServiceOption configures an UploadService.

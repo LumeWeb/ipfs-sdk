@@ -18,6 +18,7 @@ import (
 type DownloadService struct {
 	blockstore blockstore.Blockstore
 	httpClient *http.Client
+	authTransport *httputil.AuthRoundTripper
 	authToken  string
 	baseURL    string
 }
@@ -47,12 +48,19 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 		opt(s)
 	}
 
-	// Create HTTP client with auth injection if not provided
+	// Create or wrap HTTP client with auth injection
+	var authTransport *httputil.AuthRoundTripper
 	if s.httpClient == nil {
+		authTransport = httputil.NewAuthRoundTripper(http.DefaultTransport, authToken)
 		s.httpClient = &http.Client{
-			Transport: httputil.NewAuthRoundTripper(http.DefaultTransport, authToken),
+			Transport: authTransport,
 		}
+	} else {
+		// Wrap existing transport
+		authTransport = httputil.NewAuthRoundTripper(s.httpClient.Transport, authToken)
+		s.httpClient.Transport = authTransport
 	}
+	s.authTransport = authTransport
 
 	// Create remote blockstore using boxo's NewRemoteBlockstore
 	// This will use the HTTP client to fetch blocks via /ipfs/{cid}?format=raw
@@ -108,8 +116,8 @@ func (s *DownloadService) CopyBlock(ctx context.Context, c cid.Cid, w io.Writer)
 // This is thread-safe and can be called at any time.
 func (s *DownloadService) SetAuthToken(token string) {
 	s.authToken = token
-	if art, ok := s.httpClient.Transport.(*httputil.AuthRoundTripper); ok {
-		art.SetAuthToken(token)
+	if s.authTransport != nil {
+		s.authTransport.SetAuthToken(token)
 	}
 }
 

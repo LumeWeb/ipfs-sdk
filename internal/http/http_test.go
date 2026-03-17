@@ -3,7 +3,9 @@ package http
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -128,10 +130,10 @@ func TestAuthRoundTripper_SetAuthToken(t *testing.T) {
 
 func TestAuthRoundTripper_SetAuthToken_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
-	var ops int
+	var ops atomic.Int32
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ops++
+		ops.Add(1)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -143,7 +145,7 @@ func TestAuthRoundTripper_SetAuthToken_Concurrent(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			art.SetAuthToken("token-" + string(rune(i)))
+			art.SetAuthToken("token-" + strconv.Itoa(i))
 		}(i)
 	}
 
@@ -155,7 +157,7 @@ func TestAuthRoundTripper_SetAuthToken_Concurrent(t *testing.T) {
 	_, err := client.Do(req)
 
 	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, ops, 1)
+	assert.GreaterOrEqual(t, ops.Load(), int32(1))
 }
 
 // testTransport is a simple test transport
