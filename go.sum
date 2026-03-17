@@ -617,6 +617,8 @@ go.etcd.io/etcd/client/pkg/v3 v3.5.0/go.mod h1:IJHfcCEKxYu1Os13ZdwCwIUTUVGYTSAM3
 go.etcd.io/etcd/client/v2 v2.305.0/go.mod h1:h9puh54ZTgAKtEbut2oe9P4L/oqKCVB6xsXlzd7alYQ=
 go.lumeweb.com/ipfs-content v0.1.2 h1:zpMDLtyXgYWzXCbI373uFRyyl24moL0DjeUlNCgfx8A=
 go.lumeweb.com/ipfs-content v0.1.2/go.mod h1:kQxWezQKi5AeTMnTjuZAcSfPqf2Urzc6IPX/lUdYLgs=
+go.lumeweb.com/ipfs-content v0.1.3 h1:zQLmVRuCqfwcJ7DZRLcyssszOneB+H6mKLfiAYTSBjs=
+go.lumeweb.com/ipfs-content v0.1.3/go.mod h1:fa1j5QdYWF4pG7ai7F5fpNjtl1xode3op3SKBQp+3Go=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
