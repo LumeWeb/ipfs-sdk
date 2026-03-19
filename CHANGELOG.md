@@ -1,3 +1,13 @@
+## 0.1.13 (2026-03-19)
+
+### Features
+
+- add StatFS support to bytesfs and singlefilefs
+
+### Fixes
+
+- normalize error handling in SingleFileFS.Stat
+
 ## 0.1.12 (2026-03-17)
 
 ### Features
