@@ -66,7 +66,8 @@ func (s *SingleFileFS) Stat(name string) (fs.FileInfo, error) {
 	if name == "." || name == s.filename {
 		info, err := s.file.Stat()
 		if err != nil {
-			return nil, err
+			// Wrap any error as fs.ErrNotExist for consistency with BytesFS
+			return nil, fs.ErrNotExist
 		}
 		// Ensure IsDir returns false for the wrapped file
 		return &singleFileInfo{
