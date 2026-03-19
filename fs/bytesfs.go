@@ -30,6 +30,15 @@ func (b *BytesFS) Open(name string) (fs.File, error) {
 	return nil, fs.ErrNotExist
 }
 
+// Stat implements fs.StatFS.Stat.
+// Returns file info for "." or the single filename.
+func (b *BytesFS) Stat(name string) (fs.FileInfo, error) {
+	if name == "." || name == b.filename {
+		return &bytesFileInfo{name: b.filename, size: int64(len(b.data)), isDir: false}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
 // bytesFile implements fs.File for a single byte slice.
 type bytesFile struct {
 	name string
