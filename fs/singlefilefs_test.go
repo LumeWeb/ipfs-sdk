@@ -427,6 +427,34 @@ func TestSingleFileFSStatCorrect(t *testing.T) {
 	assert.False(t, info.IsDir(), "IsDir should be false for SingleFileFS root")
 }
 
+func TestSingleFileFSStatMethod(t *testing.T) {
+	// Test that SingleFileFS.Stat() method works correctly (implements fs.StatFS)
+	content := "test content for Stat method"
+	tmpFile := createTestFile(t, content)
+	
+	file, err := os.Open(tmpFile)
+	require.NoError(t, err)
+	defer file.Close()
+	
+	singleFS := NewSingleFileFS(file, "stat-test.txt")
+
+	// Stat the root using the method directly
+	rootInfo, err := singleFS.Stat(".")
+	require.NoError(t, err, "Stat should not fail on root")
+	assert.False(t, rootInfo.IsDir(), "Root should not be a directory")
+	assert.Equal(t, int64(len(content)), rootInfo.Size())
+
+	// Stat by filename
+	fileInfo, err := singleFS.Stat("stat-test.txt")
+	require.NoError(t, err)
+	assert.False(t, fileInfo.IsDir(), "File should not be a directory")
+	assert.Equal(t, int64(len(content)), fileInfo.Size())
+
+	// Stat invalid path should fail
+	_, err = singleFS.Stat("nonexistent.txt")
+	assert.Equal(t, fs.ErrNotExist, err)
+}
+
 // TestSingleFileFSFilenameWithSlashes tests filename with slashes
 
 func TestSingleFileFSFilenameWithSlashes(t *testing.T) {

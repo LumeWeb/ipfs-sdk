@@ -195,3 +195,27 @@ func TestBytesFSRootIsNotADirectory(t *testing.T) {
 	// Verify the file has correct size
 	assert.Equal(t, int64(len(data)), info.Size())
 }
+
+func TestBytesFSStatMethod(t *testing.T) {
+	// Test that BytesFS.Stat() method works correctly (implements fs.StatFS)
+	data := []byte("test content for Stat method")
+	bytesFS := NewBytesFS(data, "stat-test.txt")
+
+	// Stat the root
+	rootInfo, err := bytesFS.Stat(".")
+	require.NoError(t, err, "Stat should not fail on root")
+	assert.False(t, rootInfo.IsDir(), "Root should not be a directory")
+	assert.Equal(t, int64(len(data)), rootInfo.Size())
+	assert.Equal(t, "stat-test.txt", rootInfo.Name())
+	assert.Equal(t, fs.FileMode(0644), rootInfo.Mode())
+
+	// Stat by filename
+	fileInfo, err := bytesFS.Stat("stat-test.txt")
+	require.NoError(t, err)
+	assert.False(t, fileInfo.IsDir(), "File should not be a directory")
+	assert.Equal(t, int64(len(data)), fileInfo.Size())
+
+	// Stat invalid path should fail
+	_, err = bytesFS.Stat("nonexistent.txt")
+	assert.Equal(t, fs.ErrNotExist, err)
+}

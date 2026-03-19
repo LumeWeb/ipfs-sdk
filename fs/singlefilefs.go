@@ -60,6 +60,26 @@ func (s *SingleFileFS) Open(name string) (fs.File, error) {
 	return nil, fs.ErrNotExist
 }
 
+// Stat implements fs.StatFS.Stat.
+// Returns file info for "." or the single filename.
+func (s *SingleFileFS) Stat(name string) (fs.FileInfo, error) {
+	if name == "." || name == s.filename {
+		info, err := s.file.Stat()
+		if err != nil {
+			return nil, err
+		}
+		// Ensure IsDir returns false for the wrapped file
+		return &singleFileInfo{
+			name:  info.Name(),
+			size:  info.Size(),
+			mode:  info.Mode(),
+			mtime: info.ModTime(),
+			isDir: false,
+		}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
 // singleFile adapts a *os.File to implement Seek for fs.FS compatibility.
 // Most fs.File implementations support Seek, but we ensure it here.
 type singleFile struct {
