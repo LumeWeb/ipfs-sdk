@@ -91,7 +91,13 @@ func (s *DownloadService) Block(ctx context.Context, c cid.Cid) (blocks.Block, e
 		return nil, err
 	}
 	
-	return blocks.NewBlock(data), nil
+	
+	block := blocks.NewBlock(data)
+	if !block.Cid().Equals(c) {
+		return nil, fmt.Errorf("CID mismatch: expected %s, got %s", c, block.Cid())
+	}
+	
+	return block, nil
 }
 
 // Has checks if a block exists in the blockstore.
@@ -225,10 +231,13 @@ func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath 
 	trimmedPath := strings.Trim(filePath, "/")
 	pathSegments := strings.Split(trimmedPath, "/")
 	
-	// Skip empty segments
+	// Skip empty segments and validate no path traversal
 	var segments []string
 	for _, seg := range pathSegments {
 		if seg != "" {
+			if seg == ".." {
+				return nil, fmt.Errorf("invalid path segment: %s", seg)
+			}
 			segments = append(segments, seg)
 		}
 	}

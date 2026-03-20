@@ -207,22 +207,33 @@ func (m *mockNode) ModTime() time.Time { return time.Now() }
 func (m *mockNode) Mode() os.FileMode { return m.mode }
 func (m *mockNode) Size() (int64, error) { return 0, nil }
 
-// mockFileInfo implements files.FileInfo for testing
-type mockFileInfo struct{}
+// mockOsFileInfo implements os.FileInfo for testing
+type mockOsFileInfo struct{}
 
+func (m *mockOsFileInfo) Name() string                 { return "" }
+func (m *mockOsFileInfo) Size() int64                   { return 0 }
+func (m *mockOsFileInfo) Mode() os.FileMode            { return 0644 }
+func (m *mockOsFileInfo) ModTime() time.Time           { return time.Now() }
+func (m *mockOsFileInfo) Sys() interface{}             { return nil }
+func (m *mockOsFileInfo) IsDir() bool                  { return false }
+
+var _ os.FileInfo = (*mockOsFileInfo)(nil)
+
+// mockFileInfo implements files.FileInfo for testing by embedding os.FileInfo
+type mockFileInfo struct {
+	mockOsFileInfo
+}
+
+// methods required by files.FileInfo but not in os.FileInfo
 func (m *mockFileInfo) AbsPath() string                { return "" }
 func (m *mockFileInfo) Path() string                   { return "" }
-func (m *mockFileInfo) Name() string                   { return "" }
-func (m *mockFileInfo) Mode() os.FileMode             { return 0644 }
-func (m *mockFileInfo) ModTime() time.Time            { return time.Now() }
-func (m *mockFileInfo) Size() (int64, error)          { return 0, nil }
 func (m *mockFileInfo) NumLinks() uint64               { return 1 }
 func (m *mockFileInfo) FileType() interface{}          { return nil }
 func (m *mockFileInfo) Close() error                   { return nil }
-func (m *mockFileInfo) Stat() os.FileInfo              { 
-	fi, _ := os.Stat("")
-	return fi
-}
+
+// overridden for signature conflict: (int64, error) vs int64
+func (m *mockFileInfo) Stat() os.FileInfo              { return &m.mockOsFileInfo }
+func (m *mockFileInfo) Size() (int64, error)          { return m.mockOsFileInfo.Size(), nil }
 
 
 // Tests for DownloadFile method
@@ -299,12 +310,24 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 	})
 	
 	t.Run("returns error on invalid CID", func(t *testing.T) {
-		// This test verifies invalid CID handling
-		// CID decoding happens before the backend is called
-		_, err := cid.Decode("invalid-cid")
-		if err == nil {
-			t.Skip("Expected invalid CID error")
-		}
+		ctx := context.Background()
+		service := &DownloadService{}
+		service.backend = mocks.NewMockBackend(t)
+		
+		// Create an invalid CID (wrong length, invalid multibase)
+		invalidCID := cid.Cid{}
+		
+		// Setup mock to return error from backend
+		service.backend.(*mocks.MockBackend).EXPECT().
+			GetBlock(mock.Anything, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, nil, errors.New("invalid CID"))
+		
+		// Call DownloadFile with invalid CID
+		reader, err := service.DownloadFile(ctx, invalidCID)
+		
+		// Verify error is returned
+		assert.Error(t, err)
+		assert.Nil(t, reader)
 	})
 	
 	t.Run("cancels with context", func(t *testing.T) {

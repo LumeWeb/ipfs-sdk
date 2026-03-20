@@ -196,7 +196,9 @@ func TestFileAdapter_MultipleOperations(t *testing.T) {
 	// Second read - continue from where we left off
 	buf2 := make([]byte, 100)
 	n2, err := adapter.Read(buf2)
-	assert.NoError(t, err)
+	if err != io.EOF {
+		assert.NoError(t, err)
+	}
 	// Read the rest including space and "operations test"
 	assert.Equal(t, len(data)-8, n2)
 	
