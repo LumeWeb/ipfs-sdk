@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"bytes"
 	"io"
 )
 
@@ -41,5 +42,30 @@ func NewFileAdapter(reader io.Reader, closer io.Closer) *FileAdapter {
 	return &FileAdapter{
 		Reader: reader,
 		Closer: closer,
+	}
+}
+
+// ReadSeekCloserAdapter wraps a *bytes.Reader to implement io.ReadSeekCloser.
+// Useful when you need to combine Seek functionality with a Closer (even a no-op).
+//
+// Example usage with ipfs-content:
+//
+//	data := []byte("hello")
+//	seekCloser := NewReadSeekCloserAdapter(data)
+//	_, err := seekCloser.Seek(0, io.SeekStart) // Reset to beginning
+type ReadSeekCloserAdapter struct {
+	*bytes.Reader
+}
+
+// Close implements io.Closer as a no-op for bytes.Reader.
+func (r *ReadSeekCloserAdapter) Close() error {
+	return nil
+}
+
+// NewReadSeekCloserAdapter creates a new ReadSeekCloserAdapter from byte data.
+// The returned type implements io.Reader, io.Seeker, and io.Closer.
+func NewReadSeekCloserAdapter(data []byte) *ReadSeekCloserAdapter {
+	return &ReadSeekCloserAdapter{
+		Reader: bytes.NewReader(data),
 	}
 }

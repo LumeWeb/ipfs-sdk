@@ -11,16 +11,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/boxo/blockservice"
+	"github.com/ipfs/boxo/blockstore"
+	"github.com/ipfs/boxo/exchange/offline"
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/boxo/gateway"
-	"github.com/ipfs/boxo/ipld/unixfs"
-	"github.com/ipfs/boxo/ipld/unixfs/pb"
+	"github.com/ipfs/boxo/ipld/merkledag"
+	boxounixfs "github.com/ipfs/boxo/ipld/unixfs"
 	"github.com/ipfs/boxo/path"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
+	"github.com/multiformats/go-multicodec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.lumeweb.com/ipfs-sdk/fs"
 	"go.lumeweb.com/ipfs-sdk/mocks"
+	unixfs "go.lumeweb.com/ipfs-content/unixfs"
 )
 
 var (
@@ -124,11 +133,12 @@ func TestDownloadService_FileSize(t *testing.T) {
 		testData := []byte("Hello, IPFS! This is test data.")
 		expectedSize := int64(len(testData))
 
-		// Create UnixFS protobuf data
-		unixfsData := unixfs.FilePBData(testData, uint64(expectedSize))
+		// Use ipfs-content to generate properly encoded block
+		testGen := newTestUnixFSGenerator(t)
+		block := testGen.createBlock(t, testData)
 
-		// Create mock file with UnixFS data
-		file := createMockFileWithUnixFS(unixfsData)
+		// Create mock file with block data
+		file := createMockFileWithUnixFS(block.RawData())
 
 		// Create service with mock backend
 		service, mockBackend := setupMockDownloadService(t)
@@ -147,16 +157,18 @@ func TestDownloadService_FileSize(t *testing.T) {
 		ctx := context.Background()
 		expectedSize := int64(104857600) // 100MB
 
-		// Create UnixFS file node with large size (chunked file metadata)
-		// For chunked files, the UnixFS node contains blocksize information
-		// but not the actual file data
-		fsNode := unixfs.NewFSNode(pb.Data_File)
-		fsNode.UpdateFilesize(int64(expectedSize))
-		unixfsData, err := fsNode.GetBytes()
-		require.NoError(t, err)
+		// Simulate chunk sizes for 100MB file (400 chunks of 256KB each)
+		chunkSizes := make([]uint64, 400)
+		for i := range chunkSizes {
+			chunkSizes[i] = 256 * 1024
+		}
 
-		// Create mock file with UnixFS DAG node
-		file := createMockFileWithUnixFS(unixfsData)
+		// Use ipfs-content generator to create chunked block metadata
+		testGen := newTestUnixFSGenerator(t)
+		block := testGen.createChunkedBlock(t, expectedSize, chunkSizes)
+
+		// Create mock file with block data
+		file := createMockFileWithUnixFS(block.RawData())
 
 		// Create service with mock backend
 		service, mockBackend := setupMockDownloadService(t)
@@ -199,13 +211,17 @@ func TestDownloadService_FileSize(t *testing.T) {
 		service, mockBackend := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
-		// Setup mock expectations for GetBlock
+		// Setup mock expectations for GetBlock to fail
 		setupMockGetBlock(t, mockBackend, ctx, testCID, nil, testErr)
+
+		// Setup mock expectations for GetAll fallback (also fails)
+		setupMockGetAll(t, mockBackend, ctx, testCID, nil, testErr)
 
 		// Call FileSize - should return error
 		_, err := service.FileSize(ctx, testCID)
 		assert.Error(t, err)
-		assert.Equal(t, testErr, err)
+		// Error should mention the GetAll failure since GetBlock failed
+		assert.ErrorContains(t, err, "failed to get file node")
 	})
 
 	t.Run("cancels with context", func(t *testing.T) {
@@ -216,9 +232,9 @@ func TestDownloadService_FileSize(t *testing.T) {
 		service, mockBackend := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
-		// If context is cancelled, GetBlock should still be called with the cancelled context
-		// We can ignore the mock expectation since the context error will be returned first
+		// Setup mock expectations - GetBlock and GetAll may be called with cancelled context
 		setupMockGetBlockWithMaybe(t, mockBackend, ctx, testCID)
+		setupMockGetAllWithMaybe(t, mockBackend, ctx, testCID)
 
 		// Call FileSize with cancelled context
 		_, err := service.FileSize(ctx, testCID)
@@ -1012,4 +1028,78 @@ func TestDownloadService_GetFile(t *testing.T) {
 		_ = reader.Close()
 	})
 }
+
+// testUnixFSGenerator provides UnixFS block generation for tests using ipfs-content
+type testUnixFSGenerator struct {
+	gen unixfs.UnixFSNodeGenerator
+}
+
+// newTestUnixFSGenerator creates a new generator with in-memory components
+func newTestUnixFSGenerator(t *testing.T) *testUnixFSGenerator {
+	t.Helper()
+	dstore := dssync.MutexWrap(ds.NewMapDatastore())
+	bstore := blockstore.NewBlockstore(dstore)
+	bsvc := blockservice.New(bstore, offline.Exchange(bstore))
+	dagService := merkledag.NewDAGService(bsvc)
+
+	return &testUnixFSGenerator{
+		gen: unixfs.NewUnixFSNodeGenerator(
+			unixfs.WithUnixFSNodeDAGService(dagService),
+			unixfs.WithUnixFSNodeBlockstore(bstore),
+		),
+	}
+}
+
+// createBlock generates a properly encoded UnixFS block from data
+func (g *testUnixFSGenerator) createBlock(t *testing.T, data []byte) blocks.Block {
+	t.Helper()
+	
+	// Wrap as ReadSeekCloser for ipfs-content's CreateNode
+	seekCloser := fs.NewReadSeekCloserAdapter(data)
+	
+	node, err := g.gen.CreateNode(context.Background(), seekCloser)
+	require.NoError(t, err)
+	
+	// Get the block from the node's CID and DAG service
+	dagSvc := g.gen.GetDAGService()
+	block, err := dagSvc.Get(context.Background(), node.Cid())
+	require.NoError(t, err)
+	
+	return block
+}
+
+// createChunkedBlock generates a chunked UnixFS block metadata (no actual data stored)
+func (g *testUnixFSGenerator) createChunkedBlock(t *testing.T, fileSize int64, chunkSizes []uint64) blocks.Block {
+	t.Helper()
+	
+	// Create PBNode with UnixFS file type (no initial file size - will be built from chunks)
+	unixfsData := boxounixfs.FilePBData(nil, 0)
+	pbNode := merkledag.NodeWithData(unixfsData)
+	
+	// Set chunk sizes in UnixFS metadata
+	fsNode, err := boxounixfs.FSNodeFromBytes(pbNode.Data())
+	require.NoError(t, err)
+	for _, chunkSize := range chunkSizes {
+		fsNode.AddBlockSize(chunkSize)
+	}
+	newData, err := fsNode.GetBytes()
+	require.NoError(t, err)
+	pbNode.SetData(newData)
+	
+	// Set CID builder and marshal
+	cidBuilder := cid.V1Builder{Codec: cid.DagProtobuf, MhType: uint64(multicodec.Sha2_256)}
+	pbNode.SetCidBuilder(cidBuilder)
+	encoded, err := pbNode.Marshal()
+	require.NoError(t, err)
+	
+	// Calculate CID and create block
+	c, err := cidBuilder.Sum(encoded)
+	require.NoError(t, err)
+	
+	block, err := blocks.NewBlockWithCid(encoded, c)
+	require.NoError(t, err)
+	
+	return block
+}
+
 

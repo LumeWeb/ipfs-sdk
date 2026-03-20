@@ -9,12 +9,12 @@ import (
 
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/boxo/gateway"
-	"github.com/ipfs/boxo/ipld/unixfs"
 	"github.com/ipfs/boxo/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	backend "go.lumeweb.com/ipfs-sdk/internal/download"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+	"go.lumeweb.com/ipfs-content/dagnode"
 )
 
 // DownloadService provides functionality for downloading IPFS blocks and content
@@ -110,39 +110,82 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 	return true, nil
 }
 
-// getUnixFSSize extracts the UnixFS file size from a UnixFS node's raw data.
-// This function expects the node to contain only the UnixFS metadata (typically
-// just the root block), not the entire file content.
-func getUnixFSSize(data []byte) (int64, error) {
-	fsNode, err := unixfs.FSNodeFromBytes(data)
-	if err != nil {
-		// If the data cannot be parsed as UnixFS, treat it as a raw block and return
-		// the data length. This is expected for non-UnixFS CIDs (e.g., raw multicodec)
-		// where the size is simply the byte length of the raw data.
-		return int64(len(data)), nil
-	}
-	return int64(fsNode.FileSize()), nil
-}
+
 
 // FileSize returns the actual size of a UnixFS file by CID.
-// For UnixFS files, this returns the file size metadata (not the root block size).
-// For raw blocks, this returns the block data size.
-// Uses GetBlock to fetch only the root block, avoiding memory exhaustion on large files.
+// Strategy 1: Try GetBlock first (fast, memory-efficient)
+//   - For small files with UnixFS metadata, reads only the root block (~1MB max)
+//   - For raw blocks, returns the block data length
+// Strategy 2: Fallback to GetAll for chunked files
+//   - For large chunked files, walks the DAG structure without loading file data
+//   - Uses file.Size() to get actual size from UnixFS DAG metadata
+//
+// This implementation never loads large file contents into memory.
+// Strategy 1 reads at most one block (IPFS max size is ~1MB).
+// Strategy 2 only walks the DAG structure for metadata, not file data.
 func (s *DownloadService) FileSize(ctx context.Context, c cid.Cid) (int64, error) {
-	// Fetch only the root block to access UnixFS metadata.
-	// This avoids downloading and reading the entire file content into memory.
+	// Strategy 1: Try GetBlock first (fast, memory-efficient)
 	_, file, err := s.backend.GetBlock(ctx, path.FromCid(c))
-	if err != nil {
-		return -1, err
-	}
-	defer file.Close()
+	if err == nil {
+		defer file.Close()
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return -1, err
+		// Read the block data
+		data, err := io.ReadAll(file)
+		if err != nil {
+			return -1, fmt.Errorf("failed to read block: %w", err)
+		}
+
+		// Use ipfs-content's AnalyzeNode for comprehensive node analysis
+		block := blocks.NewBlock(data)
+		nodeInfo, err := dagnode.AnalyzeNode(ctx, block)
+		if err != nil {
+			// AnalyzeNode failed - treat as raw block
+			return int64(len(data)), nil
+		}
+
+		// If it's a UnixFS file, use the file size from NodeInfo
+		if nodeInfo.IsUnixFS {
+			// For UnixFS files with chunks, FileSize is 0 (computed from ChunkSizes)
+			if nodeInfo.FileSize > 0 {
+				return int64(nodeInfo.FileSize), nil
+			}
+			// For chunked files, sum up chunk sizes
+			if len(nodeInfo.ChunkSizes) > 0 {
+				var totalSize uint64
+				for _, chunkSize := range nodeInfo.ChunkSizes {
+					totalSize += chunkSize
+				}
+				return int64(totalSize), nil
+			}
+			// Fallback to data size
+			return int64(nodeInfo.DataSize), nil
+		}
+
+		// Raw block - return data length
+		return int64(nodeInfo.DataSize), nil
 	}
 
-	return getUnixFSSize(data)
+	// Strategy 2: Fallback to GetAll for chunked files
+	// This walks the DAG structure to get UnixFS file size metadata
+	// It does NOT load file data into memory
+	immutablePath := path.FromCid(c)
+	_, node, err := s.backend.GetAll(ctx, immutablePath)
+	if err != nil {
+		return -1, fmt.Errorf("failed to get file node: %w", err)
+	}
+	defer node.Close()
+
+	fileNode, ok := node.(files.File)
+	if !ok {
+		return -1, fmt.Errorf("CID is not a file")
+	}
+
+	size, err := fileNode.Size()
+	if err != nil {
+		return -1, fmt.Errorf("failed to get file size: %w", err)
+	}
+
+	return size, nil
 }
 
 // BlockSize returns the size of a block by CID without fetching the block data.
