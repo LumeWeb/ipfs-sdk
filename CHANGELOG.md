@@ -1,3 +1,13 @@
+## 0.1.14 (2026-03-20)
+
+### Features
+
+- add UnixFS-aware download APIs
+
+### Fixes
+
+- address PR review security and test issues
+
 ## 0.1.13 (2026-03-19)
 
 ### Features
