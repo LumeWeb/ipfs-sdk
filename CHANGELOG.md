@@ -1,3 +1,9 @@
+## 0.1.15 (2026-03-20)
+
+### Features
+
+- add FileSize API and fix UnixFS handling
+
 ## 0.1.14 (2026-03-20)
 
 ### Features
