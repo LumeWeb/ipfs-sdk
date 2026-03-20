@@ -12,6 +12,12 @@ packages:
       DNSClientWithResponsesInterface: {}
       IPNSClientWithResponsesInterface: {}
       WebsitesClientWithResponsesInterface: {}
+  go.lumeweb.com/ipfs-sdk/internal/download:
+    config:
+      dir: ./mocks
+      pkgname: "mocks"
+    interfaces:
+      Backend: {}
   go.lumeweb.com/ipfs-sdk/internal/testing:
     config:
       dir: ./internal/testing/mocks
