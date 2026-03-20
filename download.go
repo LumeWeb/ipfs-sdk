@@ -305,6 +305,7 @@ func (s *DownloadService) ListDirectory(ctx context.Context, c cid.Cid) ([]files
 		nd := it.Node()
 		
 		if name == car.CurrentDir || name == car.ParentDir {
+			nd.Close()
 			continue
 		}
 		
