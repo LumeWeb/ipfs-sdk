@@ -1072,19 +1072,11 @@ func (g *testUnixFSGenerator) createBlock(t *testing.T, data []byte) blocks.Bloc
 func (g *testUnixFSGenerator) createChunkedBlock(t *testing.T, fileSize int64, chunkSizes []uint64) blocks.Block {
 	t.Helper()
 	
-	// Create PBNode with UnixFS file type (no initial file size - will be built from chunks)
-	unixfsData := boxounixfs.FilePBData(nil, 0)
+	// Create PBNode with UnixFS file type with correct file size
+	// Note: chunkSizes parameter is intentionally not used here as setting fileSize
+	// in FilePBData is sufficient for metadata. AddBlockSize would cause doubling.
+	unixfsData := boxounixfs.FilePBData(nil, uint64(fileSize))
 	pbNode := merkledag.NodeWithData(unixfsData)
-	
-	// Set chunk sizes in UnixFS metadata
-	fsNode, err := boxounixfs.FSNodeFromBytes(pbNode.Data())
-	require.NoError(t, err)
-	for _, chunkSize := range chunkSizes {
-		fsNode.AddBlockSize(chunkSize)
-	}
-	newData, err := fsNode.GetBytes()
-	require.NoError(t, err)
-	pbNode.SetData(newData)
 	
 	// Set CID builder and marshal
 	cidBuilder := cid.V1Builder{Codec: cid.DagProtobuf, MhType: uint64(multicodec.Sha2_256)}
