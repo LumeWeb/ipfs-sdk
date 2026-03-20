@@ -116,7 +116,9 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 func getUnixFSSize(data []byte) (int64, error) {
 	fsNode, err := unixfs.FSNodeFromBytes(data)
 	if err != nil {
-		// If parsing fails, it's likely a raw block. The size is the block's data length.
+		// If the data cannot be parsed as UnixFS, treat it as a raw block and return
+		// the data length. This is expected for non-UnixFS CIDs (e.g., raw multicodec)
+		// where the size is simply the byte length of the raw data.
 		return int64(len(data)), nil
 	}
 	return int64(fsNode.FileSize()), nil
