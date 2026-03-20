@@ -9,12 +9,12 @@ import (
 
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/boxo/gateway"
+	"github.com/ipfs/boxo/ipld/unixfs"
 	"github.com/ipfs/boxo/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	backend "go.lumeweb.com/ipfs-sdk/internal/download"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
-	"go.lumeweb.com/ipfs-sdk/fs"
 )
 
 // DownloadService provides functionality for downloading IPFS blocks and content
@@ -110,6 +110,41 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 	return true, nil
 }
 
+// getUnixFSSize extracts the UnixFS file size from a UnixFS node's raw data.
+// This function expects the node to contain only the UnixFS metadata (typically
+// just the root block), not the entire file content.
+func getUnixFSSize(data []byte) (int64, error) {
+	fsNode, err := unixfs.FSNodeFromBytes(data)
+	if err != nil {
+		// If the data cannot be parsed as UnixFS, treat it as a raw block and return
+		// the data length. This is expected for non-UnixFS CIDs (e.g., raw multicodec)
+		// where the size is simply the byte length of the raw data.
+		return int64(len(data)), nil
+	}
+	return int64(fsNode.FileSize()), nil
+}
+
+// FileSize returns the actual size of a UnixFS file by CID.
+// For UnixFS files, this returns the file size metadata (not the root block size).
+// For raw blocks, this returns the block data size.
+// Uses GetBlock to fetch only the root block, avoiding memory exhaustion on large files.
+func (s *DownloadService) FileSize(ctx context.Context, c cid.Cid) (int64, error) {
+	// Fetch only the root block to access UnixFS metadata.
+	// This avoids downloading and reading the entire file content into memory.
+	_, file, err := s.backend.GetBlock(ctx, path.FromCid(c))
+	if err != nil {
+		return -1, err
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return -1, err
+	}
+
+	return getUnixFSSize(data)
+}
+
 // BlockSize returns the size of a block by CID without fetching the block data.
 // Note: Due to unexported fields in HeadResponse, this implementation
 // actually fetches the block to determine size.
@@ -168,12 +203,34 @@ func (s *DownloadService) AuthToken() string {
 // This method is UnixFS-aware and handles chunked files.
 // Returns an io.ReadCloser that should be closed when done.
 func (s *DownloadService) DownloadFile(ctx context.Context, c cid.Cid) (io.ReadCloser, error) {
-	_, fileNode, err := s.backend.GetBlock(ctx, path.FromCid(c))
+	immutablePath := path.FromCid(c)
+	_, node, err := s.backend.GetAll(ctx, immutablePath)
 	if err != nil {
 		return nil, err
 	}
-	
-	return fs.NewFileAdapter(fileNode, fileNode), nil
+
+	return wrapFileNodeAsReadCloser(node, "CID is not a file")
+}
+
+// fileReadCloser wraps a files.File to implement io.ReadCloser
+type fileReadCloser struct {
+	files.File
+}
+
+// Close implements io.Closer (delegates to files.File.Close())
+func (f *fileReadCloser) Close() error {
+	return f.File.Close()
+}
+
+// wrapFileNodeAsReadCloser converts a files.Node to io.ReadCloser if it's a file.
+// Returns an error if the node is not a file (e.g., it's a directory).
+func wrapFileNodeAsReadCloser(node files.Node, errorMessage string) (io.ReadCloser, error) {
+	file, ok := node.(files.File)
+	if !ok {
+		node.Close()
+		return nil, fmt.Errorf("%s", errorMessage)
+	}
+	return &fileReadCloser{File: file}, nil
 }
 
 // ListDirectory lists directory entries for a directory CID.
@@ -219,12 +276,16 @@ func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath 
 	// Handle empty file path by using base path with trailing separator
 	if strings.Trim(filePath, "/") == "" {
 		// Empty path means we're accessing the root CID directly
-		// Use the basePath as-is
-		_, fileNode, err := s.backend.GetBlock(ctx, basePath)
+		immutablePath, err := path.NewImmutablePath(basePath)
+		if err != nil {
+			return nil, fmt.Errorf("cannot create immutable path: %w", err)
+		}
+		_, node, err := s.backend.GetAll(ctx, immutablePath)
 		if err != nil {
 			return nil, err
 		}
-		return fs.NewFileAdapter(fileNode, fileNode), nil
+
+		return wrapFileNodeAsReadCloser(node, "CID is a directory, not a file")
 	}
 	
 	// Trim and split the file path
@@ -253,12 +314,13 @@ func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath 
 		return nil, fmt.Errorf("cannot create immutable path: %w", err)
 	}
 	
-	_, fileNode, err := s.backend.GetBlock(ctx, immutablePath)
+	// Use GetAll to handle chunked files properly
+	_, node, err := s.backend.GetAll(ctx, immutablePath)
 	if err != nil {
 		return nil, err
 	}
-	
-	return fs.NewFileAdapter(fileNode, fileNode), nil
+
+	return wrapFileNodeAsReadCloser(node, "path is a directory, not a file")
 }
 
 
