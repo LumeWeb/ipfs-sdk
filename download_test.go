@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lumeweb.com/ipfs-sdk/fs"
 	"go.lumeweb.com/ipfs-sdk/mocks"
+	"go.lumeweb.com/ipfs-content/car"
 	unixfs "go.lumeweb.com/ipfs-content/unixfs"
 )
 
@@ -300,8 +301,6 @@ func TestDownloadService_AuthToken(t *testing.T) {
 	})
 }
 
-
-
 // mockFile implements files.File for testing
 type mockFile struct {
 	io.ReadSeeker
@@ -323,6 +322,12 @@ func (m *mockFile) Read(p []byte) (n int, err error) {
 	return 0, io.EOF
 }
 
+func (m *mockFile) IsDir() bool          { return false }
+func (m *mockFile) Stat() (files.FileInfo, error) { return &mockFileInfo{}, nil }
+func (m *mockFile) ModTime() time.Time { return time.Now() }
+func (m *mockFile) Mode() os.FileMode { return 0644 }
+func (m *mockFile) Size() (int64, error) { return 0, nil }
+
 // mockBytesFile implements files.File for bytes.Reader without UnixFS wrapping
 type mockBytesFile struct {
 	*bytes.Reader
@@ -336,15 +341,6 @@ func (m *mockBytesFile) IsDir() bool { return false }
 func (m *mockBytesFile) ModTime() time.Time { return time.Now() }
 func (m *mockBytesFile) Mode() os.FileMode { return 0644 }
 func (m *mockBytesFile) Size() (int64, error) { return m.Reader.Size(), nil }
-
-
-
-
-func (m *mockFile) IsDir() bool          { return false }
-func (m *mockFile) Stat() (files.FileInfo, error) { return &mockFileInfo{}, nil }
-func (m *mockFile) ModTime() time.Time { return time.Now() }
-func (m *mockFile) Mode() os.FileMode { return 0644 }
-func (m *mockFile) Size() (int64, error) { return 0, nil }
 
 // mockNode implements files.Node for testing
 type mockNode struct {
@@ -364,6 +360,61 @@ func (m *mockNode) Close() error {
 func (m *mockNode) ModTime() time.Time { return time.Now() }
 func (m *mockNode) Mode() os.FileMode { return m.mode }
 func (m *mockNode) Size() (int64, error) { return 0, nil }
+
+// mockDirEntry implements files.DirEntry for testing
+type mockDirEntry struct {
+	name string
+	node files.Node
+}
+
+func (e *mockDirEntry) Name() string { return e.name }
+func (e *mockDirEntry) Node() files.Node { return e.node }
+
+// mockDirIterator implements files.DirIterator for testing
+type mockDirIterator struct {
+	entries []mockDirEntry
+	index   int
+	closed  bool
+	current files.Node
+}
+
+func (it *mockDirIterator) Next() bool {
+	if it.closed || it.index >= len(it.entries) {
+		return false
+	}
+	it.current = it.entries[it.index].node
+	it.index++
+	return true
+}
+
+func (it *mockDirIterator) Name() string {
+	if it.closed || it.index == 0 || it.index > len(it.entries) {
+		return ""
+	}
+	return it.entries[it.index-1].name
+}
+
+func (it *mockDirIterator) Node() files.Node {
+	return it.current
+}
+
+func (it *mockDirIterator) Err() error {
+	return nil
+}
+
+// mockDirectory implements files.Directory for testing
+type mockDirectory struct {
+	*mockNode
+	entries []mockDirEntry
+}
+
+func (d *mockDirectory) Entries() files.DirIterator {
+	return &mockDirIterator{
+		entries: d.entries,
+		index:   0,
+		closed:  false,
+	}
+}
 
 // mockOsFileInfo implements os.FileInfo for testing
 type mockOsFileInfo struct{}
@@ -392,6 +443,11 @@ func (m *mockFileInfo) Close() error                   { return nil }
 // overridden for signature conflict: (int64, error) vs int64
 func (m *mockFileInfo) Stat() os.FileInfo              { return &m.mockOsFileInfo }
 func (m *mockFileInfo) Size() (int64, error)          { return m.mockOsFileInfo.Size(), nil }
+
+// Interface compile checks to ensure mocks satisfy the interfaces
+var _ files.Directory = (*mockDirectory)(nil)
+var _ files.DirEntry = (*mockDirEntry)(nil)
+var _ files.DirIterator = (*mockDirIterator)(nil)
 
 // test helpers for creating common test fixtures
 
@@ -764,20 +820,21 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 
 		// Setup mock expectations
 		// Create a simple mock directory node
-		mockDir := &mockNode{
+		mockBaseNode := &mockNode{
 			Reader: bytes.NewReader([]byte{}),
 			Closer: io.NopCloser(bytes.NewReader([]byte{})),
 			mode:   os.ModeDir | 0755,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
 		}
 
 		setupMockGetAll(t, mockBackend, ctx, testCID, mockDir, nil)
 
 		// Call ListDirectory
-		// Note: Full directory listing with files.Walk requires a complete file tree
-		// This test verifies the backend is called correctly and error handling
+		// Verify the backend is called correctly and error handling
 		_, err := service.ListDirectory(ctx, testCID)
 
-		// The implementation uses files.Walk which may not work with simple mocks
 		// For now we just verify no panic occurs
 		_ = err
 	})
@@ -810,10 +867,13 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		testCID := getTestCID(t)
 
 		// Setup mock expectations with empty directory
-		mockDir := &mockNode{
+		mockBaseNode := &mockNode{
 			Reader: bytes.NewReader([]byte{}),
 			Closer: io.NopCloser(bytes.NewReader([]byte{})),
 			mode:   os.ModeDir | 0755,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
 		}
 
 		setupMockGetAll(t, mockBackend, ctx, testCID, mockDir, nil)
@@ -824,6 +884,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		// Should return empty list without error
 		require.NoError(t, err)
 		assert.NotNil(t, entries)
+		assert.Equal(t, 0, len(entries), "Empty directory should have no entries")
 	})
 	
 	t.Run("handles cancellation", func(t *testing.T) {
@@ -847,6 +908,117 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		// Verify error
 		assert.Error(t, err)
 		assert.Nil(t, entries)
+	})
+
+	t.Run("excludes_dot_paths_from_results", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Create service with mock backend
+		service, mockBackend := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		// Create mock directory entries including "." and ".."
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		
+		fileNode1 := &mockNode{
+			Reader: bytes.NewReader([]byte("file1")),
+			Closer: io.NopCloser(bytes.NewReader([]byte("file1"))),
+			mode:   0644,
+		}
+		
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+			entries: []mockDirEntry{
+				{name: car.CurrentDir, node: mockBaseNode},
+				{name: car.ParentDir, node: mockBaseNode},
+				{name: "file1.txt", node: fileNode1},
+				{name: "file2.txt", node: fileNode1},
+			},
+		}
+
+		setupMockGetAll(t, mockBackend, ctx, testCID, mockDir, nil)
+
+		// Call ListDirectory
+		entries, err := service.ListDirectory(ctx, testCID)
+		
+		// Verify no error and dot paths are excluded
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+		
+		// Should have 2 entries (file1.txt and file2.txt), excluding "." and ".."
+		assert.Equal(t, 2, len(entries), "Should have 2 entries, excluding dot paths")
+		
+		// Verify no entry has "." or ".." as its name
+		for _, entry := range entries {
+			assert.NotEqual(t, car.CurrentDir, entry.Name(), "Entry should not be '.'")
+			assert.NotEqual(t, car.ParentDir, entry.Name(), "Entry should not be '..'")
+		}
+	})
+
+	t.Run("verifies_only_immediate_children_are_listed", func(t *testing.T) {
+		// This test verifies that ListDirectory returns only immediate children
+		// using Directory.Entries() instead of files.Walk, avoiding flattened
+		// recursive listing.
+		
+		ctx := context.Background()
+
+		// Create service with mock backend
+		service, mockBackend := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		// Create mock directory with immediate children only
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		
+		fileNode1 := &mockNode{
+			Reader: bytes.NewReader([]byte("file1")),
+			Closer: io.NopCloser(bytes.NewReader([]byte("file1"))),
+			mode:   0644,
+		}
+		
+		dirNode2 := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+			entries: []mockDirEntry{
+				{name: "file1.txt", node: fileNode1},
+				{name: "file2.txt", node: fileNode1},
+				{name: "subdir", node: dirNode2},
+			},
+		}
+
+		setupMockGetAll(t, mockBackend, ctx, testCID, mockDir, nil)
+
+		// Call ListDirectory
+		entries, err := service.ListDirectory(ctx, testCID)
+		
+		// Verify no error and only immediate children are returned
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+		
+		// Should have 3 immediate children
+		assert.Equal(t, 3, len(entries), "Should have 3 immediate children")
+		
+		// Verify entry names
+		entryNames := make([]string, len(entries))
+		for i, entry := range entries {
+			entryNames[i] = entry.Name()
+		}
+		
+		assert.Contains(t, entryNames, "file1.txt")
+		assert.Contains(t, entryNames, "file2.txt")
+		assert.Contains(t, entryNames, "subdir")
 	})
 }
 
@@ -1093,5 +1265,3 @@ func (g *testUnixFSGenerator) createChunkedBlock(t *testing.T, fileSize int64, c
 	
 	return block
 }
-
-
