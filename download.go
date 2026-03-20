@@ -14,8 +14,11 @@ import (
 	"github.com/ipfs/go-cid"
 	backend "go.lumeweb.com/ipfs-sdk/internal/download"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+	"go.lumeweb.com/ipfs-content/car"
 	"go.lumeweb.com/ipfs-content/dagnode"
 )
+
+
 
 // DownloadService provides functionality for downloading IPFS blocks and content
 // from the gateway using the boxo gateway patterns.
@@ -278,6 +281,7 @@ func wrapFileNodeAsReadCloser(node files.Node, errorMessage string) (io.ReadClos
 
 // ListDirectory lists directory entries for a directory CID.
 // Returns a slice of directory entries that can be used to access file metadata.
+// Only includes immediate children of the directory, not nested descendants.
 func (s *DownloadService) ListDirectory(ctx context.Context, c cid.Cid) ([]files.DirEntry, error) {
 	immutablePath := path.FromCid(c)
 	_, node, err := s.backend.GetAll(ctx, immutablePath)
@@ -286,24 +290,29 @@ func (s *DownloadService) ListDirectory(ctx context.Context, c cid.Cid) ([]files
 	}
 	defer node.Close()
 	
-	var entries []files.DirEntry
-	err = files.Walk(node, func(fpath string, nd files.Node) error {
-		// Skip the root path
-		if fpath == "." || fpath == "/" {
-			return nil
-		}
+	// Convert the node to a Directory if it is one
+	dir, ok := node.(files.Directory)
+	if !ok {
+		return nil, fmt.Errorf("CID is not a directory")
+	}
+	
+	// Use Directory.Entries() to get immediate children only
+	// This avoids the flattened recursive behavior of files.Walk
+	entries := make([]files.DirEntry, 0)
+	it := dir.Entries()
+	for it.Next() {
+		name := it.Name()
+		nd := it.Node()
 		
-		// Extract the base name from the path
-		parts := strings.Split(strings.Trim(fpath, "/"), "/")
-		name := parts[len(parts)-1]
+		if name == car.CurrentDir || name == car.ParentDir {
+			continue
+		}
 		
 		// Create a DirEntry using boxo's FileEntry helper
 		entries = append(entries, files.FileEntry(name, nd))
-		
-		return nil
-	})
+	}
 	
-	if err != nil {
+	if err := it.Err(); err != nil {
 		return nil, err
 	}
 	
