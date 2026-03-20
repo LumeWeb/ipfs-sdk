@@ -1,3 +1,10 @@
+## 0.1.17 (2026-03-20)
+
+### Fixes
+
+- exclude dot paths and return only immediate children
+- close skipped dot-path nodes to prevent resource leak
+
 ## 0.1.16 (2026-03-20)
 
 ### Features
