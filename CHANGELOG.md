@@ -1,3 +1,9 @@
+## 0.1.20 (2026-03-21)
+
+### Fixes
+
+- handle HTTP 200 and 201 status codes for create operations
+
 ## 0.1.19 (2026-03-21)
 
 ### Fixes
