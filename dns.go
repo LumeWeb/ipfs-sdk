@@ -113,9 +113,8 @@ func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) 
 			return nil
 		}
 
-		// API returns a single zone in ZoneListResponseResponse.Data,
-		// but we need to return a slice
-		result = []internalclient.ZoneListResponse{resp.JSON200.Data}
+		// API returns an array of zones in ZoneListResponseResponse.Data
+		result = resp.JSON200.Data
 		return nil
 	})
 	if err != nil {
@@ -223,9 +222,8 @@ func (s *dnsService) ListRecords(ctx context.Context, zoneID string) ([]RecordRe
 			return nil
 		}
 
-		// Return the single record from the response wrapped in a slice
-		// The API returns one record per call with Total indicating pagination support
-		result = []RecordResponse{resp.JSON200.Data}
+		// API returns array of records in response with Total indicating pagination support
+		result = resp.JSON200.Data
 		return nil
 	})
 	if err != nil {
