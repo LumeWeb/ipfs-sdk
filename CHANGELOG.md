@@ -1,3 +1,10 @@
+## 0.1.19 (2026-03-21)
+
+### Fixes
+
+- update OpenAPI spec to match running portal service and regenerate client
+- update DNS service to handle array response types
+
 ## 0.1.18 (2026-03-21)
 
 ### Fixes
