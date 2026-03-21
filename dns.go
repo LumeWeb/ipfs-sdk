@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	dnsreq "go.lumeweb.com/ipfs-sdk/internal/dnsreq"
@@ -167,17 +168,13 @@ func (s *dnsService) CreateZone(ctx context.Context, domain string, nameservers 
 			return err
 		}
 
-		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateZone, []int{http.StatusCreated}); err != nil {
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateZone, []int{http.StatusOK, http.StatusCreated}); err != nil {
 			return err
 		}
 
-		if resp.JSON201 == nil {
-			result = nil
-			return ErrBadRequest(opsString(OpCreateZone) + " no response data")
-		}
-
-		result = resp.JSON201
-		return nil
+		var apiErr error
+		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateZone)
+		return apiErr
 	})
 	if err != nil {
 		return nil, err
@@ -233,6 +230,19 @@ func (s *dnsService) ListRecords(ctx context.Context, zoneID string) ([]RecordRe
 	return result, nil
 }
 
+// handleCreateResponse handles responses for create operations that may return either 200 or 201
+func handleCreateResponse[T any](body []byte, json200 any, json201 *T, op int) (*T, error) {
+	if json201 != nil {
+		return json201, nil
+	}
+	// If 200 was returned, re-parse body as the response type
+	var result T
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, ErrBadRequest(opsString(op) + " failed to parse response")
+	}
+	return &result, nil
+}
+
 // CreateRecord creates a new DNS record in a zone
 func (s *dnsService) CreateRecord(ctx context.Context, zoneID string, record RecordRequest) (*RecordResponse, error) {
 	var result *RecordResponse
@@ -243,17 +253,13 @@ func (s *dnsService) CreateRecord(ctx context.Context, zoneID string, record Rec
 			return err
 		}
 
-		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateRecord, []int{http.StatusCreated}); err != nil {
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateRecord, []int{http.StatusOK, http.StatusCreated}); err != nil {
 			return err
 		}
 
-		if resp.JSON201 == nil {
-			result = nil
-			return ErrBadRequest(opsString(OpCreateRecord) + " no response data")
-		}
-
-		result = resp.JSON201
-		return nil
+		var apiErr error
+		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateRecord)
+		return apiErr
 	})
 	if err != nil {
 		return nil, err

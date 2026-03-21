@@ -193,16 +193,13 @@ func (s *websitesService) Create(ctx context.Context, domain string, targetHash 
 			return err
 		}
 
-		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateWebsite, []int{http.StatusCreated}); err != nil {
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateWebsite, []int{http.StatusOK, http.StatusCreated}); err != nil {
 			return err
 		}
 
-		if resp.JSON201 == nil {
-			return ErrBadRequest(opsString(OpCreateWebsite) + " no response data for create " + domain)
-		}
-
-		result = resp.JSON201
-		return nil
+		var apiErr error
+		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateWebsite)
+		return apiErr
 	})
 	if err != nil {
 		return nil, err
