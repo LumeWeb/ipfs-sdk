@@ -272,7 +272,7 @@ func TestDNSService_ListRecords(t *testing.T) {
 			Return(&internalclient.GetApiDnsZonesIdRecordsResponse{
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 				JSON200: &internalclient.RecordResponseResponse{
-					Data: expectedRecord,
+					Data: []internalclient.RecordResponse{expectedRecord},
 					Total: 1,
 				},
 			}, nil).
