@@ -12,6 +12,8 @@ require (
 	github.com/ipfs/boxo v0.37.0
 	github.com/ipfs/go-block-format v0.2.3
 	github.com/ipfs/go-cid v0.6.0
+	github.com/ipfs/go-datastore v0.9.1
+	github.com/multiformats/go-multicodec v0.10.0
 	github.com/oapi-codegen/runtime v1.2.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tus/tusd/v2 v2.9.1
@@ -45,7 +47,6 @@ require (
 	github.com/ipfs/bbloom v0.0.4 // indirect
 	github.com/ipfs/go-bitfield v1.1.0 // indirect
 	github.com/ipfs/go-cidutil v0.1.1 // indirect
-	github.com/ipfs/go-datastore v0.9.1 // indirect
 	github.com/ipfs/go-dsqueue v0.2.0 // indirect
 	github.com/ipfs/go-ipfs-redirects-file v0.1.2 // indirect
 	github.com/ipfs/go-ipld-cbor v0.2.1 // indirect
@@ -81,7 +82,6 @@ require (
 	github.com/multiformats/go-multiaddr v0.16.1 // indirect
 	github.com/multiformats/go-multiaddr-dns v0.5.0 // indirect
 	github.com/multiformats/go-multibase v0.2.0 // indirect
-	github.com/multiformats/go-multicodec v0.10.0 // indirect
 	github.com/multiformats/go-multihash v0.2.3 // indirect
 	github.com/multiformats/go-multistream v0.6.1 // indirect
 	github.com/multiformats/go-varint v0.1.0 // indirect

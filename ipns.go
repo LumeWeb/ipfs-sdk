@@ -150,16 +150,13 @@ func (s *ipnsService) CreateKey(ctx context.Context, name string) (*IPNSKeyRespo
 			return err
 		}
 
-		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateIPNSKey, []int{http.StatusCreated}); err != nil {
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCreateIPNSKey, []int{http.StatusOK, http.StatusCreated}); err != nil {
 			return err
 		}
 
-		if resp.JSON201 == nil {
-			return ErrBadRequest(opsString(OpCreateIPNSKey) + " no response data for key " + name)
-		}
-
-		result = resp.JSON201
-		return nil
+		var apiErr error
+		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateIPNSKey)
+		return apiErr
 	})
 	if err != nil {
 		return nil, err
