@@ -169,7 +169,7 @@ func (s *websitesService) List(ctx context.Context) ([]WebsiteItem, error) {
 			return nil
 		}
 
-		result = []WebsiteItem{resp.JSON200.Data}
+		result = resp.JSON200.Data
 		return nil
 	})
 	if err != nil {
