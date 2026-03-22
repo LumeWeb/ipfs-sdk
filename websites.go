@@ -16,6 +16,7 @@ type WebsiteItem = internalclient.WebsiteItem
 type WebsiteItemResponse = internalclient.WebsiteItemResponse
 type WebsiteValidateResponse = internalclient.WebsiteValidateResponse
 type GatewayWebsiteResponse = internalclient.GatewayWebsiteResponse
+type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
 
 // WebsitesConfig holds configuration for Websites service operations
 type WebsitesConfig struct {
@@ -118,7 +119,7 @@ type WebsitesService interface {
 	GetSSLStatus(ctx context.Context, domain string) (*WebsiteResponse, error)
 	// SSL status update via internal API (Caddy webhook)
 	// Requires X-Gateway-Secret header for authentication
-	UpdateSSLStatusInternal(ctx context.Context, domain string, gatewaySecret string, sslStatus internalclient.SSLStatusUpdateRequest) error
+	UpdateSSLStatusInternal(ctx context.Context, domain string, gatewaySecret string, sslStatus SSLStatusUpdateRequest) error
 
 	// Polling/wait methods
 	// WaitForSSLStatusReady polls SSL status until it reaches ready or failed state
@@ -344,7 +345,7 @@ func (s *websitesService) ValidateDNS(ctx context.Context, id string) (*WebsiteV
 // UpdateSSLStatusInternal updates SSL certificate status via the internal API endpoint.
 // This is used by Caddy webhooks to report SSL certificate issuance or updates.
 // The gatewaySecret parameter is added as the X-Gateway-Secret header for authentication.
-func (s *websitesService) UpdateSSLStatusInternal(ctx context.Context, domain string, gatewaySecret string, sslStatus internalclient.SSLStatusUpdateRequest) error {
+func (s *websitesService) UpdateSSLStatusInternal(ctx context.Context, domain string, gatewaySecret string, sslStatus SSLStatusUpdateRequest) error {
 	return httputil.RetryContext(ctx, s.config.Retry, func() error {
 		// Create request editor to add X-Gateway-Secret header
 		reqEditor := func(ctx context.Context, req *http.Request) error {
