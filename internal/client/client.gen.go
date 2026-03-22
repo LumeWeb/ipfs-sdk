@@ -188,15 +188,12 @@ type RecordRequest struct {
 
 // RecordResponse defines model for RecordResponse.
 type RecordResponse struct {
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"created_at"`
-	Disabled  bool      `json:"disabled"`
-	Id        int       `json:"id"`
-	Name      string    `json:"name"`
-	Ttl       int       `json:"ttl"`
-	Type      string    `json:"type"`
-	UpdatedAt time.Time `json:"updated_at"`
-	ZoneId    int       `json:"zone_id"`
+	Content  string `json:"content"`
+	Disabled bool   `json:"disabled"`
+	Name     string `json:"name"`
+	Ttl      int    `json:"ttl"`
+	Type     string `json:"type"`
+	ZoneId   int    `json:"zone_id"`
 }
 
 // RecordResponseResponse defines model for RecordResponseResponse.

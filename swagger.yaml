@@ -367,34 +367,23 @@ components:
       properties:
         content:
           type: string
-        created_at:
-          format: date-time
-          type: string
         disabled:
           type: boolean
-        id:
-          type: integer
         name:
           type: string
         ttl:
           type: integer
         type:
           type: string
-        updated_at:
-          format: date-time
-          type: string
         zone_id:
           type: integer
       required:
-      - id
       - zone_id
       - name
       - type
       - content
       - ttl
       - disabled
-      - created_at
-      - updated_at
       type: object
     RecordResponseResponse:
       additionalProperties: false
