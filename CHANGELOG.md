@@ -1,3 +1,14 @@
+## 0.1.21 (2026-03-22)
+
+### Features
+
+- add DNS validation, SSL status updates, and polling methods
+
+### Fixes
+
+- update swagger.yaml to match current API
+- preserve context error unwrapping and improve polling behavior
+
 ## 0.1.20 (2026-03-21)
 
 ### Fixes
