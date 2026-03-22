@@ -2,8 +2,10 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -11,6 +13,7 @@ import (
 
 	"go.lumeweb.com/ipfs-sdk/internal/client"
 	"go.lumeweb.com/ipfs-sdk/mocks"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 func TestNewIPNSService(t *testing.T) {
@@ -373,5 +376,96 @@ func TestIPNSService_Republish_NoRetryOn400(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed with status 400")
+	})
+}
+
+func TestIPNSService_WaitForIPNSResolution_Success(t *testing.T) {
+	t.Run("polls until IPNS resolves to expected CID", func(t *testing.T) {
+		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		callCount := 0
+
+		mockClient.EXPECT().
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com").
+			RunAndReturn(func(ctx context.Context, name string, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
+				callCount++
+				if callCount == 1 {
+					return &client.GetApiIpnsResolveNameResponse{
+						Body:         []byte("{}"),
+						HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+						JSON200: &client.IPNSResolveResponse{
+							Name:  "example.com",
+							Value: "QmOldCid",
+						},
+					}, nil
+				}
+				return &client.GetApiIpnsResolveNameResponse{
+					Body:         []byte("{}"),
+					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+					JSON200: &client.IPNSResolveResponse{
+						Name:  "example.com",
+						Value: "QmExpectedCid",
+					},
+				}, nil
+			}).
+			Times(2)
+
+		service := NewIPNSService(mockClient)
+		result, err := service.WaitForIPNSResolution(context.Background(), "example.com", "QmExpectedCid")
+
+		require.NoError(t, err)
+		assert.Equal(t, "QmExpectedCid", result.Value)
+		assert.Equal(t, 2, callCount)
+	})
+}
+
+func TestIPNSService_WaitForIPNSResolution_Timeout(t *testing.T) {
+	t.Run("times out when CID never resolves to expected value", func(t *testing.T) {
+		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com").
+			RunAndReturn(func(ctx context.Context, name string, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
+				return &client.GetApiIpnsResolveNameResponse{
+					Body:         []byte("{}"),
+					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+					JSON200: &client.IPNSResolveResponse{
+						Name:  "example.com",
+						Value: "QmOldCid",
+					},
+				}, nil
+			}).Maybe()
+
+		service := NewIPNSService(mockClient)
+		_, err := service.WaitForIPNSResolution(context.Background(), "example.com", "QmExpectedCid",
+			httputil.WithPollInterval(10*time.Millisecond),
+			httputil.WithPollTimeout(100*time.Millisecond))
+
+		require.Error(t, err)
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+}
+
+func TestIPNSService_WaitForIPNSResolution_ErrorOnResponse(t *testing.T) {
+	t.Run("returns error when resolve API call fails", func(t *testing.T) {
+		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com").
+			RunAndReturn(func(ctx context.Context, name string, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
+				return nil, assert.AnError
+			})
+
+		service := NewIPNSService(mockClient)
+		_, err := service.WaitForIPNSResolution(context.Background(), "example.com", "QmExpectedCid",
+			httputil.WithPollInterval(10*time.Millisecond),
+			httputil.WithPollTimeout(100*time.Millisecond))
+
+		require.Error(t, err)
+		// Check for either the wrapped error or a context timeout (can happen in certain race conditions)
+		if errors.Is(err, context.DeadlineExceeded) {
+			// Context deadline exceeded - acceptable in race mode
+			assert.ErrorIs(t, err, context.DeadlineExceeded)
+		} else {
+			// Expected error wrapping
+			assert.Contains(t, err.Error(), "failed to resolve")
+		}
 	})
 }

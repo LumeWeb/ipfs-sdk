@@ -2,6 +2,8 @@ package ipfs
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
@@ -60,6 +62,12 @@ type IPNSService interface {
 
 	// Resolution
 	Resolve(ctx context.Context, name string) (*IPNSResolveResponse, error)
+
+	// Polling/wait methods
+	// WaitForIPNSResolution polls IPNS until record resolves to expected CID
+	// Suitable for: IPNS integration website tests, verifying CID changes propagate,
+	// testing content updates without DNS changes
+	WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...httputil.PollOption) (*IPNSResolveResponse, error)
 }
 
 // ipnsService implements IPNSService using the generated internal client
@@ -259,4 +267,48 @@ func (s *ipnsService) Resolve(ctx context.Context, name string) (*IPNSResolveRes
 	}
 
 	return result, nil
+}
+
+// WaitForIPNSResolution polls IPNS resolution until it resolves to the expected CID.
+// This is useful for IPNS integration website tests, verifying CID changes propagate,
+// and testing content updates without DNS changes.
+func (s *ipnsService) WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...httputil.PollOption) (*IPNSResolveResponse, error) {
+	// Create default poll config and apply options
+	cfg := httputil.DefaultPollConfig()
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	result, err := httputil.PollUntil(ctx, cfg, func(ctx context.Context) (bool, interface{}, error) {
+		resolveResponse, err := s.Resolve(ctx, name)
+		if err != nil {
+			// Don't wrap context errors to preserve error unwrapping
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return false, nil, err
+			}
+			return false, nil, fmt.Errorf("failed to resolve IPNS name %s: %w", name, err)
+		}
+
+		if resolveResponse.Value == expectedCID {
+			return true, resolveResponse, nil
+		}
+		
+		return false, nil, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := httputil.ExtractPollResult(result, err)
+	if err != nil {
+		return nil, err
+	}
+
+	response, ok := value.(*IPNSResolveResponse)
+	if !ok {
+		return nil, fmt.Errorf("IPNS resolution polling returned unexpected type")
+	}
+
+	return response, nil
 }

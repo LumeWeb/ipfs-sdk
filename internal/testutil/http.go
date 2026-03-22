@@ -97,6 +97,14 @@ func VerifyAuthorization(t *testing.T, r *http.Request, expectedToken string) {
 	}
 }
 
+// VerifySecret checks if X-Gateway-Secret header matches expected
+func VerifySecret(t *testing.T, r *http.Request, expectedSecret string) {
+	secretHeader := r.Header.Get("X-Gateway-Secret")
+	if secretHeader != expectedSecret {
+		t.Errorf("expected X-Gateway-Secret header %q, got %q", expectedSecret, secretHeader)
+	}
+}
+
 // JSONResponseBuilder helps build JSON responses in tests
 type JSONResponseBuilder struct {
 	statusCode int
