@@ -1,3 +1,9 @@
+## 0.1.23 (2026-03-22)
+
+### Fixes
+
+- update WebsiteItemResponse to array type
+
 ## 0.1.22 (2026-03-22)
 
 ### Fixes
