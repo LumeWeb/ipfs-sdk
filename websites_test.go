@@ -182,6 +182,142 @@ func TestWebsitesService_Create_Success(t *testing.T) {
 	})
 }
 
+func TestWebsitesService_CreateWithOptions_DisableDNSHosting(t *testing.T) {
+	t.Run("creates website with dns_hosting_enabled=false", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		expectedWebsite := &client.WebsiteResponse{
+			Id:                1,
+			Domain:            "example.com",
+			TargetHash:        "QmTest",
+			TargetType:        "ipfs",
+			DnsHostingEnabled: false,
+		}
+
+		var capturedReq client.WebsiteRequest
+		mockClient.EXPECT().
+			PostApiWebsitesWithResponse(mock.Anything, mock.AnythingOfType("client.WebsiteRequest")).
+			RunAndReturn(func(ctx context.Context, req client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesResponse, error) {
+				capturedReq = req
+				return &client.PostApiWebsitesResponse{
+					Body:         []byte("{}"),
+					HTTPResponse: &http.Response{StatusCode: http.StatusCreated},
+					JSON201:      expectedWebsite,
+				}, nil
+			}).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
+			Domain:            "example.com",
+			TargetHash:        "QmTest",
+			TargetType:        "ipfs",
+			DnsHostingEnabled: false,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedWebsite.Id, result.Id)
+		assert.False(t, capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be false")
+	})
+}
+
+func TestWebsitesService_CreateWithOptions_EnableDNSHosting(t *testing.T) {
+	t.Run("creates website with dns_hosting_enabled=true", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		expectedWebsite := &client.WebsiteResponse{
+			Id:                1,
+			Domain:            "example.com",
+			TargetHash:        "QmTest",
+			TargetType:        "ipns",
+			DnsHostingEnabled: true,
+		}
+
+		var capturedReq client.WebsiteRequest
+		mockClient.EXPECT().
+			PostApiWebsitesWithResponse(mock.Anything, mock.AnythingOfType("client.WebsiteRequest")).
+			RunAndReturn(func(ctx context.Context, req client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesResponse, error) {
+				capturedReq = req
+				return &client.PostApiWebsitesResponse{
+					Body:         []byte("{}"),
+					HTTPResponse: &http.Response{StatusCode: http.StatusCreated},
+					JSON201:      expectedWebsite,
+				}, nil
+			}).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
+			Domain:            "example.com",
+			TargetHash:        "QmTest",
+			TargetType:        "ipfs",
+			DnsHostingEnabled: true,
+		})
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedWebsite.Id, result.Id)
+		assert.True(t, capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be true")
+	})
+}
+
+func TestWebsitesService_Create_CallsCreateWithOptions(t *testing.T) {
+	t.Run("Create() calls CreateWithOptions() with default dns_hosting_enabled", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		expectedWebsite := &client.WebsiteResponse{
+			Id:         1,
+			Domain:     "example.com",
+			TargetHash: "QmTest",
+			TargetType: "ipfs",
+		}
+
+		var capturedReq client.WebsiteRequest
+		mockClient.EXPECT().
+			PostApiWebsitesWithResponse(mock.Anything, mock.AnythingOfType("client.WebsiteRequest")).
+			RunAndReturn(func(ctx context.Context, req client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesResponse, error) {
+				capturedReq = req
+				return &client.PostApiWebsitesResponse{
+					Body:         []byte("{}"),
+					HTTPResponse: &http.Response{StatusCode: http.StatusCreated},
+					JSON201:      expectedWebsite,
+				}, nil
+			}).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.Create(context.Background(), "example.com", "QmTest", "ipfs")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedWebsite.Id, result.Id)
+		assert.Equal(t, "example.com", capturedReq.Domain)
+		assert.Equal(t, "QmTest", capturedReq.TargetHash)
+		assert.Equal(t, "ipfs", capturedReq.TargetType)
+		// DnsHostingEnabled should be default (false) - zero value for bool
+		assert.False(t, capturedReq.DnsHostingEnabled, "default dns_hosting_enabled should be false")
+	})
+}
+
+func TestWebsitesService_CreateWithOptions_HTTPError(t *testing.T) {
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesWithResponse(mock.Anything, mock.AnythingOfType("client.WebsiteRequest")).
+			Return(nil, assert.AnError).
+			Times(3) // Retry will attempt 3 times before failing
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
+			Domain:     "example.com",
+			TargetHash: "QmTest",
+			TargetType: "ipfs",
+		})
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 func TestWebsitesService_Delete_Success(t *testing.T) {
 	t.Run("deletes website by ID", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
