@@ -111,6 +111,7 @@ type WebsitesService interface {
 	Create(ctx context.Context, domain string, targetHash string, targetType string) (*WebsiteResponse, error)
 	CreateWithOptions(ctx context.Context, req WebsiteRequest) (*WebsiteResponse, error)
 	Update(ctx context.Context, id string, domain string, targetHash string, targetType string) (*WebsiteResponse, error)
+	UpdateWithOptions(ctx context.Context, id string, req WebsiteRequest) (*WebsiteResponse, error)
 	Delete(ctx context.Context, id string) error
 
 	// DNS validation
@@ -244,12 +245,16 @@ func (s *websitesService) CreateWithOptions(ctx context.Context, req WebsiteRequ
 
 // Update updates an existing website
 func (s *websitesService) Update(ctx context.Context, id string, domain string, targetHash string, targetType string) (*WebsiteResponse, error) {
-	var result *WebsiteResponse
-	req := WebsiteRequest{
+	return s.UpdateWithOptions(ctx, id, WebsiteRequest{
 		Domain:      domain,
 		TargetHash:  targetHash,
 		TargetType:  targetType,
-	}
+	})
+}
+
+// UpdateWithOptions updates an existing website with full request options including dns_hosting_enabled
+func (s *websitesService) UpdateWithOptions(ctx context.Context, id string, req WebsiteRequest) (*WebsiteResponse, error) {
+	var result *WebsiteResponse
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
 		resp, err := s.client.PutApiWebsitesIdWithResponse(ctx, id, req)
