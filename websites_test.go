@@ -480,7 +480,7 @@ func TestWebsitesService_WaitForSSLStatusReady_Timeout(t *testing.T) {
 			httputil.WithPollTimeout(100*time.Millisecond))
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "poll timed out")
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 }
 
@@ -544,7 +544,7 @@ func TestWebsitesService_WaitForWebsiteStatus_Timeout(t *testing.T) {
 			httputil.WithPollTimeout(100*time.Millisecond))
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "poll timed out")
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 }
 
@@ -629,20 +629,20 @@ func TestWebsitesService_WaitForDNSValidation(t *testing.T) {
 
 		mockClient.EXPECT().
 			PostApiWebsitesIdValidateWithResponse(mock.Anything, "123").
-			Return(&client.PostApiWebsitesIdValidateResponse{
-				Body:         []byte("{}"),
-				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-				JSON200:      &timeoutResponse,
-			}, nil).
-			Maybe().
-			Times(0)
+			RunAndReturn(func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdValidateResponse, error) {
+				return &client.PostApiWebsitesIdValidateResponse{
+					Body:         []byte("{}"),
+					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+					JSON200:      &timeoutResponse,
+				}, nil
+			})
 
 		err := service.WaitForDNSValidation(context.Background(), "123",
 			httputil.WithPollInterval(10*time.Millisecond),
 			httputil.WithPollTimeout(50*time.Millisecond))
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "timed out")
+		assert.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 }
 

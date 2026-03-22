@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -281,6 +282,10 @@ func (s *ipnsService) WaitForIPNSResolution(ctx context.Context, name string, ex
 	result, err := httputil.PollUntil(ctx, cfg, func(ctx context.Context) (bool, interface{}, error) {
 		resolveResponse, err := s.Resolve(ctx, name)
 		if err != nil {
+			// Don't wrap context errors to preserve error unwrapping
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+				return false, nil, err
+			}
 			return false, nil, fmt.Errorf("failed to resolve IPNS name %s: %w", name, err)
 		}
 
@@ -295,11 +300,12 @@ func (s *ipnsService) WaitForIPNSResolution(ctx context.Context, name string, ex
 		return nil, err
 	}
 
-	if result == nil || result.Value == nil {
-		return nil, fmt.Errorf("IPNS resolution polling returned no value")
+	value, err := httputil.ExtractPollResult(result, err)
+	if err != nil {
+		return nil, err
 	}
 
-	response, ok := result.Value.(*IPNSResolveResponse)
+	response, ok := value.(*IPNSResolveResponse)
 	if !ok {
 		return nil, fmt.Errorf("IPNS resolution polling returned unexpected type")
 	}

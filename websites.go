@@ -444,7 +444,7 @@ func (s *websitesService) WaitForDNSValidation(ctx context.Context, id string, o
 	_, err := httputil.PollUntil(ctx, cfg, func(ctx context.Context) (bool, interface{}, error) {
 		resp, err := s.ValidateDNS(ctx, id)
 		if err != nil {
-			// Return (false, nil, err) to continue polling on errors
+			// Returning err will stop polling and return the error immediately
 			return false, nil, err
 		}
 

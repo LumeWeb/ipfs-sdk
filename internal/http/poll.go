@@ -3,6 +3,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -60,6 +61,18 @@ type PollResult struct {
 	ElapsedTime time.Duration // Total time elapsed
 }
 
+// ExtractPollResult safely extracts the value from PollResult or returns an error.
+// This helper eliminates boilerplate code for checking nil values after polling.
+func ExtractPollResult(result *PollResult, err error) (interface{}, error) {
+	if err != nil {
+		return nil, err
+	}
+	if result == nil || result.Value == nil {
+		return nil, fmt.Errorf("polling returned no value")
+	}
+	return result.Value, nil
+}
+
 // PollUntil polls a function until it returns true or the context times out.
 //
 // The isSettled callback receives a context and should return:
@@ -94,19 +107,47 @@ func PollUntil(ctx context.Context, cfg *PollConfig, isSettled func(context.Cont
 		}
 	}
 
+	// Start ticker for polling attempts
 	ticker := time.NewTicker(cfg.interval)
 	defer ticker.Stop()
+
+	// Execute first poll immediately, then poll on ticker ticks
+	attempts++
+
+	settled, value, err := isSettled(ctxWithTimeout)
+	if err != nil {
+		// Check if this is a context error (timeout or cancellation)
+		// If so, let it propagate without wrapping to preserve error unwrapping
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("poll attempt %d failed: %w", attempts, err)
+	}
+	if settled {
+		elapsed := time.Since(startTime)
+		return &PollResult{
+			Value:       value,
+			Attempts:    attempts,
+			ElapsedTime: elapsed,
+		}, nil
+	}
 
 	for {
 		select {
 		case <-ctxWithTimeout.Done():
-			return nil, fmt.Errorf("poll timed out after %d attempts", attempts)
+			// Return actual context error to preserve error unwrapping
+			return nil, ctxWithTimeout.Err()
 
 		case <-ticker.C:
 			attempts++
 
 			settled, value, err := isSettled(ctxWithTimeout)
 			if err != nil {
+				// Check if this is a context error (timeout or cancellation)
+				// If so, let it propagate without wrapping to preserve error unwrapping
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+					return nil, err
+				}
 				return nil, fmt.Errorf("poll attempt %d failed: %w", attempts, err)
 			}
 
