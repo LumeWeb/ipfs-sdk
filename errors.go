@@ -41,6 +41,7 @@ const (
 	OpDeleteWebsite
 	OpValidateWebsite
 	OpGetSSLStatus
+	OpUpdateSSLStatusInternal
 
 	// Pinning operations
 	OpListPins
@@ -79,8 +80,9 @@ var operationString = map[int]string{
 	OpCreateWebsite:   "create website",
 	OpUpdateWebsite:   "update website",
 	OpDeleteWebsite:   "delete website",
-	OpValidateWebsite: "validate website",
-	OpGetSSLStatus:    "get SSL status",
+	OpValidateWebsite:          "validate website",
+	OpGetSSLStatus:             "get SSL status",
+	OpUpdateSSLStatusInternal:  "update SSL status internal",
 
 	// Pinning operations
 	OpListPins:  "list pins",
@@ -241,6 +243,11 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpGetSSLStatus: {
 		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     plainErr("website not found"),
+	},
+	OpUpdateSSLStatusInternal: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusBadRequest:   plainErr("invalid SSL status data"),
 		http.StatusNotFound:     plainErr("website not found"),
 	},
 }

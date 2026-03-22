@@ -212,3 +212,178 @@ func TestWebsitesClient_GetSSLStatus_Success(t *testing.T) {
 	require.NotNil(t, result)
 	require.Equal(t, expectedWebsite.Id, result.Id)
 }
+
+func TestWebsitesClient_ValidateDNS_Success(t *testing.T) {
+	expectedResponse := internalclient.WebsiteValidateResponse{
+		Valid: true,
+	}
+
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/api/websites/1/validate")
+
+			testutil.NewJSONResponse().
+				WithStatus(http.StatusOK).
+				WithBody(expectedResponse).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+	result, err := client.Websites().ValidateDNS(context.Background(), "1")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, expectedResponse.Valid, result.Valid)
+}
+
+func TestWebsitesClient_ValidateDNS_NotFound(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/api/websites/999/validate")
+
+			testutil.NewJSONResponse().
+				WithStatus(http.StatusNotFound).
+				WithBody(internalclient.ErrorResponse{Error: "website not found"}).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+	result, err := client.Websites().ValidateDNS(context.Background(), "999")
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "website not found")
+	require.Nil(t, result)
+}
+
+func TestWebsitesClient_UpdateSSLStatusInternal_Success(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/internal/websites/example.com/ssl-status")
+			testutil.VerifySecret(t, r, "secret123")
+
+			w.WriteHeader(http.StatusOK)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+
+	sslStatus := internalclient.SSLStatusUpdateRequest{
+		Status: "valid",
+	}
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+
+	require.NoError(t, err)
+}
+
+func TestWebsitesClient_UpdateSSLStatusInternal_SuccessWithNoContent(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/internal/websites/example.com/ssl-status")
+			testutil.VerifySecret(t, r, "secret456")
+
+			w.WriteHeader(http.StatusNoContent)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+
+	sslStatus := internalclient.SSLStatusUpdateRequest{
+		Status: "valid",
+		Error:  nil,
+	}
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "secret456", sslStatus)
+
+	require.NoError(t, err)
+}
+
+func TestWebsitesClient_UpdateSSLStatusInternal_Unauthorized(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/internal/websites/example.com/ssl-status")
+
+			testutil.NewJSONResponse().
+				WithStatus(http.StatusUnauthorized).
+				WithBody(internalclient.ErrorResponse{Error: "unauthorized"}).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+
+	sslStatus := internalclient.SSLStatusUpdateRequest{
+		Status: "valid",
+	}
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "wrong-secret", sslStatus)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unauthorized")
+}
+
+func TestWebsitesClient_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/internal/websites/example.com/ssl-status")
+
+			testutil.NewJSONResponse().
+				WithStatus(http.StatusBadRequest).
+				WithBody(internalclient.ErrorResponse{Error: "invalid SSL status data"}).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+
+	sslStatus := internalclient.SSLStatusUpdateRequest{
+		Status: "",
+	}
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid SSL status data")
+}
+
+func TestWebsitesClient_UpdateSSLStatusInternal_NotFound(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodPost)
+			testutil.VerifyPath(t, r, "/internal/websites/nonexistent.example.com/ssl-status")
+
+			testutil.NewJSONResponse().
+				WithStatus(http.StatusNotFound).
+				WithBody(internalclient.ErrorResponse{Error: "website not found"}).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken())
+	require.NoError(t, err)
+
+	sslStatus := internalclient.SSLStatusUpdateRequest{
+		Status: "valid",
+	}
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "nonexistent.example.com", "secret123", sslStatus)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "website not found")
+}
