@@ -1,3 +1,9 @@
+## 0.1.22 (2026-03-22)
+
+### Fixes
+
+- expose SSLStatusUpdateRequest type to public API
+
 ## 0.1.21 (2026-03-22)
 
 ### Features
