@@ -53,7 +53,7 @@ func TestWebsitesService_List_RetryOn500(t *testing.T) {
 				return &client.GetApiWebsitesResponse{
 					Body:         []byte("{}"),
 					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-					JSON200:      &client.WebsiteItemResponse{Data: expectedItem},
+					JSON200:      &client.WebsiteItemResponse{Data: []client.WebsiteItem{expectedItem}},
 				}, nil
 			}).
 			Once()
@@ -120,7 +120,7 @@ func TestWebsitesService_List_RetryOn502(t *testing.T) {
 			Return(&client.GetApiWebsitesResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-				JSON200:      &client.WebsiteItemResponse{Data: expectedItem},
+				JSON200:      &client.WebsiteItemResponse{Data: []client.WebsiteItem{expectedItem}},
 			}, nil).
 			Once()
 

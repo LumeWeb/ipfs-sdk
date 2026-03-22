@@ -253,8 +253,8 @@ type WebsiteItem struct {
 
 // WebsiteItemResponse defines model for WebsiteItemResponse.
 type WebsiteItemResponse struct {
-	Data  WebsiteItem `json:"data"`
-	Total int         `json:"total"`
+	Data  []WebsiteItem `json:"data"`
+	Total int           `json:"total"`
 }
 
 // WebsiteRequest defines model for WebsiteRequest.

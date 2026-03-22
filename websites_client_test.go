@@ -37,7 +37,7 @@ func TestWebsitesClient_List_Success(t *testing.T) {
 
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusOK).
-				WithBody(internalclient.WebsiteItemResponse{Data: expectedItem}).
+				WithBody(internalclient.WebsiteItemResponse{Data: []internalclient.WebsiteItem{expectedItem}}).
 				Write(t, w)
 		},
 	})
