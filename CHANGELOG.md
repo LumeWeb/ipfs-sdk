@@ -1,3 +1,10 @@
+## 0.1.24 (2026-03-22)
+
+### Features
+
+- add CreateWithOptions for dns_hosting_enabled support
+- add UpdateWithOptions method for architectural consistency
+
 ## 0.1.23 (2026-03-22)
 
 ### Fixes
