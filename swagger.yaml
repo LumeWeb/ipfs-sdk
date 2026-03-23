@@ -536,7 +536,6 @@ components:
       - domain
       - target_type
       - target_hash
-      - dns_hosting_enabled
       type: object
     WebsiteResponse:
       additionalProperties: false
@@ -2217,6 +2216,12 @@ paths:
         in: path
         name: name
         required: true
+        schema:
+          type: string
+      - description: 'Whether to verify routing through the IPFS network. 1 = verify
+          (queries DHT), 0 = local only. Default: 0'
+        in: query
+        name: check_routing
         schema:
           type: string
       responses:
