@@ -16,6 +16,7 @@ type WebsiteItem = internalclient.WebsiteItem
 type WebsiteItemResponse = internalclient.WebsiteItemResponse
 type WebsiteValidateResponse = internalclient.WebsiteValidateResponse
 type GatewayWebsiteResponse = internalclient.GatewayWebsiteResponse
+type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
 type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
 
 // WebsitesConfig holds configuration for Websites service operations
@@ -59,6 +60,8 @@ type WebsitesClientWithResponsesInterface interface {
 	GetApiWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesDomainSslStatusResponse, error)
 	PostApiWebsitesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdValidateResponse, error)
 	PostInternalWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, body internalclient.SSLStatusUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalWebsitesDomainSslStatusResponse, error)
+	GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainResponse, error)
+	GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainStatusResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -98,6 +101,15 @@ func (a *internalClientToWebsitesAdapter) PostInternalWebsitesDomainSslStatusWit
 	return a.client.PostInternalWebsitesDomainSslStatusWithResponse(ctx, domain, body, reqEditors...)
 }
 
+func (a *internalClientToWebsitesAdapter) GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainResponse, error) {
+	return a.client.GetInternalWebsitesDomainWithResponse(ctx, domain, reqEditors...)
+}
+
+func (a *internalClientToWebsitesAdapter) GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainStatusResponse, error) {
+	return a.client.GetInternalWebsitesDomainStatusWithResponse(ctx, domain, reqEditors...)
+
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -119,11 +131,14 @@ type WebsitesService interface {
 
 	// SSL status
 	GetSSLStatus(ctx context.Context, domain string) (*WebsiteResponse, error)
-	// SSL status update via internal API (Caddy webhook)
-	// Requires X-Gateway-Secret header for authentication
-	UpdateSSLStatusInternal(ctx context.Context, domain string, gatewaySecret string, sslStatus SSLStatusUpdateRequest) error
 
-	// Polling/wait methods
+	// Internal endpoints (require gateway secret)
+	// Updates SSL certificate status via the internal API endpoint (Caddy webhook)
+	UpdateSSLStatusInternal(ctx context.Context, domain string, sslStatus SSLStatusUpdateRequest) error
+	// Gets website configuration for gateway content serving
+	GetGatewayWebsite(ctx context.Context, domain string) (*GatewayWebsiteResponse, error)
+	// Gets website status for gateway monitoring
+	GetGatewayWebsiteStatus(ctx context.Context, domain string) (*GatewayWebsiteStatusResponse, error)
 	// WaitForSSLStatusReady polls SSL status until it reaches ready or failed state
 	// Suitable for: SSL certificate provisioning, ACME challenge completion, timeout detection
 	WaitForSSLStatusReady(ctx context.Context, domain string, opts ...httputil.PollOption) (string, error)
@@ -354,24 +369,74 @@ func (s *websitesService) ValidateDNS(ctx context.Context, id string) (*WebsiteV
 
 // UpdateSSLStatusInternal updates SSL certificate status via the internal API endpoint.
 // This is used by Caddy webhooks to report SSL certificate issuance or updates.
-// The gatewaySecret parameter is added as the X-Gateway-Secret header for authentication.
-func (s *websitesService) UpdateSSLStatusInternal(ctx context.Context, domain string, gatewaySecret string, sslStatus SSLStatusUpdateRequest) error {
+// Gateway authentication (X-Gateway-Secret header) is handled automatically by the client.
+func (s *websitesService) UpdateSSLStatusInternal(ctx context.Context, domain string, sslStatus SSLStatusUpdateRequest) error {
 	return httputil.RetryContext(ctx, s.config.Retry, func() error {
-		// Create request editor to add X-Gateway-Secret header
-		reqEditor := func(ctx context.Context, req *http.Request) error {
-			if gatewaySecret != "" {
-				req.Header.Set("X-Gateway-Secret", gatewaySecret)
-			}
-			return nil
-		}
-
-		resp, err := s.client.PostInternalWebsitesDomainSslStatusWithResponse(ctx, domain, sslStatus, reqEditor)
+		resp, err := s.client.PostInternalWebsitesDomainSslStatusWithResponse(ctx, domain, sslStatus)
 		if err != nil {
 			return err
 		}
 
 		return handleResponse(resp.StatusCode(), resp.Body, OpUpdateSSLStatusInternal, []int{http.StatusOK, http.StatusNoContent})
 	})
+}
+
+// GetGatewayWebsite retrieves website configuration for gateway content serving.
+// Gateway authentication (X-Gateway-Secret header) is handled automatically by the client.
+func (s *websitesService) GetGatewayWebsite(ctx context.Context, domain string) (*GatewayWebsiteResponse, error) {
+	var result *GatewayWebsiteResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetInternalWebsitesDomainWithResponse(ctx, domain)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetGatewayWebsite, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpGetGatewayWebsite) + " no response data for domain " + domain)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetGatewayWebsiteStatus retrieves website status for gateway monitoring.
+// Gateway authentication (X-Gateway-Secret header) is handled automatically by the client.
+func (s *websitesService) GetGatewayWebsiteStatus(ctx context.Context, domain string) (*GatewayWebsiteStatusResponse, error) {
+	var result *GatewayWebsiteStatusResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetInternalWebsitesDomainStatusWithResponse(ctx, domain)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetGatewayWebsiteStatus, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpGetGatewayWebsiteStatus) + " no response data for domain " + domain)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // WaitForSSLStatusReady polls SSL status until it reaches ready or failed state.

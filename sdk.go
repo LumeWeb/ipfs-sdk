@@ -33,6 +33,7 @@ type Client struct {
 	httpClient    *http.Client
 	baseURL       string
 	bearerToken   string
+	gatewaySecret string
 	internalGen   *internalclient.ClientWithResponses
 	genClientOpts internalclient.ClientOption
 	retry         httputil.RetryConfig
@@ -81,6 +82,27 @@ func WithHostOverride(host, target string) ClientOption {
 			Host:   host,
 			Target: target,
 		}
+	}
+}
+
+// WithGatewaySecret sets the gateway secret for internal API authentication.
+// This secret is required for the X-Gateway-Secret header on internal endpoints.
+//
+// Internal endpoints include:
+//   - GET /internal/websites/{domain}
+//   - GET /internal/websites/{domain}/status
+//   - POST /internal/websites/{domain}/ssl-status
+//
+// Example:
+//
+//	client, err := ipfs.NewClient(
+//	    "https://api.example.com",
+//	    "token",
+//	    ipfs.WithGatewaySecret("my-gateway-secret"),
+//	)
+func WithGatewaySecret(secret string) ClientOption {
+	return func(c *Client) {
+		c.gatewaySecret = secret
 	}
 }
 
@@ -159,7 +181,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		return nil
 	})
 
-	// Create internal generated client
+	// Create internal generated client (will be rebuilt after client options are applied)
 	internalGen, err := internalclient.NewClientWithResponses(normalizedURL, requestEditor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create internal client: %w", err)
@@ -181,7 +203,24 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		opt(c)
 	}
 
-	// Create internal generated client
+	// Rebuild internalGen with gateway secret support now that client is fully constructed
+	// Create combined request editor with both JWT and gateway secret
+	combinedRequestEditor := internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		if bearerToken != "" {
+			req.Header.Set("Authorization", "Bearer "+bearerToken)
+		}
+		// Add gateway secret for internal endpoints
+		if strings.HasPrefix(req.URL.Path, "/internal/") && c.gatewaySecret != "" {
+			req.Header.Set("X-Gateway-Secret", c.gatewaySecret)
+		}
+		return nil
+	})
+
+	internalGen, err = internalclient.NewClientWithResponses(normalizedURL, combinedRequestEditor)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create internal client: %w", err)
+	}
+
 	// If host override is configured, use custom HTTP client with host override round tripper
 	if c.hostOverride != nil {
 		// Create custom transport with host override
@@ -193,7 +232,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		httpClient.Transport = customTransport
 
 		// Create internal generated client with custom HTTP client
-		internalGen, err = internalclient.NewClientWithResponses(normalizedURL, requestEditor, internalclient.WithHTTPClient(httpClient))
+		internalGen, err = internalclient.NewClientWithResponses(normalizedURL, combinedRequestEditor, internalclient.WithHTTPClient(httpClient))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create internal client with host override: %w", err)
 		}
@@ -290,6 +329,10 @@ func (c *Client) SetBearerToken(token string) error {
 	c.genClientOpts = internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		// Add gateway secret for internal endpoints
+		if strings.HasPrefix(req.URL.Path, "/internal/") && c.gatewaySecret != "" {
+			req.Header.Set("X-Gateway-Secret", c.gatewaySecret)
 		}
 		return nil
 	})
