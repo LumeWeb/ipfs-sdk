@@ -1,4 +1,4 @@
-module go.lumeweb.com/ipfs-sdk // v0.1.26
+module go.lumeweb.com/ipfs-sdk // v0.1.27
 
 go 1.26.0
 

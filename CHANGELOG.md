@@ -1,3 +1,9 @@
+## 0.1.27 (2026-03-23)
+
+### Fixes
+
+- WaitForIPNSResolution CID comparison handles both path and plain CID formats
+
 ## 0.1.26 (2026-03-23)
 
 ### Features
