@@ -8,6 +8,9 @@ import (
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+
+	"github.com/ipfs/boxo/path"
+	"github.com/ipfs/go-cid"
 )
 
 // Type aliases for IPNS types from generated client
@@ -289,10 +292,40 @@ func (s *ipnsService) WaitForIPNSResolution(ctx context.Context, name string, ex
 			return false, nil, fmt.Errorf("failed to resolve IPNS name %s: %w", name, err)
 		}
 
-		if resolveResponse.Value == expectedCID {
+		// CID-aware comparison to handle both /ipfs/... and plain CID formats
+		var resolvedCid cid.Cid
+
+		// Try parsing as a path first (handles /ipfs/... format)
+		resolvedPath, err := path.NewPath(resolveResponse.Value)
+		if err == nil {
+			// Try to convert to immutable path and get the root CID
+			resolvedPathImmutable, err := path.NewImmutablePath(resolvedPath)
+			if err == nil {
+				rootCid := resolvedPathImmutable.RootCid()
+				if rootCid != cid.Undef {
+					resolvedCid = rootCid
+				}
+			}
+		}
+
+		// If path parsing failed or no CID found, try decoding directly (handles plain CID format)
+		if resolvedCid == cid.Undef {
+			resolvedCid, err = cid.Decode(resolveResponse.Value)
+			if err != nil {
+				return false, nil, fmt.Errorf("failed to resolve CID %s: %w", resolveResponse.Value, err)
+			}
+		}
+
+		// Parse expected CID
+		expectedCid, err := cid.Decode(expectedCID)
+		if err != nil {
+			return false, nil, fmt.Errorf("failed to decode expected CID %s: %w", expectedCID, err)
+		}
+
+		if resolvedCid.Equals(expectedCid) {
 			return true, resolveResponse, nil
 		}
-		
+
 		return false, nil, nil
 	})
 
