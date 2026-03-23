@@ -1,3 +1,9 @@
+## 0.1.25 (2026-03-23)
+
+### Fixes
+
+- update swagger spec and regenerate client code
+
 ## 0.1.24 (2026-03-22)
 
 ### Features
