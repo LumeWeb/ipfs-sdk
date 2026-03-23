@@ -562,7 +562,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_Success(t *testing.T) {
 			Once()
 
 		service := NewWebsitesService(mockClient)
-		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 		require.NoError(t, err)
 	})
@@ -586,7 +586,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
 			Once()
 
 		service := NewWebsitesService(mockClient)
-		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid SSL status data")
@@ -609,7 +609,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
 			Once()
 
 		service := NewWebsitesService(mockClient)
-		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "website not found")
@@ -634,7 +634,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_Unauthorized(t *testing.T) {
 			Once()
 
 		service := NewWebsitesService(mockClient)
-		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", "wrong-secret", sslStatus)
+		err := service.UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unauthorized")

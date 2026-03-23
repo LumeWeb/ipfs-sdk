@@ -42,6 +42,8 @@ const (
 	OpValidateWebsite
 	OpGetSSLStatus
 	OpUpdateSSLStatusInternal
+	OpGetGatewayWebsite
+	OpGetGatewayWebsiteStatus
 
 	// Pinning operations
 	OpListPins
@@ -83,6 +85,8 @@ var operationString = map[int]string{
 	OpValidateWebsite:          "validate website",
 	OpGetSSLStatus:             "get SSL status",
 	OpUpdateSSLStatusInternal:  "update SSL status internal",
+	OpGetGatewayWebsite:        "get gateway website",
+	OpGetGatewayWebsiteStatus:  "get gateway website status",
 
 	// Pinning operations
 	OpListPins:  "list pins",

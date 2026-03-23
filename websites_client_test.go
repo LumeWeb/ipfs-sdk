@@ -43,7 +43,7 @@ func TestWebsitesClient_List_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().List(context.Background())
 
@@ -95,7 +95,7 @@ func TestWebsitesClient_Get_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().Get(context.Background(), "1")
 
@@ -126,7 +126,7 @@ func TestWebsitesClient_Create_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().Create(context.Background(), "example.com", "QmTest", "ipfs")
 
@@ -156,7 +156,7 @@ func TestWebsitesClient_Update_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().Update(context.Background(), "1", "example.com", "QmUpdated", "ipfs")
 
@@ -176,7 +176,7 @@ func TestWebsitesClient_Delete_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	err = client.Websites().Delete(context.Background(), "1")
 
@@ -204,7 +204,7 @@ func TestWebsitesClient_GetSSLStatus_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().GetSSLStatus(context.Background(), "example.com")
 
@@ -231,7 +231,7 @@ func TestWebsitesClient_ValidateDNS_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().ValidateDNS(context.Background(), "1")
 
@@ -254,7 +254,7 @@ func TestWebsitesClient_ValidateDNS_NotFound(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 	result, err := client.Websites().ValidateDNS(context.Background(), "999")
 
@@ -275,13 +275,13 @@ func TestWebsitesClient_UpdateSSLStatusInternal_Success(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 
 	sslStatus := internalclient.SSLStatusUpdateRequest{
 		Status: "valid",
 	}
-	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 	require.NoError(t, err)
 }
@@ -298,14 +298,14 @@ func TestWebsitesClient_UpdateSSLStatusInternal_SuccessWithNoContent(t *testing.
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret456"))
 	require.NoError(t, err)
 
 	sslStatus := internalclient.SSLStatusUpdateRequest{
 		Status: "valid",
 		Error:  nil,
 	}
-	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "secret456", sslStatus)
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 	require.NoError(t, err)
 }
@@ -324,13 +324,13 @@ func TestWebsitesClient_UpdateSSLStatusInternal_Unauthorized(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 
 	sslStatus := internalclient.SSLStatusUpdateRequest{
 		Status: "valid",
 	}
-	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "wrong-secret", sslStatus)
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unauthorized")
@@ -350,13 +350,13 @@ func TestWebsitesClient_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 
 	sslStatus := internalclient.SSLStatusUpdateRequest{
 		Status: "",
 	}
-	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", "secret123", sslStatus)
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "example.com", sslStatus)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid SSL status data")
@@ -376,14 +376,76 @@ func TestWebsitesClient_UpdateSSLStatusInternal_NotFound(t *testing.T) {
 	})
 	defer server.Close()
 
-	client, err := NewClient(server.URL, getTestToken())
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
 	require.NoError(t, err)
 
 	sslStatus := internalclient.SSLStatusUpdateRequest{
 		Status: "valid",
 	}
-	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "nonexistent.example.com", "secret123", sslStatus)
+	err = client.Websites().UpdateSSLStatusInternal(context.Background(), "nonexistent.example.com", sslStatus)
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "website not found")
 }
+
+func TestWebsitesClient_GetGatewayWebsite_Success(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodGet)
+			testutil.VerifyPath(t, r, "/internal/websites/example.com")
+			testutil.VerifySecret(t, r, "secret123")
+
+			testutil.NewJSONResponse().
+				WithBody(internalclient.GatewayWebsiteResponse{
+					Domain:     "example.com",
+					TargetType: "ipfs",
+					TargetHash: "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+					Status:     "active",
+				}).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret123"))
+	require.NoError(t, err)
+
+	website, err := client.Websites().GetGatewayWebsite(context.Background(), "example.com")
+
+	require.NoError(t, err)
+	require.Equal(t, "example.com", website.Domain)
+	require.Equal(t, "ipfs", website.TargetType)
+	require.Equal(t, "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi", website.TargetHash)
+	require.Equal(t, "active", website.Status)
+}
+
+
+func TestWebsitesClient_GetGatewayWebsiteStatus_Success(t *testing.T) {
+	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			testutil.VerifyMethod(t, r, http.MethodGet)
+			testutil.VerifyPath(t, r, "/internal/websites/example.com/status")
+			testutil.VerifySecret(t, r, "secret456")
+
+			testutil.NewJSONResponse().
+				WithBody(internalclient.GatewayWebsiteStatusResponse{
+					Domain:   "example.com",
+					Status:   "active",
+					IsBroken: false,
+				}).
+				Write(t, w)
+		},
+	})
+	defer server.Close()
+
+	client, err := NewClient(server.URL, getTestToken(), WithGatewaySecret("secret456"))
+	require.NoError(t, err)
+
+	status, err := client.Websites().GetGatewayWebsiteStatus(context.Background(), "example.com")
+
+	require.NoError(t, err)
+	require.Equal(t, "example.com", status.Domain)
+	require.Equal(t, "active", status.Status)
+	require.Equal(t, false, status.IsBroken)
+}
+
