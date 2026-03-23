@@ -246,7 +246,7 @@ func (s *ipnsService) Resolve(ctx context.Context, name string) (*IPNSResolveRes
 	var result *IPNSResolveResponse
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.GetApiIpnsResolveNameWithResponse(ctx, name)
+		resp, err := s.client.GetApiIpnsResolveNameWithResponse(ctx, name, nil)
 		if err != nil {
 			return err
 		}

@@ -15,7 +15,7 @@ type IPNSClientWithResponsesInterface interface {
 	DeleteApiIpnsKeysIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiIpnsKeysIdResponse, error)
 	PostApiIpnsPublishWithResponse(ctx context.Context, body internalclient.IPNSPublishRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsPublishResponse, error)
 	PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsRepublishResponse, error)
-	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsResolveNameResponse, error)
+	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *internalclient.GetApiIpnsResolveNameParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsResolveNameResponse, error)
 }
 
 // internalClientToIPNSAdapter adapts internalclient.ClientWithResponses to IPNSClientWithResponsesInterface
@@ -47,8 +47,8 @@ func (a *internalClientToIPNSAdapter) PostApiIpnsRepublishWithResponse(ctx conte
 	return a.client.PostApiIpnsRepublishWithResponse(ctx, reqEditors...)
 }
 
-func (a *internalClientToIPNSAdapter) GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsResolveNameResponse, error) {
-	return a.client.GetApiIpnsResolveNameWithResponse(ctx, name, reqEditors...)
+func (a *internalClientToIPNSAdapter) GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *internalclient.GetApiIpnsResolveNameParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsResolveNameResponse, error) {
+	return a.client.GetApiIpnsResolveNameWithResponse(ctx, name, params, reqEditors...)
 }
 
 // ConvertClientToIPNS converts a ClientWithResponses to IPNSClientWithResponsesInterface

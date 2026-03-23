@@ -263,7 +263,7 @@ func TestIPNSService_Resolve_Success(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetApiIpnsResolveNameWithResponse(mock.Anything, "test.ipns").
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "test.ipns", mock.Anything).
 			Return(&client.GetApiIpnsResolveNameResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
@@ -288,7 +288,7 @@ func TestIPNSService_Resolve_RetryOnTimeout(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetApiIpnsResolveNameWithResponse(mock.Anything, "test.ipns").
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "test.ipns", mock.Anything).
 			Return(&client.GetApiIpnsResolveNameResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusGatewayTimeout},
@@ -296,7 +296,7 @@ func TestIPNSService_Resolve_RetryOnTimeout(t *testing.T) {
 			Once()
 
 		mockClient.EXPECT().
-			GetApiIpnsResolveNameWithResponse(mock.Anything, "test.ipns").
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "test.ipns", mock.Anything).
 			Return(&client.GetApiIpnsResolveNameResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
@@ -385,8 +385,8 @@ func TestIPNSService_WaitForIPNSResolution_Success(t *testing.T) {
 		callCount := 0
 
 		mockClient.EXPECT().
-			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com").
-			RunAndReturn(func(ctx context.Context, name string, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com", mock.Anything).
+			RunAndReturn(func(ctx context.Context, name string, _ *client.GetApiIpnsResolveNameParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
 				callCount++
 				if callCount == 1 {
 					return &client.GetApiIpnsResolveNameResponse{
@@ -422,8 +422,8 @@ func TestIPNSService_WaitForIPNSResolution_Timeout(t *testing.T) {
 	t.Run("times out when CID never resolves to expected value", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 		mockClient.EXPECT().
-			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com").
-			RunAndReturn(func(ctx context.Context, name string, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com", mock.Anything).
+			RunAndReturn(func(ctx context.Context, name string, _ *client.GetApiIpnsResolveNameParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
 				return &client.GetApiIpnsResolveNameResponse{
 					Body:         []byte("{}"),
 					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
@@ -448,8 +448,8 @@ func TestIPNSService_WaitForIPNSResolution_ErrorOnResponse(t *testing.T) {
 	t.Run("returns error when resolve API call fails", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 		mockClient.EXPECT().
-			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com").
-			RunAndReturn(func(ctx context.Context, name string, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
+			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com", mock.Anything).
+			RunAndReturn(func(ctx context.Context, name string, _ *client.GetApiIpnsResolveNameParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
 				return nil, assert.AnError
 			})
 

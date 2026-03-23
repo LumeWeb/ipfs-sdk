@@ -211,13 +211,13 @@ func TestWebsitesService_CreateWithOptions_DisableDNSHosting(t *testing.T) {
 			Domain:            "example.com",
 			TargetHash:        "QmTest",
 			TargetType:        "ipfs",
-			DnsHostingEnabled: false,
+			DnsHostingEnabled: new(bool),
 		})
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedWebsite.Id, result.Id)
-		assert.False(t, capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be false")
+		assert.False(t, *capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be false")
 	})
 }
 
@@ -245,18 +245,19 @@ func TestWebsitesService_CreateWithOptions_EnableDNSHosting(t *testing.T) {
 			}).
 			Once()
 
+		dnsHostingTrue := true
 		service := NewWebsitesService(mockClient)
 		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
 			Domain:            "example.com",
 			TargetHash:        "QmTest",
 			TargetType:        "ipfs",
-			DnsHostingEnabled: true,
+			DnsHostingEnabled: &dnsHostingTrue,
 		})
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedWebsite.Id, result.Id)
-		assert.True(t, capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be true")
+		assert.True(t, *capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be true")
 	})
 }
 
@@ -292,8 +293,8 @@ func TestWebsitesService_Create_CallsCreateWithOptions(t *testing.T) {
 		assert.Equal(t, "example.com", capturedReq.Domain)
 		assert.Equal(t, "QmTest", capturedReq.TargetHash)
 		assert.Equal(t, "ipfs", capturedReq.TargetType)
-		// DnsHostingEnabled should be default (false) - zero value for bool
-		assert.False(t, capturedReq.DnsHostingEnabled, "default dns_hosting_enabled should be false")
+		// DnsHostingEnabled should be nil when not specified
+		assert.Nil(t, capturedReq.DnsHostingEnabled, "default dns_hosting_enabled should be nil")
 	})
 }
 
@@ -347,13 +348,13 @@ func TestWebsitesService_UpdateWithOptions_DisableDNSHosting(t *testing.T) {
 			Domain:            "example.com",
 			TargetHash:        "QmTest",
 			TargetType:        "ipfs",
-			DnsHostingEnabled: false,
+			DnsHostingEnabled: new(bool),
 		})
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedWebsite.Id, result.Id)
-		assert.False(t, capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be false")
+		assert.False(t, *capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be false")
 	})
 }
 
@@ -386,13 +387,13 @@ func TestWebsitesService_UpdateWithOptions_EnableDNSHosting(t *testing.T) {
 			Domain:            "example.com",
 			TargetHash:        "QmTest",
 			TargetType:        "ipfs",
-			DnsHostingEnabled: true,
+			DnsHostingEnabled: &[]bool{true}[0],
 		})
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedWebsite.Id, result.Id)
-		assert.True(t, capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be true")
+		assert.True(t, *capturedReq.DnsHostingEnabled, "dns_hosting_enabled should be true")
 	})
 }
 
@@ -428,8 +429,8 @@ func TestWebsitesService_Update_CallsUpdateWithOptions(t *testing.T) {
 		assert.Equal(t, "example.com", capturedReq.Domain)
 		assert.Equal(t, "QmTest", capturedReq.TargetHash)
 		assert.Equal(t, "ipfs", capturedReq.TargetType)
-		// DnsHostingEnabled should be default (false) - zero value for bool
-		assert.False(t, capturedReq.DnsHostingEnabled, "default dns_hosting_enabled should be false")
+		// DnsHostingEnabled should be nil when not specified
+		assert.Nil(t, capturedReq.DnsHostingEnabled, "default dns_hosting_enabled should be nil")
 	})
 }
 

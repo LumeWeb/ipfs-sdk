@@ -259,7 +259,7 @@ type WebsiteItemResponse struct {
 
 // WebsiteRequest defines model for WebsiteRequest.
 type WebsiteRequest struct {
-	DnsHostingEnabled bool   `json:"dns_hosting_enabled"`
+	DnsHostingEnabled *bool  `json:"dns_hosting_enabled,omitempty"`
 	Domain            string `json:"domain"`
 	TargetHash        string `json:"target_hash"`
 	TargetType        string `json:"target_type"`
@@ -323,6 +323,12 @@ type ZoneResponse struct {
 	Status         string    `json:"status"`
 	UpdatedAt      time.Time `json:"updated_at"`
 	UserId         int       `json:"user_id"`
+}
+
+// GetApiIpnsResolveNameParams defines parameters for GetApiIpnsResolveName.
+type GetApiIpnsResolveNameParams struct {
+	// CheckRouting Whether to verify routing through the IPFS network. 1 = verify (queries DHT), 0 = local only. Default: 0
+	CheckRouting *string `form:"check_routing,omitempty" json:"check_routing,omitempty"`
 }
 
 // PostApiUploadMultipartBody defines parameters for PostApiUpload.
@@ -618,7 +624,7 @@ type ClientInterface interface {
 	PostApiIpnsRepublish(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiIpnsResolveName request
-	GetApiIpnsResolveName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetApiIpnsResolveName(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostApiUploadWithBody request with any body
 	PostApiUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1126,8 +1132,8 @@ func (c *Client) PostApiIpnsRepublish(ctx context.Context, reqEditors ...Request
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetApiIpnsResolveName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApiIpnsResolveNameRequest(c.Server, name)
+func (c *Client) GetApiIpnsResolveName(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiIpnsResolveNameRequest(c.Server, name, params)
 	if err != nil {
 		return nil, err
 	}
@@ -2465,7 +2471,7 @@ func NewPostApiIpnsRepublishRequest(server string) (*http.Request, error) {
 }
 
 // NewGetApiIpnsResolveNameRequest generates requests for GetApiIpnsResolveName
-func NewGetApiIpnsResolveNameRequest(server string, name string) (*http.Request, error) {
+func NewGetApiIpnsResolveNameRequest(server string, name string, params *GetApiIpnsResolveNameParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2488,6 +2494,28 @@ func NewGetApiIpnsResolveNameRequest(server string, name string) (*http.Request,
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.CheckRouting != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "check_routing", *params.CheckRouting, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -3800,7 +3828,7 @@ type ClientWithResponsesInterface interface {
 	PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostApiIpnsRepublishResponse, error)
 
 	// GetApiIpnsResolveNameWithResponse request
-	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error)
+	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error)
 
 	// PostApiUploadWithBodyWithResponse request with any body
 	PostApiUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiUploadResponse, error)
@@ -5584,8 +5612,8 @@ func (c *ClientWithResponses) PostApiIpnsRepublishWithResponse(ctx context.Conte
 }
 
 // GetApiIpnsResolveNameWithResponse request returning *GetApiIpnsResolveNameResponse
-func (c *ClientWithResponses) GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error) {
-	rsp, err := c.GetApiIpnsResolveName(ctx, name, reqEditors...)
+func (c *ClientWithResponses) GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error) {
+	rsp, err := c.GetApiIpnsResolveName(ctx, name, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
