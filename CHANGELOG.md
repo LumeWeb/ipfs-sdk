@@ -1,3 +1,9 @@
+## 0.1.26 (2026-03-23)
+
+### Features
+
+- add client-level gateway secret authentication for internal APIs
+
 ## 0.1.25 (2026-03-23)
 
 ### Fixes
