@@ -383,6 +383,8 @@ func TestIPNSService_WaitForIPNSResolution_Success(t *testing.T) {
 	t.Run("polls until IPNS resolves to expected CID", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 		callCount := 0
+		oldCid := "bafybeicgtzgrtbzlpznm5jcjmvsdlgpsrev7jxsknzzdbpnaqc4ky2hrlu"
+		expectedCid := "bafybeifx7yebllhouqoa5a32rsxyg7mf36d2j6co3t6u7hf3jfdw2kfqpy"
 
 		mockClient.EXPECT().
 			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com", mock.Anything).
@@ -394,7 +396,7 @@ func TestIPNSService_WaitForIPNSResolution_Success(t *testing.T) {
 						HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 						JSON200: &client.IPNSResolveResponse{
 							Name:  "example.com",
-							Value: "QmOldCid",
+							Value: oldCid,
 						},
 					}, nil
 				}
@@ -403,17 +405,17 @@ func TestIPNSService_WaitForIPNSResolution_Success(t *testing.T) {
 					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 					JSON200: &client.IPNSResolveResponse{
 						Name:  "example.com",
-						Value: "QmExpectedCid",
+						Value: expectedCid,
 					},
 				}, nil
 			}).
 			Times(2)
 
 		service := NewIPNSService(mockClient)
-		result, err := service.WaitForIPNSResolution(context.Background(), "example.com", "QmExpectedCid")
+		result, err := service.WaitForIPNSResolution(context.Background(), "example.com", expectedCid)
 
 		require.NoError(t, err)
-		assert.Equal(t, "QmExpectedCid", result.Value)
+		assert.Equal(t, expectedCid, result.Value)
 		assert.Equal(t, 2, callCount)
 	})
 }
@@ -421,6 +423,9 @@ func TestIPNSService_WaitForIPNSResolution_Success(t *testing.T) {
 func TestIPNSService_WaitForIPNSResolution_Timeout(t *testing.T) {
 	t.Run("times out when CID never resolves to expected value", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		oldCid := "bafybeicgtzgrtbzlpznm5jcjmvsdlgpsrev7jxsknzzdbpnaqc4ky2hrlu"
+		expectedCid := "bafybeifx7yebllhouqoa5a32rsxyg7mf36d2j6co3t6u7hf3jfdw2kfqpy"
+
 		mockClient.EXPECT().
 			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com", mock.Anything).
 			RunAndReturn(func(ctx context.Context, name string, _ *client.GetApiIpnsResolveNameParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
@@ -429,13 +434,13 @@ func TestIPNSService_WaitForIPNSResolution_Timeout(t *testing.T) {
 					HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 					JSON200: &client.IPNSResolveResponse{
 						Name:  "example.com",
-						Value: "QmOldCid",
+						Value: oldCid,
 					},
 				}, nil
 			}).Maybe()
 
 		service := NewIPNSService(mockClient)
-		_, err := service.WaitForIPNSResolution(context.Background(), "example.com", "QmExpectedCid",
+		_, err := service.WaitForIPNSResolution(context.Background(), "example.com", expectedCid,
 			httputil.WithPollInterval(10*time.Millisecond),
 			httputil.WithPollTimeout(100*time.Millisecond))
 
@@ -447,6 +452,8 @@ func TestIPNSService_WaitForIPNSResolution_Timeout(t *testing.T) {
 func TestIPNSService_WaitForIPNSResolution_ErrorOnResponse(t *testing.T) {
 	t.Run("returns error when resolve API call fails", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		expectedCid := "bafybeifx7yebllhouqoa5a32rsxyg7mf36d2j6co3t6u7hf3jfdw2kfqpy"
+
 		mockClient.EXPECT().
 			GetApiIpnsResolveNameWithResponse(mock.Anything, "example.com", mock.Anything).
 			RunAndReturn(func(ctx context.Context, name string, _ *client.GetApiIpnsResolveNameParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsResolveNameResponse, error) {
@@ -454,7 +461,7 @@ func TestIPNSService_WaitForIPNSResolution_ErrorOnResponse(t *testing.T) {
 			})
 
 		service := NewIPNSService(mockClient)
-		_, err := service.WaitForIPNSResolution(context.Background(), "example.com", "QmExpectedCid",
+		_, err := service.WaitForIPNSResolution(context.Background(), "example.com", expectedCid,
 			httputil.WithPollInterval(10*time.Millisecond),
 			httputil.WithPollTimeout(100*time.Millisecond))
 
