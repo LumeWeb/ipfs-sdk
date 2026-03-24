@@ -1,3 +1,9 @@
+## 0.1.28 (2026-03-24)
+
+### Fixes
+
+- update swagger.yaml and fix array response handling
+
 ## 0.1.27 (2026-03-23)
 
 ### Fixes
