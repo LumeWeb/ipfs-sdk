@@ -71,8 +71,8 @@ type FileManagerItem struct {
 
 // FileManagerItemResponse defines model for FileManagerItemResponse.
 type FileManagerItemResponse struct {
-	Data  FileManagerItem `json:"data"`
-	Total int             `json:"total"`
+	Data  []FileManagerItem `json:"data"`
+	Total int               `json:"total"`
 }
 
 // GatewayWebsiteResponse defines model for GatewayWebsiteResponse.
@@ -94,6 +94,21 @@ type GatewayWebsiteStatusResponse struct {
 // GetBlockMetaBatchRequest defines model for GetBlockMetaBatchRequest.
 type GetBlockMetaBatchRequest struct {
 	Cid []string `json:"cid"`
+}
+
+// IPNSKeyListResponse defines model for IPNSKeyListResponse.
+type IPNSKeyListResponse struct {
+	Created  time.Time `json:"created"`
+	Id       int       `json:"id"`
+	IpnsName string    `json:"ipns_name"`
+	Name     string    `json:"name"`
+	PeerId   string    `json:"peer_id"`
+}
+
+// IPNSKeyListResponseResponse defines model for IPNSKeyListResponseResponse.
+type IPNSKeyListResponseResponse struct {
+	Data  []IPNSKeyListResponse `json:"data"`
+	Total int                   `json:"total"`
 }
 
 // IPNSKeyRequest defines model for IPNSKeyRequest.
@@ -4461,7 +4476,7 @@ func (r GetApiInfoResponse) StatusCode() int {
 type GetApiIpnsKeysResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]IPNSKeyResponse
+	JSON200      *IPNSKeyListResponseResponse
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -7134,7 +7149,7 @@ func ParseGetApiIpnsKeysResponse(rsp *http.Response) (*GetApiIpnsKeysResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []IPNSKeyResponse
+		var dest IPNSKeyListResponseResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

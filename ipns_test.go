@@ -26,9 +26,13 @@ func TestNewIPNSService(t *testing.T) {
 func TestIPNSService_ListKeys_Success(t *testing.T) {
 	t.Run("returns list of keys", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
-		expectedKeys := []client.IPNSKeyResponse{
-			{Id: 1, Name: "key1"},
-			{Id: 2, Name: "key2"},
+		expectedList := []client.IPNSKeyListResponse{
+			{Id: 1, Name: "key1", IpnsName: "key1"},
+			{Id: 2, Name: "key2", IpnsName: "key2"},
+		}
+		expectedResponse := &client.IPNSKeyListResponseResponse{
+			Data:  expectedList,
+			Total: len(expectedList),
 		}
 
 		mockClient.EXPECT().
@@ -36,7 +40,7 @@ func TestIPNSService_ListKeys_Success(t *testing.T) {
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-				JSON200:      &expectedKeys,
+				JSON200:      expectedResponse,
 			}, nil).
 			Once()
 
@@ -45,16 +49,20 @@ func TestIPNSService_ListKeys_Success(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Len(t, result, 2)
-		assert.Equal(t, expectedKeys[0].Id, result[0].Id)
-		assert.Equal(t, expectedKeys[1].Id, result[1].Id)
+		assert.Equal(t, 1, result[0].Id)
+		assert.Equal(t, 2, result[1].Id)
 	})
 }
 
 func TestIPNSService_ListKeys_RetryOn500(t *testing.T) {
 	t.Run("retries on 500 and succeeds", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
-		expectedKeys := []client.IPNSKeyResponse{
-			{Id: 1, Name: "key1"},
+		expectedList := []client.IPNSKeyListResponse{
+			{Id: 1, Name: "key1", IpnsName: "key1"},
+		}
+		expectedResponse := &client.IPNSKeyListResponseResponse{
+			Data:  expectedList,
+			Total: len(expectedList),
 		}
 
 		mockClient.EXPECT().
@@ -71,7 +79,7 @@ func TestIPNSService_ListKeys_RetryOn500(t *testing.T) {
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-				JSON200:      &expectedKeys,
+				JSON200:      expectedResponse,
 			}, nil).
 			Once()
 
@@ -108,8 +116,12 @@ func TestIPNSService_ListKeys_NoRetryOn400(t *testing.T) {
 func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
 	t.Run("retries on 502 bad gateway", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
-		expectedKeys := []client.IPNSKeyResponse{
-			{Id: 1, Name: "key1"},
+		expectedList := []client.IPNSKeyListResponse{
+			{Id: 1, Name: "key1", IpnsName: "key1"},
+		}
+		expectedResponse := &client.IPNSKeyListResponseResponse{
+			Data:  expectedList,
+			Total: len(expectedList),
 		}
 
 		mockClient.EXPECT().
@@ -125,7 +137,7 @@ func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
-				JSON200:      &expectedKeys,
+				JSON200:      expectedResponse,
 			}, nil).
 			Once()
 

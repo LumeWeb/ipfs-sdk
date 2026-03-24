@@ -11,6 +11,7 @@ import (
 
 	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 )
 
 // Type aliases for IPNS types from generated client
@@ -110,7 +111,17 @@ func (s *ipnsService) ListKeys(ctx context.Context) ([]IPNSKeyResponse, error) {
 			return nil
 		}
 
-		result = *resp.JSON200
+		// Convert IPNSKeyListResponse to IPNSKeyResponse
+		// (they have identical struct definitions, just different type names)
+		result = lo.Map(resp.JSON200.Data, func(item internalclient.IPNSKeyListResponse, _ int) internalclient.IPNSKeyResponse {
+			return internalclient.IPNSKeyResponse{
+				Created:  item.Created,
+				Id:       item.Id,
+				IpnsName: item.IpnsName,
+				Name:     item.Name,
+				PeerId:   item.PeerId,
+			}
+		})
 		return nil
 	})
 	if err != nil {
