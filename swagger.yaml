@@ -113,7 +113,9 @@ components:
       additionalProperties: false
       properties:
         data:
-          $ref: '#/components/schemas/FileManagerItem'
+          items:
+            $ref: '#/components/schemas/FileManagerItem'
+          type: array
         total:
           type: integer
       required:
@@ -162,6 +164,40 @@ components:
           type: array
       required:
       - cid
+      type: object
+    IPNSKeyListResponse:
+      additionalProperties: false
+      properties:
+        created:
+          format: date-time
+          type: string
+        id:
+          type: integer
+        ipns_name:
+          type: string
+        name:
+          type: string
+        peer_id:
+          type: string
+      required:
+      - id
+      - name
+      - ipns_name
+      - peer_id
+      - created
+      type: object
+    IPNSKeyListResponseResponse:
+      additionalProperties: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/IPNSKeyListResponse'
+          type: array
+        total:
+          type: integer
+      required:
+      - data
+      - total
       type: object
     IPNSKeyRequest:
       additionalProperties: false
@@ -1890,9 +1926,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/IPNSKeyResponse'
-                type: array
+                $ref: '#/components/schemas/IPNSKeyListResponseResponse'
           description: List of IPNS keys
         "400":
           content:
