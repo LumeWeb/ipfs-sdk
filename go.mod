@@ -8,6 +8,7 @@ require (
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/bdragon300/tusgo v0.1.2
 	github.com/docker/go-units v0.5.0
+	github.com/gammazero/workerpool v1.2.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/ipfs/boxo v0.37.0
 	github.com/ipfs/go-block-format v0.2.3
@@ -15,6 +16,7 @@ require (
 	github.com/ipfs/go-datastore v0.9.1
 	github.com/multiformats/go-multicodec v0.10.0
 	github.com/oapi-codegen/runtime v1.2.0
+	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tus/tusd/v2 v2.9.1
 	go.lumeweb.com/ipfs-content v0.1.8
@@ -97,7 +99,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
-	github.com/samber/lo v1.53.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.0 // indirect
 	github.com/speakeasy-api/openapi-overlay v0.10.2 // indirect

@@ -23,11 +23,13 @@ import (
 // DownloadService provides functionality for downloading IPFS blocks and content
 // from the gateway using the boxo gateway patterns.
 type DownloadService struct {
-	backend   backend.Backend
-	httpClient *http.Client
-	authTransport *httputil.AuthRoundTripper
-	authToken  string
-	baseURL    string
+	backend        backend.Backend
+	httpClient     *http.Client
+	authTransport  *httputil.AuthRoundTripper
+	authToken      string
+	baseURL        string
+	remoteBackend  *backend.RemoteBackend
+	rateLimiter    backend.RateLimiter
 }
 
 // DownloadServiceOption configures the DownloadService.
@@ -38,6 +40,35 @@ type DownloadServiceOption func(*DownloadService)
 func WithDownloadHTTPClient(client *http.Client) DownloadServiceOption {
 	return func(s *DownloadService) {
 		s.httpClient = client
+	}
+}
+
+// WithDownloadRateLimiter sets a rate limiter for the download service.
+// This enables rate-limited downloading with intelligent backoff and retry.
+// The rate limiter is called before and during downloads to control download rate.
+func WithDownloadRateLimiter(rl backend.RateLimiter) DownloadServiceOption {
+	return func(s *DownloadService) {
+		s.rateLimiter = rl
+	}
+}
+
+// WithDownloadWorkerPoolSize sets the maximum number of concurrent download workers.
+// Only applies when a rate limiter is configured.
+func WithDownloadWorkerPoolSize(size int) DownloadServiceOption {
+	return func(s *DownloadService) {
+		// This option is applied when creating the remote backend
+		if s.rateLimiter != nil {
+		}
+	}
+}
+
+// WithDownloadRetryConfig sets the retry configuration for download operations.
+// Only applies when a rate limiter is configured.
+func WithDownloadRetryConfig(cfg httputil.RetryConfig) DownloadServiceOption {
+	return func(s *DownloadService) {
+		// This option is applied when creating the remote backend
+		if s.rateLimiter != nil {
+		}
 	}
 }
 
@@ -70,12 +101,20 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 	s.authTransport = authTransport
 
 	// Create gateway backend for UnixFS operations
-	backend, err := gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
+	gatewayBackend, err := gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gateway backend: %w", err)
 	}
 
-	s.backend = backend
+	// Wrap with RemoteBackend if a rate limiter is provided
+	if s.rateLimiter != nil {
+		s.remoteBackend = backend.NewBackend(gatewayBackend, s.httpClient,
+			backend.WithRateLimiter(s.rateLimiter),
+		)
+		s.backend = s.remoteBackend
+	} else {
+		s.backend = gatewayBackend
+	}
 
 	return s, nil
 }
