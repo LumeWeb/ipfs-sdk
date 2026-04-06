@@ -1,3 +1,14 @@
+## 0.1.29 (2026-04-06)
+
+### Features
+
+- add rate limiting with worker pool and intelligent retry
+- enable download service configuration through client options
+
+### Fixes
+
+- eliminate worker pool resource leak on backend initialization
+
 ## 0.1.28 (2026-03-24)
 
 ### Fixes
