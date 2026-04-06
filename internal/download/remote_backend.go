@@ -84,12 +84,16 @@ func NewBackend(underlying gateway.IPFSBackend, httpClient *http.Client, opts ..
 		underlying:   underlying,
 		httpClient:   httpClient,
 		retryConfig:  httputil.DefaultRetryConfig(),
-		pool:         workerpool.New(10),
 		rateLimiter:  nil,
 	}
 
 	for _, opt := range opts {
 		opt(b)
+	}
+
+	// Create default pool only if not set by options
+	if b.pool == nil {
+		b.pool = workerpool.New(10)
 	}
 
 	return b
