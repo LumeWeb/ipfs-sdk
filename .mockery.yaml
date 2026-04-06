@@ -18,6 +18,17 @@ packages:
       pkgname: "mocks"
     interfaces:
       Backend: {}
+  go.lumeweb.com/ipfs-sdk/fs:
+    config:
+      dir: ./mocks
+      pkgname: "mocks"
+    interfaces:
+      File: {}
+      FileInfo: {}
+      Node: {}
+      DirEntry: {}
+      DirIterator: {}
+      Directory: {}
   go.lumeweb.com/ipfs-sdk/internal/testing:
     config:
       dir: ./internal/testing/mocks

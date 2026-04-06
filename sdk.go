@@ -38,6 +38,10 @@ type Client struct {
 	genClientOpts internalclient.ClientOption
 	retry         httputil.RetryConfig
 	hostOverride  *HostOverride
+	
+	// Download service configuration
+	downloadRateLimiter    RateLimiter
+	downloadOptions        []DownloadServiceOption
 }
 
 // ClientConfig holds configuration for the main SDK client
@@ -103,6 +107,46 @@ func WithHostOverride(host, target string) ClientOption {
 func WithGatewaySecret(secret string) ClientOption {
 	return func(c *Client) {
 		c.gatewaySecret = secret
+	}
+}
+
+// WithClientDownloadRateLimiter sets a rate limiter for all download operations at the client level.
+// This limiter is applied first when creating the download service and can be overridden by more specific download options.
+//
+// Example:
+//
+//	limiter := ipfs.RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+//	    // Your rate limiting logic here
+//	    return true, nil
+//	})
+//	client, err := ipfs.NewClient(
+//	    "https://api.example.com",
+//	    "token",
+//	    ipfs.WithClientDownloadRateLimiter(limiter),
+//	)
+func WithClientDownloadRateLimiter(limiter RateLimiter) ClientOption {
+	return func(c *Client) {
+		c.downloadRateLimiter = limiter
+	}
+}
+
+// WithDownloadOption adds a specific download service option to the global client configuration.
+// These options are applied in order after the WithDownloadRateLimiter, allowing for fine-grained control.
+//
+// Example:
+//
+//	client, err := ipfs.NewClient(
+//	    "https://api.example.com",
+//	    "token",
+//	    ipfs.WithDownloadRateLimiter(myLimiter), // Applied first, can be overridden
+//	    ipfs.WithDownloadOption(ipfs.WithDownloadWorkerPoolSize(5)),
+//	    ipfs.WithDownloadOption(ipfs.WithDownloadRetryConfig(retryConfig)),
+//	    // This would override the client-level limiter
+//	    ipfs.WithDownloadOption(ipfs.WithDownloadRateLimiter(differentLimiter)),
+//	)
+func WithDownloadOption(opt DownloadServiceOption) ClientOption {
+	return func(c *Client) {
+		c.downloadOptions = append(c.downloadOptions, opt)
 	}
 }
 
@@ -256,7 +300,14 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	}
 	c.upload = upload
 	
-	download, err := NewDownloadService(normalizedURL, bearerToken, WithDownloadHTTPClient(httpClient))
+	// Build download service options - apply rate limiter first, then other options
+	downloadOpts := []DownloadServiceOption{WithDownloadHTTPClient(httpClient)}
+	if c.downloadRateLimiter != nil {
+		downloadOpts = append(downloadOpts, WithDownloadRateLimiter(c.downloadRateLimiter))
+	}
+	downloadOpts = append(downloadOpts, c.downloadOptions...)
+	
+	download, err := NewDownloadService(normalizedURL, bearerToken, downloadOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create download service: %w", err)
 	}

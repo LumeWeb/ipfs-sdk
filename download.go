@@ -18,16 +18,49 @@ import (
 	"go.lumeweb.com/ipfs-content/dagnode"
 )
 
+// RateLimiter defines an interface for controlling download rate and availability.
+// Implementations check if a download should proceed and optionally enforce rate limits.
+type RateLimiter = backend.RateLimiter
+
+// RateLimiterFunc is a function type that implements RateLimiter.
+// This allows using simple functions as rate limiters without defining a type.
+type RateLimiterFunc = backend.RateLimiterFunc
+
+// RemoteBackendOption configures the remote backend for rate-limited downloads.
+// This is a re-export of the internal download.RemoteBackendOption.
+type RemoteBackendOption = backend.BackendOption
+
+// WithRemoteRateLimiter sets the rate limiter for the download backend.
+// This is a re-export of the internal download.WithRateLimiter.
+func WithRemoteRateLimiter(rl backend.RateLimiter) RemoteBackendOption {
+	return backend.WithRateLimiter(rl)
+}
+
+// WithRemoteWorkerPoolSize sets the maximum number of concurrent download workers.
+// This is a re-export of the internal download.WithWorkerPoolSize.
+func WithRemoteWorkerPoolSize(size int) RemoteBackendOption {
+	return backend.WithWorkerPoolSize(size)
+}
+
+// WithRemoteRetryConfig sets the retry configuration for download operations.
+// This is a re-export of the internal download.WithRetryConfig.
+func WithRemoteRetryConfig(cfg httputil.RetryConfig) RemoteBackendOption {
+	return backend.WithRetryConfig(cfg)
+}
+
 
 
 // DownloadService provides functionality for downloading IPFS blocks and content
 // from the gateway using the boxo gateway patterns.
 type DownloadService struct {
-	backend   backend.Backend
-	httpClient *http.Client
-	authTransport *httputil.AuthRoundTripper
-	authToken  string
-	baseURL    string
+	backend            backend.Backend
+	httpClient         *http.Client
+	authTransport      *httputil.AuthRoundTripper
+	authToken          string
+	baseURL            string
+	remoteBackend      *backend.RemoteBackend
+	rateLimiter        backend.RateLimiter
+	backendOptions     []backend.BackendOption
 }
 
 // DownloadServiceOption configures the DownloadService.
@@ -38,6 +71,31 @@ type DownloadServiceOption func(*DownloadService)
 func WithDownloadHTTPClient(client *http.Client) DownloadServiceOption {
 	return func(s *DownloadService) {
 		s.httpClient = client
+	}
+}
+
+// WithDownloadRateLimiter sets a rate limiter for the download service.
+// This enables rate-limited downloading with intelligent backoff and retry.
+// The rate limiter is called before and during downloads to control download rate.
+func WithDownloadRateLimiter(rl backend.RateLimiter) DownloadServiceOption {
+	return func(s *DownloadService) {
+		s.rateLimiter = rl
+	}
+}
+
+// WithDownloadWorkerPoolSize sets the maximum number of concurrent download workers.
+// Only applies when a rate limiter is configured.
+func WithDownloadWorkerPoolSize(size int) DownloadServiceOption {
+	return func(s *DownloadService) {
+		s.backendOptions = append(s.backendOptions, backend.WithWorkerPoolSize(size))
+	}
+}
+
+// WithDownloadRetryConfig sets the retry configuration for download operations.
+// Only applies when a rate limiter is configured.
+func WithDownloadRetryConfig(cfg httputil.RetryConfig) DownloadServiceOption {
+	return func(s *DownloadService) {
+		s.backendOptions = append(s.backendOptions, backend.WithRetryConfig(cfg))
 	}
 }
 
@@ -70,12 +128,22 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 	s.authTransport = authTransport
 
 	// Create gateway backend for UnixFS operations
-	backend, err := gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
+	gatewayBackend, err := gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gateway backend: %w", err)
 	}
 
-	s.backend = backend
+	// Wrap with RemoteBackend if a rate limiter is provided
+	if s.rateLimiter != nil {
+		// Build backend options with rate limiter and any additional options
+		opts := []backend.BackendOption{backend.WithRateLimiter(s.rateLimiter)}
+		opts = append(opts, s.backendOptions...)
+		
+		s.remoteBackend = backend.NewBackend(gatewayBackend, s.httpClient, opts...)
+		s.backend = s.remoteBackend
+	} else {
+		s.backend = gatewayBackend
+	}
 
 	return s, nil
 }
