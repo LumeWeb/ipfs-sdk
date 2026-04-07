@@ -1,3 +1,10 @@
+## 0.1.32 (2026-04-07)
+
+### Fixes
+
+- restore 429 string error detection lost in PR #45 refactor
+- expose ErrRateLimitExceeded error for rate limit detection
+
 ## 0.1.31 (2026-04-07)
 
 ### Features
