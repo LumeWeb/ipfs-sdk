@@ -20,10 +20,11 @@ import (
 
 // BlockMetaResponse defines model for BlockMetaResponse.
 type BlockMetaResponse struct {
-	BlockSize int      `json:"block_size"`
-	ChildCid  []string `json:"child_cid"`
-	Name      string   `json:"name"`
-	Type      int      `json:"type"`
+	BlockSize  int      `json:"block_size"`
+	ChildCid   []string `json:"child_cid"`
+	Name       string   `json:"name"`
+	Type       int      `json:"type"`
+	UnixfsSize int      `json:"unixfs_size"`
 }
 
 // BulkDeleteRequest defines model for BulkDeleteRequest.

@@ -13,10 +13,13 @@ components:
           type: string
         type:
           type: integer
+        unixfs_size:
+          type: integer
       required:
       - name
       - type
       - block_size
+      - unixfs_size
       - child_cid
       type: object
     BulkDeleteRequest:
