@@ -21,6 +21,7 @@ type RateLimitedBlockstore struct {
 	underlying blockstore.Blockstore
 	memory     blockstore.Blockstore
 	engine     *RateLimiterEngine
+	pool       *workerpool.WorkerPool
 	mu         sync.RWMutex
 }
 
@@ -52,6 +53,15 @@ func NewRateLimitedBlockstoreWithOptions(underlying blockstore.Blockstore, rateL
 		underlying: underlying,
 		memory:     newMemoryBlockstore(),
 		engine:     NewRateLimiterEngine(rateLimiter, pool, retryConfig),
+		pool:       pool,
+	}
+}
+
+// Stop terminates the worker pool and releases resources.
+// Must be called when the blockstore is no longer needed to prevent goroutine leaks.
+func (r *RateLimitedBlockstore) Stop() {
+	if r.pool != nil {
+		r.pool.Stop()
 	}
 }
 
