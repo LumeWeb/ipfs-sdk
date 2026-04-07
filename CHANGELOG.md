@@ -1,3 +1,9 @@
+## 0.1.30 (2026-04-07)
+
+### Fixes
+
+- rate limiter correctly retries on 429 errors from upstream components
+
 ## 0.1.29 (2026-04-06)
 
 ### Features
