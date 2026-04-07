@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/avast/retry-go/v4"
+	backend "go.lumeweb.com/ipfs-sdk/internal/download"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
@@ -99,6 +100,12 @@ var operationString = map[int]string{
 var (
 	// ErrUnauthorized is returned when authentication fails.
 	ErrUnauthorized = fmt.Errorf("unauthorized")
+
+	// ErrRateLimitExceeded is returned when a download rate limit is exceeded.
+	// This error is returned by download operations when the configured rate limiter
+	// denies a request due to too many concurrent operations or excessive bandwidth usage.
+	// Re-exported from internal/download package for error matching with errors.Is().
+	ErrRateLimitExceeded = backend.ErrRateLimitExceeded
 )
 
 // errorFactory is a helper for creating errors with optional wrapping.
