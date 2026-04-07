@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -155,6 +157,35 @@ func (b *RemoteBackend) wait(ctx context.Context, size int64) error {
 	}
 }
 
+// isHTTPStatusTooManyRequests checks if the error represents a 429 HTTP status.
+// It handles both gateway.ErrorStatusCode types and plain error strings from
+// upstream components like NewRemoteBlockstore that return strings like
+// "http error from remote block backend: 429 Too Many Requests".
+func isHTTPStatusTooManyRequests(err error) bool {
+	// Check if error is already a gateway.ErrorStatusCode
+	if httpErr, ok := err.(*gateway.ErrorStatusCode); ok {
+		return httpErr.StatusCode == http.StatusTooManyRequests
+	}
+
+	// Check if error is a plain error string matching HTTP error format from upstream
+	// Format: "http error from remote block backend: <status> <reason>"
+	errStr := err.Error()
+	const prefix = "http error from remote block backend: "
+
+	if strings.HasPrefix(errStr, prefix) {
+		statusText := strings.TrimSpace(strings.TrimPrefix(errStr, prefix))
+		// Extract status code from the beginning (e.g., "429 Too Many Requests" -> "429")
+		parts := strings.SplitN(statusText, " ", 2)
+		if len(parts) >= 1 {
+			if status, parseErr := strconv.Atoi(parts[0]); parseErr == nil {
+				return status == http.StatusTooManyRequests
+			}
+		}
+	}
+
+	return false
+}
+
 // executeWithRetry executes a function with retry logic and rate limiting.
 // It handles 429 status codes by checking rate limits and waiting intelligently.
 func (b *RemoteBackend) executeWithRetry(ctx context.Context, fn func() error, size int64) error {
@@ -177,13 +208,10 @@ func (b *RemoteBackend) executeWithRetry(ctx context.Context, fn func() error, s
 		retry.RetryIf(func(err error) bool {
 			// Check if error is a rate limit (429) error
 			// Allow retry for 429, but also handle it specially
-			// gateway.ErrorStatusCode is the type used for HTTP status code errors
-			if httpErr, ok := err.(*gateway.ErrorStatusCode); ok {
-				if httpErr.StatusCode == http.StatusTooManyRequests {
-					// After a 429, wait for rate limit before retrying
-					_ = b.wait(ctx, size)
-					return true
-				}
+			if isHTTPStatusTooManyRequests(err) {
+				// After a 429, wait for rate limit before retrying
+				_ = b.wait(ctx, size)
+				return true
 			}
 			// Don't retry for other errors
 			return false
