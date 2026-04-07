@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -97,6 +99,35 @@ func (e *RateLimiterEngine) wait(ctx context.Context, size int64) error {
 	return nil
 }
 
+// isHTTPStatusTooManyRequests checks if the error represents a 429 HTTP status.
+// It handles both gateway.ErrorStatusCode types and plain error strings from
+// upstream components like NewRemoteBlockstore that return strings like
+// "http error from remote block backend: 429 Too Many Requests".
+func isHTTPStatusTooManyRequests(err error) bool {
+	// Check if error is already a gateway.ErrorStatusCode
+	if httpErr, ok := err.(*gateway.ErrorStatusCode); ok {
+		return httpErr.StatusCode == http.StatusTooManyRequests
+	}
+
+	// Check if error is a plain error string matching HTTP error format from upstream
+	// Format: "http error from remote block backend: <status> <reason>"
+	errStr := err.Error()
+	const prefix = "http error from remote block backend: "
+
+	if strings.HasPrefix(errStr, prefix) {
+		statusText := strings.TrimSpace(strings.TrimPrefix(errStr, prefix))
+		// Extract status code from the beginning (e.g., "429 Too Many Requests" -> "429")
+		parts := strings.SplitN(statusText, " ", 2)
+		if len(parts) >= 1 {
+			if status, parseErr := strconv.Atoi(parts[0]); parseErr == nil {
+				return status == http.StatusTooManyRequests
+			}
+		}
+	}
+
+	return false
+}
+
 // ExecuteWithRetry executes a function with retry logic and rate limiting.
 // It handles 429 status codes by checking rate limits and waiting intelligently.
 func (e *RateLimiterEngine) ExecuteWithRetry(ctx context.Context, fn func() error, size int64) error {
@@ -122,15 +153,12 @@ func (e *RateLimiterEngine) ExecuteWithRetry(ctx context.Context, fn func() erro
 		retry.MaxDelay(e.retryConfig.MaxDelay),
 		retry.RetryIf(func(err error) bool {
 			// Check if error is a rate limit (429) error
-			// gateway.ErrorStatusCode is the type used for HTTP status code errors
-			if httpErr, ok := err.(*gateway.ErrorStatusCode); ok {
-				if httpErr.StatusCode == http.StatusTooManyRequests {
-					// 429 errors retry forever and reset the non-429 failure counter
-					non429Failures.Store(0)
-					// After a 429, wait for rate limit before retrying
-					_ = e.wait(ctx, size)
-					return true
-				}
+			if isHTTPStatusTooManyRequests(err) {
+				// 429 errors retry forever and reset the non-429 failure counter
+				non429Failures.Store(0)
+				// After a 429, wait for rate limit before retrying
+				_ = e.wait(ctx, size)
+				return true
 			}
 
 			// Non-429 errors count toward the attempt limit
