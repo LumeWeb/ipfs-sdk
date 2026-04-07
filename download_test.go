@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lumeweb.com/ipfs-sdk/fs"
 	"go.lumeweb.com/ipfs-sdk/mocks"
+	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	"go.lumeweb.com/ipfs-content/car"
 	unixfs "go.lumeweb.com/ipfs-content/unixfs"
 )
@@ -117,14 +118,15 @@ func TestDownloadService_Has(t *testing.T) {
 
 func TestDownloadService_BlockSize(t *testing.T) {
 	t.Run("gets block size", func(t *testing.T) {
-		token := testAPIToken
-		service, err := NewDownloadService("https://api.example.com", token)
-		require.NoError(t, err)
+		service, _, mockBlockMeta := setupMockDownloadService(t)
 		ctx := context.Background()
-		c, err := cid.Decode("QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx")
-		require.NoError(t, err)
+		testCID := getTestCID(t)
 
-		_, _ = service.BlockSize(ctx, c)
+		setupMockBlockMetaForFileSize(mockBlockMeta, 1024)
+
+		size, err := service.BlockSize(ctx, testCID)
+		require.NoError(t, err)
+		assert.Equal(t, 1024, size)
 	})
 }
 
@@ -134,19 +136,12 @@ func TestDownloadService_FileSize(t *testing.T) {
 		testData := []byte("Hello, IPFS! This is test data.")
 		expectedSize := int64(len(testData))
 
-		// Use ipfs-content to generate properly encoded block
-		testGen := newTestUnixFSGenerator(t)
-		block := testGen.createBlock(t, testData)
-
-		// Create mock file with block data
-		file := createMockFileWithUnixFS(block.RawData())
-
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, _, mockBlockMeta := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
-		// Setup mock expectations for GetBlock
-		setupMockGetBlock(t, mockBackend, ctx, testCID, file, nil)
+		// Setup mock expectations for block meta API
+		setupMockBlockMetaForFileSize(mockBlockMeta, int(expectedSize))
 
 		// Call FileSize
 		size, err := service.FileSize(ctx, testCID)
@@ -158,25 +153,12 @@ func TestDownloadService_FileSize(t *testing.T) {
 		ctx := context.Background()
 		expectedSize := int64(104857600) // 100MB
 
-		// Simulate chunk sizes for 100MB file (400 chunks of 256KB each)
-		chunkSizes := make([]uint64, 400)
-		for i := range chunkSizes {
-			chunkSizes[i] = 256 * 1024
-		}
-
-		// Use ipfs-content generator to create chunked block metadata
-		testGen := newTestUnixFSGenerator(t)
-		block := testGen.createChunkedBlock(t, expectedSize, chunkSizes)
-
-		// Create mock file with block data
-		file := createMockFileWithUnixFS(block.RawData())
-
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, _, mockBlockMeta := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
-		// Setup mock expectations for GetBlock
-		setupMockGetBlock(t, mockBackend, ctx, testCID, file, nil)
+		// Setup mock expectations for block meta API
+		setupMockBlockMetaForFileSize(mockBlockMeta, int(expectedSize))
 
 		// Call FileSize
 		size, err := service.FileSize(ctx, testCID)
@@ -188,15 +170,12 @@ func TestDownloadService_FileSize(t *testing.T) {
 		ctx := context.Background()
 		testData := []byte("raw block data")
 
-		// Create mock file with raw data (no UnixFS wrapper)
-		file := createMockFileWithUnixFS(testData)
-
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, _, mockBlockMeta := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
-		// Setup mock expectations for GetBlock
-		setupMockGetBlock(t, mockBackend, ctx, testCID, file, nil)
+		// Setup mock expectations for block meta API
+		setupMockBlockMetaForFileSize(mockBlockMeta, len(testData))
 
 		// Call FileSize - should return actual data length
 		size, err := service.FileSize(ctx, testCID)
@@ -206,40 +185,20 @@ func TestDownloadService_FileSize(t *testing.T) {
 
 	t.Run("returns error from backend", func(t *testing.T) {
 		ctx := context.Background()
-		testErr := errors.New("backend error")
+		testErr := errors.New("block meta API error")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, _, mockBlockMeta := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
-		// Setup mock expectations for GetBlock to fail
-		setupMockGetBlock(t, mockBackend, ctx, testCID, nil, testErr)
-
-		// Setup mock expectations for GetAll fallback (also fails)
-		setupMockGetAll(t, mockBackend, ctx, testCID, nil, testErr)
+		// Setup mock expectations for block meta API to fail
+		mockBlockMeta.EXPECT().GetApiBlockMetaCidWithResponse(mock.Anything, mock.Anything).Return(nil, testErr)
 
 		// Call FileSize - should return error
 		_, err := service.FileSize(ctx, testCID)
 		assert.Error(t, err)
-		// Error should mention the GetAll failure since GetBlock failed
-		assert.ErrorContains(t, err, "failed to get file node")
-	})
-
-	t.Run("cancels with context", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel() // Cancel immediately
-
-		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
-		testCID := getTestCID(t)
-
-		// Setup mock expectations - GetBlock and GetAll may be called with cancelled context
-		setupMockGetBlockWithMaybe(t, mockBackend, ctx, testCID)
-		setupMockGetAllWithMaybe(t, mockBackend, ctx, testCID)
-
-		// Call FileSize with cancelled context
-		_, err := service.FileSize(ctx, testCID)
-		assert.Error(t, err)
+		// Error should mention the block meta API failure
+		assert.ErrorContains(t, err, "failed to query block meta API")
 	})
 }
 
@@ -453,14 +412,31 @@ var _ files.DirIterator = (*mockDirIterator)(nil)
 
 const testCIDString = "QmZ4tDuvesekSs4qM5ZBKpXiZGun7S2CYtEZRB3DYXkjGx"
 
-// setupMockDownloadService creates a new DownloadService with a mock backend.
-// Returns the service and the mock backend for setting up expectations.
-func setupMockDownloadService(t *testing.T) (*DownloadService, *mocks.MockBackend) {
+// setupMockDownloadService creates a new DownloadService with a mock backend and mock block meta client.
+// Returns the service, the mock backend, and the mock block meta client for setting up expectations.
+func setupMockDownloadService(t *testing.T) (*DownloadService, *mocks.MockBackend, *mocks.MockBlockMetaClient) {
 	t.Helper()
 	service := &DownloadService{}
 	mockBackend := mocks.NewMockBackend(t)
+	mockBlockMeta := mocks.NewMockBlockMetaClient(t)
 	service.backend = mockBackend
-	return service, mockBackend
+	service.blockMeta = mockBlockMeta
+	return service, mockBackend, mockBlockMeta
+}
+
+// setupMockBlockMetaForFileSize sets up a mock block meta response for file size queries.
+func setupMockBlockMetaForFileSize(mockBlockMeta *mocks.MockBlockMetaClient, blockSize int) {
+	response := &internalclient.GetApiBlockMetaCidResponse{
+		Body:         []byte("{}"),
+		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+		JSON200: &internalclient.BlockMetaResponse{
+			Name:      "",
+			Type:      2,
+			BlockSize: blockSize,
+			ChildCid:  []string{},
+		},
+	}
+	mockBlockMeta.EXPECT().GetApiBlockMetaCidWithResponse(mock.Anything, mock.Anything).Return(response, nil)
 }
 
 // getTestCID returns a pre-decoded test CID for use in tests.
@@ -559,7 +535,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		file := createMockBytesFile(testData)
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -587,7 +563,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		testErr := errors.New("backend error")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -604,7 +580,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 	
 	t.Run("returns error on invalid CID", func(t *testing.T) {
 		ctx := context.Background()
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 
 		// Create an invalid CID (wrong length, invalid multibase)
 		invalidCID := cid.Cid{}
@@ -627,7 +603,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		cancel() // Cancel immediately
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Note: Context cancellation behavior depends on backend implementation
@@ -650,7 +626,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		file := createMockBytesFile(testData)
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -687,7 +663,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		file := createMockBytesFile(largeData)
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -735,7 +711,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		file := createMockBytesFile(testData)
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -785,7 +761,7 @@ func TestDownloadService_DownloadFile(t *testing.T) {
 		file := createMockBytesFile(testData)
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -815,7 +791,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		ctx := context.Background()
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -844,7 +820,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		testErr := errors.New("directory error")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -863,7 +839,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		ctx := context.Background()
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations with empty directory
@@ -892,7 +868,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		cancel()
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Setup mock expectations
@@ -914,7 +890,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		ctx := context.Background()
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Create mock directory entries including "." and ".."
@@ -967,7 +943,7 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 		ctx := context.Background()
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Create mock directory with immediate children only
@@ -1029,7 +1005,7 @@ func TestDownloadService_GetFile(t *testing.T) {
 		testData := []byte("file content in directory")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		filePath := "a/b/c/test.txt"
@@ -1070,7 +1046,7 @@ func TestDownloadService_GetFile(t *testing.T) {
 		ctx := context.Background()
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		filePath := "a/b/c/test.txt"
@@ -1095,7 +1071,7 @@ func TestDownloadService_GetFile(t *testing.T) {
 		testErr := errors.New("file not found")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		filePath := "a/b/c/test.txt"
@@ -1126,7 +1102,7 @@ func TestDownloadService_GetFile(t *testing.T) {
 		testData := []byte("file content")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		// Test paths with different slash configurations
@@ -1171,7 +1147,7 @@ func TestDownloadService_GetFile(t *testing.T) {
 		testData := []byte("root file content")
 
 		// Create service with mock backend
-		service, mockBackend := setupMockDownloadService(t)
+		service, mockBackend, _ := setupMockDownloadService(t)
 		testCID := getTestCID(t)
 
 		filePath := ""

@@ -2,6 +2,8 @@ package download
 
 import (
 	"context"
+	"net/http"
+	"sync"
 
 	"github.com/gammazero/workerpool"
 	"github.com/ipfs/boxo/blockstore"
@@ -21,6 +23,8 @@ type RateLimitedBlockstore struct {
 	memory     blockstore.Blockstore
 	engine     *RateLimiterEngine
 	pool       *workerpool.WorkerPool
+	metaClient BlockMetaClient // Meta API client for size queries without rate limiting
+	mu         sync.RWMutex
 }
 
 // newMemoryBlockstore creates an in-memory blockstore used only for AllKeysChan.
@@ -34,25 +38,28 @@ func newMemoryBlockstore() blockstore.Blockstore {
 // NewRateLimitedBlockstore creates a new rate-limited blockstore.
 // If rateLimiter is nil, operations proceed immediately without rate limiting.
 func NewRateLimitedBlockstore(underlying blockstore.Blockstore, rateLimiter RateLimiter) *RateLimitedBlockstore {
-	return NewRateLimitedBlockstoreWithOptions(underlying, rateLimiter, 0, httputil.DefaultRetryConfig())
+	return NewRateLimitedBlockstoreWithOptions(underlying, rateLimiter, 0, httputil.DefaultRetryConfig(), nil)
 }
 
 // NewRateLimitedBlockstoreWithOptions creates a new rate-limited blockstore with custom worker pool and retry config.
 // If rateLimiter is nil, operations proceed immediately without rate limiting.
 // If workerPoolSize is 0, defaults to 10.
 // If retryConfig is empty, uses httputil.DefaultRetryConfig().
-func NewRateLimitedBlockstoreWithOptions(underlying blockstore.Blockstore, rateLimiter RateLimiter, workerPoolSize int, retryConfig httputil.RetryConfig) *RateLimitedBlockstore {
+func NewRateLimitedBlockstoreWithOptions(underlying blockstore.Blockstore, rateLimiter RateLimiter, workerPoolSize int, retryConfig httputil.RetryConfig, metaClient BlockMetaClient) *RateLimitedBlockstore {
 	var pool *workerpool.WorkerPool
 	if workerPoolSize > 0 {
 		pool = workerpool.New(workerPoolSize)
 	}
 
-	return &RateLimitedBlockstore{
+	rlb := &RateLimitedBlockstore{
 		underlying: underlying,
 		memory:     newMemoryBlockstore(),
 		engine:     NewRateLimiterEngine(rateLimiter, pool, retryConfig),
 		pool:       pool,
+		metaClient: metaClient,
 	}
+
+	return rlb
 }
 
 // Stop terminates the worker pool and releases resources.
@@ -65,17 +72,18 @@ func (r *RateLimitedBlockstore) Stop() {
 
 // Get fetches a block with rate limiting.
 // Goes directly to the underlying blockstore without using the memory store.
-// Calls GetSize first to determine block size for accurate rate limiting.
+// Uses metaClient for GetSize if available to get accurate size for rate limiting.
 func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
-	// Get block size first for accurate rate limiting
-	size, err := r.GetSize(ctx, c)
-	if err != nil {
-		// If GetSize fails, fall back to unknown size (0)
-		size = 0
+	// Get size for accurate rate limiting (uses metaClient if available)
+	size := 0
+	if r.metaClient != nil {
+		if s, err := r.metaClient.GetBlockSize(ctx, c); err == nil {
+			size = s
+		}
 	}
 
 	var blk blocks.Block
-	err = r.engine.ExecuteWithRetry(ctx, func() error {
+	err := r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
 		blk, innerErr = r.underlying.Get(ctx, c)
 		return innerErr
@@ -83,9 +91,17 @@ func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Bloc
 	return blk, err
 }
 
-// GetSize fetches block size with rate limiting.
-// Goes directly to the underlying blockstore without using the memory store.
+// GetSize fetches block size, bypassing rate limiter when using metaClient.
+// Uses meta API if available, otherwise goes directly to the underlying blockstore with rate limiting.
 func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	// Try meta API client first (bypasses rate limiter)
+	if r.metaClient != nil {
+		if size, err := r.metaClient.GetBlockSize(ctx, c); err == nil {
+			return size, nil
+		}
+	}
+
+	// Fall back to underlying blockstore with rate limiting
 	var size int
 	err := r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
@@ -96,11 +112,23 @@ func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, er
 }
 
 // Has checks if a block exists with rate limiting.
-// Alias to GetSize since both operations check block existence without transferring content.
-// This avoids incorrectly charging the rate limiter for bytes that are never transferred.
+// Uses meta API first (bypasses rate limiter), then falls back to underlying blockstore with rate limiting.
 func (r *RateLimitedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
-	_, err := r.GetSize(ctx, c)
-	return err == nil, err
+	// Try meta API client first (bypasses rate limiter)
+	if r.metaClient != nil {
+		if size, err := r.metaClient.GetBlockSize(ctx, c); err == nil && size > 0 {
+			return true, nil
+		}
+	}
+
+	// Fall back to underlying blockstore with rate limiting
+	var exists bool
+	err := r.engine.ExecuteWithRetry(ctx, func() error {
+		var innerErr error
+		exists, innerErr = r.underlying.Has(ctx, c)
+		return innerErr
+	}, 0)
+	return exists, err
 }
 
 // Put is a no-op and returns nil.
@@ -127,4 +155,14 @@ func (r *RateLimitedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid
 	return r.memory.AllKeysChan(ctx)
 }
 
-var _ blockstore.Blockstore = (*RateLimitedBlockstore)(nil)
+// GetBlockSizeResponse is a mock response for GetBlockMeta API.
+type GetBlockSizeResponse struct {
+	HTTPResponse *http.Response
+	Body         []byte
+	JSON200      *BlockMetaSizeData
+}
+
+// BlockMetaSizeData represents the size data from block meta API.
+type BlockMetaSizeData struct {
+	BlockSize int `json:"block_size"`
+}

@@ -9,6 +9,7 @@ packages:
       dir: ./mocks
       pkgname: "mocks"
     interfaces:
+      BlockMetaClient: {}
       DNSClientWithResponsesInterface: {}
       IPNSClientWithResponsesInterface: {}
       WebsitesClientWithResponsesInterface: {}

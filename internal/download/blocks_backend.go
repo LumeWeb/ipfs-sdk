@@ -14,7 +14,8 @@ import (
 // NewBlocksBackendWithRateLimit creates a gateway backend (BlocksBackend) with optional rate limiting.
 // This mirrors gateway.NewRemoteBlocksBackend but allows the blockstore to be rate-limited.
 // If rateLimiter is nil, no rate limiting is applied (same as upstream).
-func NewBlocksBackendWithRateLimit(gatewayURL []string, httpClient *http.Client, rateLimiter RateLimiter, workerPoolSize int, retryConfig httputil.RetryConfig) (gateway.IPFSBackend, error) {
+// metaClient is used for size queries without rate limiting.
+func NewBlocksBackendWithRateLimit(gatewayURL []string, httpClient *http.Client, rateLimiter RateLimiter, workerPoolSize int, retryConfig httputil.RetryConfig, metaClient BlockMetaClient) (gateway.IPFSBackend, error) {
 	// Validate gateway URLs
 	if len(gatewayURL) == 0 {
 		return nil, fmt.Errorf("at least one gateway URL must be provided")
@@ -36,7 +37,7 @@ func NewBlocksBackendWithRateLimit(gatewayURL []string, httpClient *http.Client,
 
 	// Wrap blockstore with rate limiting if a rate limiter is provided
 	if rateLimiter != nil {
-		blockStore = NewRateLimitedBlockstoreWithOptions(blockStore, rateLimiter, workerPoolSize, retryConfig)
+		blockStore = NewRateLimitedBlockstoreWithOptions(blockStore, rateLimiter, workerPoolSize, retryConfig, metaClient)
 	}
 
 	valueStore, err := gateway.NewRemoteValueStore(gatewayURL, httpClient)

@@ -15,7 +15,7 @@ import (
 	backend "go.lumeweb.com/ipfs-sdk/internal/download"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	"go.lumeweb.com/ipfs-content/car"
-	"go.lumeweb.com/ipfs-content/dagnode"
+	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 )
 
 // RateLimiter defines an interface for controlling download rate and availability.
@@ -29,15 +29,17 @@ type RateLimiterFunc = backend.RateLimiterFunc
 // DownloadService provides functionality for downloading IPFS blocks and content
 // from the gateway using the boxo gateway patterns.
 type DownloadService struct {
-	backend         backend.Backend
-	httpClient      *http.Client
-	authTransport   *httputil.AuthRoundTripper
-	authToken       string
-	baseURL         string
-	rateLimiter     backend.RateLimiter
-	workerPoolSize  int
-	retryConfig     httputil.RetryConfig
+	backend        backend.Backend
+	httpClient     *http.Client
+	authTransport  *httputil.AuthRoundTripper
+	authToken      string
+	baseURL        string
+	rateLimiter    backend.RateLimiter
+	workerPoolSize int
+	retryConfig    httputil.RetryConfig
+	blockMeta      BlockMetaClient
 }
+
 
 // DownloadServiceOption configures the DownloadService.
 type DownloadServiceOption func(*DownloadService)
@@ -76,6 +78,59 @@ func WithDownloadRetryConfig(cfg httputil.RetryConfig) DownloadServiceOption {
 	}
 }
 
+// WithInternalGen sets the internal generated client for the download service.
+// This provides access to the REST API endpoints.
+func WithInternalGen(client *internalclient.ClientWithResponses) DownloadServiceOption {
+	return func(s *DownloadService) {
+		s.blockMeta = client
+	}
+}
+
+// blockMetaAdapter adapts BlockMetaClient to download.BlockMetaClient interface.
+type blockMetaAdapter struct {
+	client BlockMetaClient
+}
+
+func (a *blockMetaAdapter) GetBlockSize(ctx context.Context, cid string) (int, error) {
+	response, err := a.client.GetApiBlockMetaCidWithResponse(ctx, cid)
+	if err != nil {
+		return 0, err
+	}
+	if response.StatusCode() < 200 || response.StatusCode() >= 300 {
+		return 0, fmt.Errorf("block meta API returned status %d", response.StatusCode())
+	}
+	if response.JSON200 == nil {
+		return 0, fmt.Errorf("block meta API returned no data")
+	}
+	return response.JSON200.BlockSize, nil
+}
+
+// WithBlockMetaClient sets a custom block meta client for the download service.
+// This is useful for testing with mock implementations.
+func WithBlockMetaClient(client BlockMetaClient) DownloadServiceOption {
+	return func(s *DownloadService) {
+		s.blockMeta = client
+	}
+}
+
+// blockMetaBackendAdapter adapts BlockMetaClient to backend.BlockMetaClient interface.
+type blockMetaBackendAdapter struct {
+	client BlockMetaClient
+}
+
+func (a *blockMetaBackendAdapter) GetBlockSize(ctx context.Context, c cid.Cid) (int, error) {
+	response, err := a.client.GetApiBlockMetaCidWithResponse(ctx, c.String())
+	if err != nil {
+		return 0, err
+	}
+	if response.StatusCode() < 200 || response.StatusCode() >= 300 {
+		return 0, fmt.Errorf("block meta API returned status %d", response.StatusCode())
+	}
+	if response.JSON200 == nil {
+		return 0, fmt.Errorf("block meta API returned no data")
+	}
+	return response.JSON200.BlockSize, nil
+}
 
 // NewDownloadService creates a new DownloadService.
 // baseURL is the base URL of the API server (e.g., "https://api.example.com").
@@ -107,10 +162,18 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 
 	// Create gateway backend for UnixFS operations
 	// Use our rate-limited implementation when a rate limiter is provided
+	// Pass the blockMeta client adapter for size queries without rate limiting
 	var gatewayBackend gateway.IPFSBackend
 	var err error
+	
+	// Prepare block meta adapter for rate-limited backend
+	var metaClient backend.BlockMetaClient
+	if s.blockMeta != nil {
+		metaClient = &blockMetaBackendAdapter{client: s.blockMeta}
+	}
+	
 	if s.rateLimiter != nil {
-		gatewayBackend, err = backend.NewBlocksBackendWithRateLimit([]string{baseURL}, s.httpClient, s.rateLimiter, s.workerPoolSize, s.retryConfig)
+		gatewayBackend, err = backend.NewBlocksBackendWithRateLimit([]string{baseURL}, s.httpClient, s.rateLimiter, s.workerPoolSize, s.retryConfig, metaClient)
 	} else {
 		gatewayBackend, err = gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
 	}
@@ -157,94 +220,41 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 }
 
 
-
-// FileSize returns the actual size of a UnixFS file by CID.
-// Strategy 1: Try GetBlock first (fast, memory-efficient)
-//   - For small files with UnixFS metadata, reads only the root block (~1MB max)
-//   - For raw blocks, returns the block data length
-// Strategy 2: Fallback to GetAll for chunked files
-//   - For large chunked files, walks the DAG structure without loading file data
-//   - Uses file.Size() to get actual size from UnixFS DAG metadata
-//
-// This implementation never loads large file contents into memory.
-// Strategy 1 reads at most one block (IPFS max size is ~1MB).
-// Strategy 2 only walks the DAG structure for metadata, not file data.
-func (s *DownloadService) FileSize(ctx context.Context, c cid.Cid) (int64, error) {
-	// Strategy 1: Try GetBlock first (fast, memory-efficient)
-	_, file, err := s.backend.GetBlock(ctx, path.FromCid(c))
-	if err == nil {
-		defer file.Close()
-
-		// Read the block data
-		data, err := io.ReadAll(file)
-		if err != nil {
-			return -1, fmt.Errorf("failed to read block: %w", err)
-		}
-
-		// Use ipfs-content's AnalyzeNode for comprehensive node analysis
-		block := blocks.NewBlock(data)
-		nodeInfo, err := dagnode.AnalyzeNode(ctx, block)
-		if err != nil {
-			// AnalyzeNode failed - treat as raw block
-			return int64(len(data)), nil
-		}
-
-		// If it's a UnixFS file, use the file size from NodeInfo
-		if nodeInfo.IsUnixFS {
-			// For UnixFS files with chunks, FileSize is 0 (computed from ChunkSizes)
-			if nodeInfo.FileSize > 0 {
-				return int64(nodeInfo.FileSize), nil
-			}
-			// For chunked files, sum up chunk sizes
-			if len(nodeInfo.ChunkSizes) > 0 {
-				var totalSize uint64
-				for _, chunkSize := range nodeInfo.ChunkSizes {
-					totalSize += chunkSize
-				}
-				return int64(totalSize), nil
-			}
-			// Fallback to data size
-			return int64(nodeInfo.DataSize), nil
-		}
-
-		// Raw block - return data length
-		return int64(nodeInfo.DataSize), nil
+// parseUnixFSFileSize queries the block meta REST API to extract the file size from a block.
+func (s *DownloadService) parseUnixFSFileSize(ctx context.Context, c cid.Cid) (int64, error) {
+	if s.blockMeta == nil {
+		return -1, fmt.Errorf("block meta client not initialized")
 	}
 
-	// Strategy 2: Fallback to GetAll for chunked files
-	// This walks the DAG structure to get UnixFS file size metadata
-	// It does NOT load file data into memory
-	immutablePath := path.FromCid(c)
-	_, node, err := s.backend.GetAll(ctx, immutablePath)
+	// Use the block meta REST API to get UnixFS metadata
+	response, err := s.blockMeta.GetApiBlockMetaCidWithResponse(ctx, c.String())
 	if err != nil {
-		return -1, fmt.Errorf("failed to get file node: %w", err)
-	}
-	defer node.Close()
-
-	fileNode, ok := node.(files.File)
-	if !ok {
-		return -1, fmt.Errorf("CID is not a file")
+		return -1, fmt.Errorf("failed to query block meta API: %w", err)
 	}
 
-	size, err := fileNode.Size()
-	if err != nil {
-		return -1, fmt.Errorf("failed to get file size: %w", err)
+	if response.StatusCode() < 200 || response.StatusCode() >= 300 {
+		return -1, fmt.Errorf("block meta API returned status %d: %s", response.StatusCode(), string(response.Body))
 	}
 
-	return size, nil
+	if response.JSON200 == nil {
+		return -1, fmt.Errorf("block meta API returned no data")
+	}
+
+	return int64(response.JSON200.BlockSize), nil
 }
 
-// BlockSize returns the size of a block by CID without fetching the block data.
-// Note: Due to unexported fields in HeadResponse, this implementation
-// actually fetches the block to determine size.
+// FileSize returns the actual size of a UnixFS file by CID.
+// Uses the block meta REST API to query UnixFS metadata without loading file contents.
+// For chunked files, the API returns the total file size by summing all chunk sizes.
+// For inline files, returns the actual data size.
+func (s *DownloadService) FileSize(ctx context.Context, c cid.Cid) (int64, error) {
+	return s.parseUnixFSFileSize(ctx, c)
+}
+
+// BlockSize returns the size of a block by CID.
+// Uses the block meta REST API to query UnixFS metadata without loading file contents.
 func (s *DownloadService) BlockSize(ctx context.Context, c cid.Cid) (int, error) {
-	_, file, err := s.backend.GetBlock(ctx, path.FromCid(c))
-	if err != nil {
-		return -1, err
-	}
-	defer file.Close()
-	
-	size, err := file.Size()
+	size, err := s.parseUnixFSFileSize(ctx, c)
 	if err != nil {
 		return -1, err
 	}
