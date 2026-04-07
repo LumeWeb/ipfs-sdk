@@ -1,3 +1,13 @@
+## 0.1.31 (2026-04-07)
+
+### Features
+
+- refactor and restructure rate limiting backend architecture
+
+### Fixes
+
+- add Stop method to RateLimitedBlockstore to prevent goroutine leaks
+
 ## 0.1.30 (2026-04-07)
 
 ### Fixes
