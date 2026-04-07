@@ -18,6 +18,7 @@ packages:
       pkgname: "mocks"
     interfaces:
       Backend: {}
+      Blockstore: {}
   go.lumeweb.com/ipfs-sdk/fs:
     config:
       dir: ./mocks
