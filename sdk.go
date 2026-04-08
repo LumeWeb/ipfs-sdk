@@ -306,6 +306,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		downloadOpts = append(downloadOpts, WithDownloadRateLimiter(c.downloadRateLimiter))
 	}
 	downloadOpts = append(downloadOpts, c.downloadOptions...)
+	downloadOpts = append(downloadOpts, WithInternalGen(internalGen))
 	
 	download, err := NewDownloadService(normalizedURL, bearerToken, downloadOpts...)
 	if err != nil {

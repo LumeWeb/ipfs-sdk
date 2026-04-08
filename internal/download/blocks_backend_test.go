@@ -25,6 +25,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			nil,
 			0,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		require.NoError(t, err)
@@ -45,6 +46,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			rl,
 			5,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		require.NoError(t, err)
@@ -62,6 +64,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			rl,
 			5,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		// Should return an error for invalid URL format
@@ -83,6 +86,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			rl,
 			3, // Custom pool size
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		require.NoError(t, err)
@@ -109,6 +113,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			rl,
 			0,
 			customRetry,
+			nil,
 		)
 
 		require.NoError(t, err)
@@ -133,6 +138,7 @@ func TestNewBlocksBackendWithRateLimit_RateLimiting(t *testing.T) {
 			rl,
 			5,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		require.NoError(t, err)
@@ -157,6 +163,7 @@ func TestNewBlocksBackendWithRateLimit_RateLimiting(t *testing.T) {
 			rl,
 			5,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		require.NoError(t, err)
@@ -179,6 +186,7 @@ func TestNewBlocksBackendWithRateLimit_ErrorCases(t *testing.T) {
 			rl,
 			5,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		assert.Error(t, err)
@@ -198,6 +206,7 @@ func TestNewBlocksBackendWithRateLimit_ErrorCases(t *testing.T) {
 			rl,
 			5,
 			htputil.RetryConfig{},
+			nil,
 		)
 
 		// Should work with nil client (will use http.DefaultClient)

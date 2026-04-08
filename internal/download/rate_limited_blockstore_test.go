@@ -50,7 +50,7 @@ func TestNewRateLimitedBlockstoreWithOptions(t *testing.T) {
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
 			return true, nil
 		})
-		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{})
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, nil)
 
 		require.NotNil(t, rlb)
 		_, size := rlb.engine.Stats()
@@ -66,7 +66,7 @@ func TestNewRateLimitedBlockstoreWithOptions(t *testing.T) {
 			Attempts: 5,
 			MaxDelay: 2 * time.Minute,
 		}
-		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 0, customRetry)
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 0, customRetry, nil)
 
 		require.NotNil(t, rlb)
 		assert.Equal(t, customRetry.Attempts, rlb.engine.retryConfig.Attempts)
@@ -74,7 +74,7 @@ func TestNewRateLimitedBlockstoreWithOptions(t *testing.T) {
 
 	t.Run("creates blockstore without rate limiter", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
-		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, nil, 5, htputil.RetryConfig{})
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, nil, 5, htputil.RetryConfig{}, nil)
 
 		require.NotNil(t, rlb)
 		assert.Equal(t, mockBlockstore, rlb.underlying)
@@ -82,6 +82,103 @@ func TestNewRateLimitedBlockstoreWithOptions(t *testing.T) {
 }
 
 // Test Get with rate limiting
+
+func TestRateLimitedBlockstore_Get_MetaAPIBehavior(t *testing.T) {
+	t.Run("GetSize uses metaClient when available", func(t *testing.T) {
+		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
+		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			return true, nil
+		})
+		
+		// Create mock meta client
+		mockMetaClient := &mockBlockMetaClient{size: 2048}
+
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, mockMetaClient)
+		
+		// GetSize should use metaClient, not call underlying blockstore
+		size, err := rlb.GetSize(context.Background(), testCID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 2048, size)
+	})
+	
+	t.Run("Get calls metaClient for accurate rate limiting", func(t *testing.T) {
+		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
+		testBlock := createTestBlock(t, testCID)
+		
+		// Track what size is passed to rate limiter
+		var rateLimitSize int64
+		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			rateLimitSize = size
+			return true, nil
+		})
+		
+		// Create mock meta client that returns block size
+		mockMetaClient := &mockBlockMetaClient{size: len(testBlock.RawData())}
+
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, mockMetaClient)
+		
+		// Get will use metaClient to get size for accurate rate limiting
+		mockBlockstore.EXPECT().
+			Get(mock.Anything, testCID).
+			Return(testBlock, nil)
+
+		_, err := rlb.Get(context.Background(), testCID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, int64(len(testBlock.RawData())), rateLimitSize, "Rate limiter should receive the actual block size from metaClient")
+	})
+	
+	t.Run("GetSize bypasses rate limiter when using metaClient", func(t *testing.T) {
+		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
+		
+		// Rate limiter that tracks if called
+		rateLimitCalled := false
+		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			rateLimitCalled = true
+			return true, nil
+		})
+		
+		// Create mock meta client
+		mockMetaClient := &mockBlockMetaClient{size: 1024}
+
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, mockMetaClient)
+		
+		// GetSize should bypass rate limiter when using metaClient
+		size, err := rlb.GetSize(context.Background(), testCID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 1024, size)
+		assert.False(t, rateLimitCalled, "GetSize should bypass rate limiter when using metaClient")
+	})
+	
+	t.Run("Has uses metaClient and bypasses rate limiter", func(t *testing.T) {
+		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
+		
+		// Rate limiter that tracks if called
+		rateLimitCalled := false
+		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			rateLimitCalled = true
+			return true, nil
+		})
+		
+		// Create mock meta client
+		mockMetaClient := &mockBlockMetaClient{size: 1024}
+
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, mockMetaClient)
+		
+		// Has should use metaClient and bypass rate limiter
+		has, err := rlb.Has(context.Background(), testCID)
+
+		assert.NoError(t, err)
+		assert.True(t, has)
+		assert.False(t, rateLimitCalled, "Has should bypass rate limiter when using metaClient")
+	})
+}
 
 func TestRateLimitedBlockstore_Get(t *testing.T) {
 	t.Run("applies rate limiting before get", func(t *testing.T) {
@@ -97,11 +194,6 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 		
-		// GetSize is called first to get block size
-		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(len(testBlock.RawData()), nil)
-		
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(testBlock, nil)
@@ -109,19 +201,18 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 		_, err := rlb.Get(context.Background(), testCID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Get
+		assert.Equal(t, int32(1), allowCount.Load())
 	})
 
 	t.Run("returns error when rate limiter denies", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
 			return false, nil
 		})
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
-		testCID := createTestCID(t)
 
-		// GetSize is called first (will be rate limited and rejected)
 		_, err := rlb.Get(context.Background(), testCID)
 
 		// Should timeout after backoff
@@ -130,15 +221,14 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 
 	t.Run("returns error when rate limiter fails", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
 		expectedError := errors.New("rate limiter error")
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
 			return false, expectedError
 		})
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
-		testCID := createTestCID(t)
 
-		// GetSize is called first (will fail due to rate limiter error)
 		_, err := rlb.Get(context.Background(), testCID)
 
 		assert.Error(t, err)
@@ -154,11 +244,6 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 		
-		// GetSize is called first
-		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(1024, nil)
-		
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(nil, errors.New("block not found"))
@@ -170,12 +255,13 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 	})
 }
 
-// Test GetSize with rate limiting
+// Test GetSize - GetSize now bypasses rate limiting when using metaClient
 
 func TestRateLimitedBlockstore_GetSize(t *testing.T) {
-	t.Run("applies rate limiting before get size", func(t *testing.T) {
+	t.Run("applies rate limiter when metaClient is not available", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
+		
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
 			allowCount.Add(1)
@@ -188,19 +274,42 @@ func TestRateLimitedBlockstore_GetSize(t *testing.T) {
 			GetSize(mock.Anything, testCID).
 			Return(1024, nil)
 
-		_, err := rlb.GetSize(context.Background(), testCID)
+		size, err := rlb.GetSize(context.Background(), testCID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, int32(1), allowCount.Load())
+		assert.Equal(t, 1024, size)
+		assert.Equal(t, int32(1), allowCount.Load(), "Rate limiter should be called when metaClient is not available")
+	})
+	
+	t.Run("bypasses rate limiter and uses metaClient when available", func(t *testing.T) {
+		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
+		
+		allowCount := atomic.Int32{}
+		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			allowCount.Add(1)
+			return true, nil
+		})
+		
+		mockMetaClient := &mockBlockMetaClient{size: 1024}
+
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, mockMetaClient)
+
+		size, err := rlb.GetSize(context.Background(), testCID)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 1024, size)
+		assert.Equal(t, int32(0), allowCount.Load(), "Rate limiter should not be called when metaClient is available")
 	})
 }
 
-// Test Has with rate limiting
+// Test Has - Has now bypasses rate limiting when checking meta API
 
 func TestRateLimitedBlockstore_Has(t *testing.T) {
-	t.Run("aliases to getsize for rate limiting", func(t *testing.T) {
+	t.Run("applies rate limiter when metaClient is not available", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
+		
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
 			allowCount.Add(1)
@@ -209,17 +318,50 @@ func TestRateLimitedBlockstore_Has(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Has now just calls GetSize (aliases to it)
 		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(1024, nil)
+			Has(mock.Anything, testCID).
+			Return(true, nil)
 
 		has, err := rlb.Has(context.Background(), testCID)
 
 		assert.NoError(t, err)
 		assert.True(t, has)
-		assert.Equal(t, int32(1), allowCount.Load()) // Only GetSize is called
+		assert.Equal(t, int32(1), allowCount.Load(), "Rate limiter should be called when metaClient is not available")
 	})
+	
+	t.Run("bypasses rate limiter and uses metaClient when available", func(t *testing.T) {
+		mockBlockstore := mocks.NewMockBlockstore(t)
+		testCID := createTestCID(t)
+		
+		allowCount := atomic.Int32{}
+		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			allowCount.Add(1)
+			return true, nil
+		})
+		
+		mockMetaClient := &mockBlockMetaClient{size: 1024}
+
+		rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, mockMetaClient)
+
+		has, err := rlb.Has(context.Background(), testCID)
+
+		assert.NoError(t, err)
+		assert.True(t, has)
+		assert.Equal(t, int32(0), allowCount.Load(), "Rate limiter should not be called when metaClient is available")
+	})
+}
+
+// mockBlockMetaClient is a simple mock for BlockMetaClient interface for testing
+type mockBlockMetaClient struct {
+	size int
+	err  error
+}
+
+func (m *mockBlockMetaClient) GetBlockSize(context.Context, cid.Cid) (int, error) {
+	if m.err != nil {
+		return 0, m.err
+	}
+	return m.size, nil
 }
 
 // Test read operations go directly to underlying
@@ -237,15 +379,6 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Put is a no-op, won't store anything
-		err := rlb.Put(context.Background(), testBlock)
-		require.NoError(t, err)
-
-		// GetSize is called first to get block size
-		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(len(testBlock.RawData()), nil)
-
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(testBlock, nil)
@@ -255,7 +388,7 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, testBlock.Cid(), blk.Cid())
-		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Get
+		assert.Equal(t, int32(1), allowCount.Load())
 	})
 
 	t.Run("GetSize goes directly to underlying blockstore", func(t *testing.T) {
@@ -270,10 +403,6 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Put is a no-op, won't store anything
-		err := rlb.Put(context.Background(), testBlock)
-		require.NoError(t, err)
-
 		mockBlockstore.EXPECT().
 			GetSize(mock.Anything, testCID).
 			Return(len(testBlock.RawData()), nil)
@@ -286,10 +415,9 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
 	})
 
-	t.Run("Has aliases to GetSize", func(t *testing.T) {
+	t.Run("Has goes directly to underlying blockstore", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
-		testBlock := createTestBlock(t, testCID)
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
 			allowCount.Add(1)
@@ -298,21 +426,16 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Put is a no-op, won't store anything
-		err := rlb.Put(context.Background(), testBlock)
-		require.NoError(t, err)
-
-		// Has now just calls GetSize
 		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(len(testBlock.RawData()), nil)
+			Has(mock.Anything, testCID).
+			Return(true, nil)
 
-		// Has should just call GetSize (no content transfer)
+		// Has should query underlying blockstore directly
 		has, err := rlb.Has(context.Background(), testCID)
 
 		assert.NoError(t, err)
 		assert.True(t, has)
-		assert.Equal(t, int32(1), allowCount.Load()) // Only GetSize is called
+		assert.Equal(t, int32(1), allowCount.Load())
 	})
 }
 
@@ -336,15 +459,15 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify block is NOT stored - Has now just calls GetSize
+		// Set up expectations for verifying block is not there
 		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(0, errors.New("block not found"))
+			Get(mock.Anything, testCID).
+			Return(nil, errors.New("not found"))
 
-		has, err := rlb.Has(context.Background(), testCID)
+		// Verify it's not there - should query underlying blockstore which doesn't have it
+		_, err = rlb.Get(context.Background(), testCID)
 		assert.Error(t, err)
-		assert.False(t, has)
-		assert.Equal(t, int32(3), allowCount.Load()) // GetSize retries 3 times on error
+		assert.Equal(t, int32(3), allowCount.Load()) // Get retries 3 times on error
 	})
 
 	t.Run("PutMany is a no-op without rate limiting", func(t *testing.T) {
@@ -364,15 +487,13 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify block is NOT stored - Has now just calls GetSize
+		// Verify block is NOT stored
 		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(0, errors.New("block not found"))
+			Get(mock.Anything, testCID).
+			Return(nil, errors.New("not found"))
 
-		has, err := rlb.Has(context.Background(), testCID)
+		_, err = rlb.Get(context.Background(), testCID)
 		assert.Error(t, err)
-		assert.False(t, has)
-		assert.Equal(t, int32(3), allowCount.Load()) // GetSize retries 3 times on error
 	})
 
 	t.Run("DeleteBlock is a no-op without rate limiting", func(t *testing.T) {
@@ -398,11 +519,6 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
 		// Verify it's not there - should query underlying blockstore which doesn't have it
-		// GetSize is called first to get block size
-		mockBlockstore.EXPECT().
-			GetSize(mock.Anything, testCID).
-			Return(1024, nil)
-
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(nil, errors.New("not found"))
@@ -410,7 +526,6 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		_, err = rlb.Get(context.Background(), testCID)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
-		assert.Equal(t, int32(4), allowCount.Load()) // GetSize retries 3 times, Get retries 3 times
 	})
 
 	t.Run("AllKeysChan returns empty channel", func(t *testing.T) {
