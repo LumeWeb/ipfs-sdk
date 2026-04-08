@@ -198,7 +198,7 @@ func TestRateLimitedBlockstore_GetSize(t *testing.T) {
 // Test Has with rate limiting
 
 func TestRateLimitedBlockstore_Has(t *testing.T) {
-	t.Run("applies rate limiting before has", func(t *testing.T) {
+	t.Run("aliases to getsize for rate limiting", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
 		allowCount := atomic.Int32{}
@@ -209,19 +209,16 @@ func TestRateLimitedBlockstore_Has(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// GetSize is called first to get block size
+		// Has now just calls GetSize (aliases to it)
 		mockBlockstore.EXPECT().
 			GetSize(mock.Anything, testCID).
 			Return(1024, nil)
 
-		mockBlockstore.EXPECT().
-			Has(mock.Anything, testCID).
-			Return(true, nil)
-
-		_, err := rlb.Has(context.Background(), testCID)
+		has, err := rlb.Has(context.Background(), testCID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Has
+		assert.True(t, has)
+		assert.Equal(t, int32(1), allowCount.Load()) // Only GetSize is called
 	})
 }
 
@@ -289,7 +286,7 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
 	})
 
-	t.Run("Has goes directly to underlying blockstore", func(t *testing.T) {
+	t.Run("Has aliases to GetSize", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
 		testBlock := createTestBlock(t, testCID)
@@ -305,21 +302,17 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
-		// GetSize is called first to get block size
+		// Has now just calls GetSize
 		mockBlockstore.EXPECT().
 			GetSize(mock.Anything, testCID).
 			Return(len(testBlock.RawData()), nil)
 
-		mockBlockstore.EXPECT().
-			Has(mock.Anything, testCID).
-			Return(true, nil)
-
-		// Has should read from underlying blockstore
+		// Has should just call GetSize (no content transfer)
 		has, err := rlb.Has(context.Background(), testCID)
 
 		assert.NoError(t, err)
 		assert.True(t, has)
-		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Has
+		assert.Equal(t, int32(1), allowCount.Load()) // Only GetSize is called
 	})
 }
 
@@ -343,20 +336,15 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify block is NOT stored - should query underlying blockstore
-		// GetSize is called first to get block size
+		// Verify block is NOT stored - Has now just calls GetSize
 		mockBlockstore.EXPECT().
 			GetSize(mock.Anything, testCID).
-			Return(1024, nil)
-
-		mockBlockstore.EXPECT().
-			Has(mock.Anything, testCID).
-			Return(false, nil)
+			Return(0, errors.New("block not found"))
 
 		has, err := rlb.Has(context.Background(), testCID)
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.False(t, has)
-		assert.Equal(t, int32(2), allowCount.Load()) // Has calls GetSize and Has for rate limiting
+		assert.Equal(t, int32(3), allowCount.Load()) // GetSize retries 3 times on error
 	})
 
 	t.Run("PutMany is a no-op without rate limiting", func(t *testing.T) {
@@ -376,20 +364,15 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify block is NOT stored - should query underlying blockstore
-		// GetSize is called first to get block size
+		// Verify block is NOT stored - Has now just calls GetSize
 		mockBlockstore.EXPECT().
 			GetSize(mock.Anything, testCID).
-			Return(1024, nil)
-
-		mockBlockstore.EXPECT().
-			Has(mock.Anything, testCID).
-			Return(false, nil)
+			Return(0, errors.New("block not found"))
 
 		has, err := rlb.Has(context.Background(), testCID)
-		assert.NoError(t, err)
+		assert.Error(t, err)
 		assert.False(t, has)
-		assert.Equal(t, int32(2), allowCount.Load()) // Has calls GetSize and Has for rate limiting
+		assert.Equal(t, int32(3), allowCount.Load()) // GetSize retries 3 times on error
 	})
 
 	t.Run("DeleteBlock is a no-op without rate limiting", func(t *testing.T) {
@@ -427,7 +410,7 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		_, err = rlb.Get(context.Background(), testCID)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
-		assert.Equal(t, int32(4), allowCount.Load()) // 2 from Has, 2 from Get (each calls GetSize + actual method)
+		assert.Equal(t, int32(4), allowCount.Load()) // GetSize retries 3 times, Get retries 3 times
 	})
 
 	t.Run("AllKeysChan returns empty channel", func(t *testing.T) {

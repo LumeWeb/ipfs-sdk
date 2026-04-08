@@ -96,23 +96,11 @@ func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, er
 }
 
 // Has checks if a block exists with rate limiting.
-// Goes directly to the underlying blockstore without using the memory store.
-// Calls GetSize first to determine block size for accurate rate limiting.
+// Alias to GetSize since both operations check block existence without transferring content.
+// This avoids incorrectly charging the rate limiter for bytes that are never transferred.
 func (r *RateLimitedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
-	// Get block size first for accurate rate limiting
-	size, err := r.GetSize(ctx, c)
-	if err != nil {
-		// If GetSize fails, fall back to unknown size (0)
-		size = 0
-	}
-
-	var exists bool
-	err = r.engine.ExecuteWithRetry(ctx, func() error {
-		var innerErr error
-		exists, innerErr = r.underlying.Has(ctx, c)
-		return innerErr
-	}, int64(size))
-	return exists, err
+	_, err := r.GetSize(ctx, c)
+	return err == nil, err
 }
 
 // Put is a no-op and returns nil.
