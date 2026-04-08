@@ -623,6 +623,8 @@ go.lumeweb.com/ipfs-content v0.1.7 h1:sWVHUTDKN9X1OXYWd1UdzON7dsbUaf8wkMmvp+c3hY
 go.lumeweb.com/ipfs-content v0.1.7/go.mod h1:1CG60SfC6bm8oSZkTaq0rWccyf/hP3apgiFqxjtNeuY=
 go.lumeweb.com/ipfs-content v0.1.8 h1:kzvsgpsBgAC4r4XPeq5G25wGW3M1SIJfPGJNuxbrvrM=
 go.lumeweb.com/ipfs-content v0.1.8/go.mod h1:jwoTsVdW1FeFEXHW8f9qyWWo3FEprHBobE2REXSn4XU=
+go.lumeweb.com/ipfs-content v0.1.9 h1:0GSg8gjAJIovN90SRwrM8Mnv8JG5WhsnBwHCguAQhvA=
+go.lumeweb.com/ipfs-content v0.1.9/go.mod h1:00SoQhW3rbZodkEKFogMVPHgbyv3/2Lp+oxAWoD/FvQ=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
