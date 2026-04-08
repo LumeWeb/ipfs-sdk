@@ -209,8 +209,19 @@ type TokenAwareTransport interface {
 
 // UploadResult contains the result of an upload operation.
 type UploadResult struct {
-	CID  string
-	Size int64
+	CID     string  // The content identifier
+	Size    int64   // UnixFS logical file size (the actual file size users expect)
+	DAGSize int64   // Raw size of all blocks in the DAG
+}
+
+// getUploadResultSize determines the appropriate Size field value for UploadResult.
+// For CAR uploads (unixFSSize > 0), returns the UnixFS logical size.
+// For non-CAR uploads (unixFSSize == 0), returns the network transfer size.
+func getUploadResultSize(unixFSSize int64, networkTransferSize int64) int64 {
+	if unixFSSize > 0 {
+		return unixFSSize
+	}
+	return networkTransferSize
 }
 
 // uploadTask represents a single upload operation with all necessary parameters.
@@ -226,6 +237,8 @@ type uploadTask struct {
 	isCAR         bool
 	archiveConfig *ArchiveMode
 	uploadLimit   int64
+	unixFSSize    int64
+	dagSize       int64
 }
 
 // Execute performs the actual upload, routing to POST or TUS based on size.
@@ -236,9 +249,9 @@ func (t *uploadTask) Execute() (*UploadResult, error) {
 	uploadLimit := t.uploadLimit
 
 	if t.size <= uploadLimit {
-		result, err = t.service.uploadViaPOST(t.ctx, t.reader, t.name, t.size, t.isCAR, t.archiveConfig)
+		result, err = t.service.uploadViaPOST(t.ctx, t.reader, t.name, t.size, t.isCAR, t.archiveConfig, t.unixFSSize, t.dagSize)
 	} else {
-		result, err = t.service.uploadViaTUS(t.ctx, t.reader, t.name, t.size, t.archiveConfig)
+		result, err = t.service.uploadViaTUS(t.ctx, t.reader, t.name, t.size, t.archiveConfig, t.unixFSSize, t.dagSize)
 	}
 
 	if err != nil {
@@ -344,18 +357,27 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 		isCAR:         true,
 		archiveConfig: opts.ArchiveConfig,
 		uploadLimit:   uploadLimit,
+		unixFSSize:    int64(summary.TotalLogicalFileSize()),
+		dagSize:       int64(summary.TotalSize),
 	}
 	return task.Execute()
 }
 
-// uploadViaTUS uploads data via TUS resumable upload protocol.
-func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name string, size int64, archiveConfig *ArchiveMode) (*UploadResult, error) {
+// getTUSClient creates a configured TUS client with error handling.
+func (s *UploadService) getTUSClient(ctx context.Context) (*tusgo.Client, error) {
 	baseURL, err := url.Parse(s.tusEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse TUS endpoint: %w", err)
 	}
+	return tusgo.NewClient(s.httpClient, baseURL).WithContext(ctx), nil
+}
 
-	tusClient := tusgo.NewClient(s.httpClient, baseURL).WithContext(ctx)
+// uploadViaTUS uploads data via TUS resumable upload protocol.
+func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name string, size int64, archiveConfig *ArchiveMode, unixFSSize int64, dagSize int64) (*UploadResult, error) {
+	tusClient, err := s.getTUSClient(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build TUS metadata from archive config
 	var metadata map[string]string
@@ -409,8 +431,9 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 	// If the entire file was uploaded in the initial request, return early
 	if int64(n) == size {
 		return &UploadResult{
-			CID:  "",
-			Size: uploadedBytes,
+			CID:     "", // Will be filled by the server response
+			Size:    getUploadResultSize(unixFSSize, uploadedBytes),
+			DAGSize: dagSize,
 		}, nil
 	}
 
@@ -433,14 +456,15 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 	}
 
 	return &UploadResult{
-		CID:  "", // Will be filled by the server response
-		Size: totalWritten,
+		CID:     "", // Will be filled by the server response
+		Size:    getUploadResultSize(unixFSSize, totalWritten),
+		DAGSize: dagSize,
 	}, nil
 }
 
 // uploadViaPOST uploads data via HTTP POST as multipart form.
 // This is used for smaller files that fit within the upload limit.
-func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, name string, size int64, isCAR bool, archiveConfig *ArchiveMode) (*UploadResult, error) {
+func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, name string, size int64, isCAR bool, archiveConfig *ArchiveMode, unixFSSize int64, dagSize int64) (*UploadResult, error) {
 	// Create a pipe for streaming multipart form
 	pr, pw := io.Pipe()
 	writer := multipart.NewWriter(pw)
@@ -515,8 +539,9 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 	}
 
 	return &UploadResult{
-		CID:  "", // Will be filled by the server response
-		Size: size,
+		CID:     "", // Will be filled by the server response
+		Size:    getUploadResultSize(unixFSSize, size),
+		DAGSize: dagSize,
 	}, nil
 }
 
@@ -567,12 +592,10 @@ func (s *UploadService) GetUploadStatus(ctx context.Context, location string) (*
 		return nil, fmt.Errorf("location cannot be empty")
 	}
 
-	baseURL, err := url.Parse(s.tusEndpoint)
+	tusClient, err := s.getTUSClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse TUS endpoint: %w", err)
+		return nil, err
 	}
-
-	tusClient := tusgo.NewClient(s.httpClient, baseURL).WithContext(ctx)
 
 	// Create upload object and populate it via GetUpload
 	upload := &tusgo.Upload{}
@@ -590,12 +613,10 @@ func (s *UploadService) CancelUpload(ctx context.Context, location string) error
 		return fmt.Errorf("location cannot be empty")
 	}
 
-	baseURL, err := url.Parse(s.tusEndpoint)
+	tusClient, err := s.getTUSClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to parse TUS endpoint: %w", err)
+		return err
 	}
-
-	tusClient := tusgo.NewClient(s.httpClient, baseURL).WithContext(ctx)
 
 	// Create upload object with the location
 	upload := &tusgo.Upload{Location: location}
@@ -615,12 +636,10 @@ func (s *UploadService) ResumeUpload(ctx context.Context, location string, reade
 		return nil, fmt.Errorf("location cannot be empty")
 	}
 
-	baseURL, err := url.Parse(s.tusEndpoint)
+	tusClient, err := s.getTUSClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse TUS endpoint: %w", err)
+		return nil, err
 	}
-
-	tusClient := tusgo.NewClient(s.httpClient, baseURL).WithContext(ctx)
 
 	// Get existing upload info to find the offset
 	upload := &tusgo.Upload{}
@@ -638,8 +657,9 @@ func (s *UploadService) ResumeUpload(ctx context.Context, location string, reade
 	}
 
 	return &UploadResult{
-		CID:  "", // Will be filled by the server response
-		Size: upload.RemoteOffset + written,
+		CID:     "", // Will be filled by the server response
+		Size:    upload.RemoteOffset + written,
+		DAGSize: 0, // Not available for non-CAR uploads
 	}, nil
 }
 
