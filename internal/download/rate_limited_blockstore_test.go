@@ -208,54 +208,30 @@ func TestRateLimitedBlockstore_Has(t *testing.T) {
 	})
 }
 
-// Test memory store read operations
+// Test read operations go directly to underlying
 
-func TestRateLimitedBlockstore_MemoryStore(t *testing.T) {
-	t.Run("Get reads from memory first", func(t *testing.T) {
+func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
+	t.Run("Get goes directly to underlying blockstore", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
 		testBlock := createTestBlock(t, testCID)
+		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			allowCount.Add(1)
 			return true, nil
 		})
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Add block to memory
+		// Put is a no-op, won't store anything
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
-
-		allowCount := atomic.Int32{}
-		rlb.engine = NewRateLimiterEngine(RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
-			allowCount.Add(1)
-			return true, nil
-		}), nil, htputil.DefaultRetryConfig())
-
-		// Get should read from memory, not remote
-		blk, err := rlb.Get(context.Background(), testCID)
-
-		assert.NoError(t, err)
-		assert.Equal(t, testBlock.Cid(), blk.Cid())
-		assert.Equal(t, int32(0), allowCount.Load()) // Should not have called rate limiter
-	})
-
-	t.Run("Get falls back to remote when not in memory", func(t *testing.T) {
-		mockBlockstore := mocks.NewMockBlockstore(t)
-		testCID := createTestCID(t)
-		testBlock := createTestBlock(t, testCID)
-		allowCount := atomic.Int32{}
-		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
-			allowCount.Add(1)
-			return true, nil
-		})
-
-		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(testBlock, nil)
 
-		// Get should read from remote
+		// Get should read from underlying blockstore
 		blk, err := rlb.Get(context.Background(), testCID)
 
 		assert.NoError(t, err)
@@ -263,67 +239,67 @@ func TestRateLimitedBlockstore_MemoryStore(t *testing.T) {
 		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
 	})
 
-	t.Run("GetSize reads from memory first", func(t *testing.T) {
+	t.Run("GetSize goes directly to underlying blockstore", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
 		testBlock := createTestBlock(t, testCID)
+		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			allowCount.Add(1)
 			return true, nil
 		})
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Add block to memory
+		// Put is a no-op, won't store anything
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
-		allowCount := atomic.Int32{}
-		rlb.engine = NewRateLimiterEngine(RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
-			allowCount.Add(1)
-			return true, nil
-		}), nil, htputil.DefaultRetryConfig())
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(len(testBlock.RawData()), nil)
 
-		// GetSize should read from memory, not remote
+		// GetSize should read from underlying blockstore
 		size, err := rlb.GetSize(context.Background(), testCID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, len(testBlock.RawData()), size)
-		assert.Equal(t, int32(0), allowCount.Load()) // Should not have called rate limiter
+		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
 	})
 
-	t.Run("Has reads from memory first", func(t *testing.T) {
+	t.Run("Has goes directly to underlying blockstore", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		testCID := createTestCID(t)
 		testBlock := createTestBlock(t, testCID)
+		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+			allowCount.Add(1)
 			return true, nil
 		})
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
-		// Add block to memory
+		// Put is a no-op, won't store anything
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
-		allowCount := atomic.Int32{}
-		rlb.engine = NewRateLimiterEngine(RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
-			allowCount.Add(1)
-			return true, nil
-		}), nil, htputil.DefaultRetryConfig())
+		mockBlockstore.EXPECT().
+			Has(mock.Anything, testCID).
+			Return(true, nil)
 
-		// Has should read from memory, not remote
+		// Has should read from underlying blockstore
 		has, err := rlb.Has(context.Background(), testCID)
 
 		assert.NoError(t, err)
 		assert.True(t, has)
-		assert.Equal(t, int32(0), allowCount.Load()) // Should not have called rate limiter
+		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
 	})
 }
 
-// Test write operations using memory store
+// Test write operations are no-ops
 
 func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
-	t.Run("Put stores in memory without rate limiting", func(t *testing.T) {
+	t.Run("Put is a no-op without rate limiting", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
@@ -340,13 +316,17 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify block is in memory store
+		// Verify block is NOT stored - should query underlying blockstore
+		mockBlockstore.EXPECT().
+			Has(mock.Anything, testCID).
+			Return(false, nil)
+
 		has, err := rlb.Has(context.Background(), testCID)
 		assert.NoError(t, err)
-		assert.True(t, has)
+		assert.False(t, has)
 	})
 
-	t.Run("PutMany stores in memory without rate limiting", func(t *testing.T) {
+	t.Run("PutMany is a no-op without rate limiting", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
@@ -363,13 +343,17 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify block is in memory store
+		// Verify block is NOT stored - should query underlying blockstore
+		mockBlockstore.EXPECT().
+			Has(mock.Anything, testCID).
+			Return(false, nil)
+
 		has, err := rlb.Has(context.Background(), testCID)
 		assert.NoError(t, err)
-		assert.True(t, has)
+		assert.False(t, has)
 	})
 
-	t.Run("DeleteBlock removes from memory without rate limiting", func(t *testing.T) {
+	t.Run("DeleteBlock is a no-op without rate limiting", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
@@ -381,21 +365,17 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		testCID := createTestCID(t)
 		testBlock := createTestBlock(t, testCID)
 
-		// Add block first
+		// Put is a no-op, won't store anything
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
-		// Verify it's there using Get (should find in memory)
-		_, err = rlb.Get(context.Background(), testCID)
-		require.NoError(t, err)
-
-		// Delete it
+		// DeleteBlock is a no-op, won't remove anything
 		err = rlb.DeleteBlock(context.Background(), testCID)
 
 		assert.NoError(t, err)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify it's gone - memory should not have it, and remote would error
+		// Verify it's not there - should query underlying blockstore which doesn't have it
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(nil, errors.New("not found"))
@@ -405,7 +385,7 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.Contains(t, err.Error(), "not found")
 	})
 
-	t.Run("AllKeysChan returns channel without rate limiting", func(t *testing.T) {
+	t.Run("AllKeysChan returns empty channel", func(t *testing.T) {
 		mockBlockstore := mocks.NewMockBlockstore(t)
 		allowCount := atomic.Int32{}
 		rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
@@ -416,7 +396,7 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 		testBlock := createProperTestBlock(t)
 
-		// Add a block
+		// Put is a no-op, won't store anything
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
@@ -426,11 +406,13 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.NotNil(t, ch)
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
-		// Verify we can retrieve the block that was stored
-		retrieved, err := rlb.Get(context.Background(), testBlock.Cid())
-		assert.NoError(t, err)
-		assert.NotNil(t, retrieved)
-		assert.Equal(t, testBlock.Cid(), retrieved.Cid())
+		// Verify channel is empty since Put is a no-op
+		select {
+		case cid, ok := <-ch:
+			assert.Fail(t, "Channel should be empty, but received CID", cid, ok)
+		default:
+			// Channel is empty as expected
+		}
 	})
 }
 

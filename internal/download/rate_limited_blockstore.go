@@ -2,7 +2,6 @@ package download
 
 import (
 	"context"
-	"sync"
 
 	"github.com/gammazero/workerpool"
 	"github.com/ipfs/boxo/blockstore"
@@ -14,18 +13,17 @@ import (
 )
 
 // RateLimitedBlockstore wraps a blockstore.Blockstore with rate limiting.
-// All read operations (Get, GetSize, Has) are rate-limited through the engine.
-// Read operations check the memory store first, then fall back to the remote blockstore.
-// Write operations (Put, PutMany, DeleteBlock) are stored in the memory blockstore.
+// All read operations (Get, GetSize, Has) are rate-limited through the engine and go directly to the underlying blockstore.
+// Write operations (Put, PutMany, DeleteBlock) are no-ops and return nil.
+// The memory blockstore is only used for the AllKeysChan operation.
 type RateLimitedBlockstore struct {
 	underlying blockstore.Blockstore
 	memory     blockstore.Blockstore
 	engine     *RateLimiterEngine
 	pool       *workerpool.WorkerPool
-	mu         sync.RWMutex
 }
 
-// newMemoryBlockstore creates an in-memory blockstore for write operations.
+// newMemoryBlockstore creates an in-memory blockstore used only for AllKeysChan.
 func newMemoryBlockstore() blockstore.Blockstore {
 	datastore := dsync.MutexWrap(datastore.NewMapDatastore())
 	memoryBs := blockstore.NewBlockstore(datastore)
@@ -66,20 +64,11 @@ func (r *RateLimitedBlockstore) Stop() {
 }
 
 // Get fetches a block with rate limiting.
-// First checks the memory store, then falls back to the remote blockstore.
+// Goes directly to the underlying blockstore without using the memory store.
 // The size parameter for rate limiting is estimated as unknown (0) since we don't know the block size beforehand.
 func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
-	// Try memory store first
-	r.mu.RLock()
-	blk, err := r.memory.Get(ctx, c)
-	r.mu.RUnlock()
-
-	if err == nil {
-		return blk, nil
-	}
-
-	// Fall back to remote with rate limiting
-	err = r.engine.ExecuteWithRetry(ctx, func() error {
+	var blk blocks.Block
+	err := r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
 		blk, innerErr = r.underlying.Get(ctx, c)
 		return innerErr
@@ -88,19 +77,10 @@ func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Bloc
 }
 
 // GetSize fetches block size with rate limiting.
-// First checks the memory store, then falls back to the remote blockstore.
+// Goes directly to the underlying blockstore without using the memory store.
 func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
-	// Try memory store first
-	r.mu.RLock()
-	size, err := r.memory.GetSize(ctx, c)
-	r.mu.RUnlock()
-
-	if err == nil {
-		return size, nil
-	}
-
-	// Fall back to remote with rate limiting
-	err = r.engine.ExecuteWithRetry(ctx, func() error {
+	var size int
+	err := r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
 		size, innerErr = r.underlying.GetSize(ctx, c)
 		return innerErr
@@ -109,19 +89,10 @@ func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, er
 }
 
 // Has checks if a block exists with rate limiting.
-// First checks the memory store, then falls back to the remote blockstore.
+// Goes directly to the underlying blockstore without using the memory store.
 func (r *RateLimitedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
-	// Try memory store first
-	r.mu.RLock()
-	exists, err := r.memory.Has(ctx, c)
-	r.mu.RUnlock()
-
-	if err == nil && exists {
-		return true, nil
-	}
-
-	// Fall back to remote with rate limiting
-	err = r.engine.ExecuteWithRetry(ctx, func() error {
+	var exists bool
+	err := r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
 		exists, innerErr = r.underlying.Has(ctx, c)
 		return innerErr
@@ -129,33 +100,27 @@ func (r *RateLimitedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error
 	return exists, err
 }
 
-// Put stores a block in the memory blockstore.
-// Write operations don't consume bandwidth, so they don't need rate limiting.
+// Put is a no-op and returns nil.
+// Write operations are not supported in this rate-limited blockstore.
 func (r *RateLimitedBlockstore) Put(ctx context.Context, blk blocks.Block) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.memory.Put(ctx, blk)
+	return nil
 }
 
-// PutMany stores multiple blocks in the memory blockstore.
-// Write operations don't consume bandwidth, so they don't need rate limiting.
+// PutMany is a no-op and returns nil.
+// Write operations are not supported in this rate-limited blockstore.
 func (r *RateLimitedBlockstore) PutMany(ctx context.Context, blks []blocks.Block) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.memory.PutMany(ctx, blks)
+	return nil
 }
 
-// DeleteBlock removes a block from the memory blockstore.
+// DeleteBlock is a no-op and returns nil.
+// Write operations are not supported in this rate-limited blockstore.
 func (r *RateLimitedBlockstore) DeleteBlock(ctx context.Context, c cid.Cid) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.memory.DeleteBlock(ctx, c)
+	return nil
 }
 
 // AllKeysChan returns a channel of all block CIDs from the memory blockstore.
+// Since write operations are no-ops, this will always return an empty channel.
 func (r *RateLimitedBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
 	return r.memory.AllKeysChan(ctx)
 }
 
