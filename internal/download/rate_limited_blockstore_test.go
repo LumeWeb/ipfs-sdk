@@ -97,6 +97,11 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 		
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(len(testBlock.RawData()), nil)
+		
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(testBlock, nil)
@@ -104,7 +109,7 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 		_, err := rlb.Get(context.Background(), testCID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, int32(1), allowCount.Load())
+		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Get
 	})
 
 	t.Run("returns error when rate limiter denies", func(t *testing.T) {
@@ -116,6 +121,7 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 		testCID := createTestCID(t)
 
+		// GetSize is called first (will be rate limited and rejected)
 		_, err := rlb.Get(context.Background(), testCID)
 
 		// Should timeout after backoff
@@ -132,6 +138,7 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 		testCID := createTestCID(t)
 
+		// GetSize is called first (will fail due to rate limiter error)
 		_, err := rlb.Get(context.Background(), testCID)
 
 		assert.Error(t, err)
@@ -146,6 +153,11 @@ func TestRateLimitedBlockstore_Get(t *testing.T) {
 		})
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
+		
+		// GetSize is called first
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(1024, nil)
 		
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
@@ -197,6 +209,11 @@ func TestRateLimitedBlockstore_Has(t *testing.T) {
 
 		rlb := NewRateLimitedBlockstore(mockBlockstore, rl)
 
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(1024, nil)
+
 		mockBlockstore.EXPECT().
 			Has(mock.Anything, testCID).
 			Return(true, nil)
@@ -204,7 +221,7 @@ func TestRateLimitedBlockstore_Has(t *testing.T) {
 		_, err := rlb.Has(context.Background(), testCID)
 
 		assert.NoError(t, err)
-		assert.Equal(t, int32(1), allowCount.Load())
+		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Has
 	})
 }
 
@@ -227,6 +244,11 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(len(testBlock.RawData()), nil)
+
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(testBlock, nil)
@@ -236,7 +258,7 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, testBlock.Cid(), blk.Cid())
-		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
+		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Get
 	})
 
 	t.Run("GetSize goes directly to underlying blockstore", func(t *testing.T) {
@@ -283,6 +305,11 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 		err := rlb.Put(context.Background(), testBlock)
 		require.NoError(t, err)
 
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(len(testBlock.RawData()), nil)
+
 		mockBlockstore.EXPECT().
 			Has(mock.Anything, testCID).
 			Return(true, nil)
@@ -292,7 +319,7 @@ func TestRateLimitedBlockstore_ReadOperations(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.True(t, has)
-		assert.Equal(t, int32(1), allowCount.Load()) // Should have called rate limiter
+		assert.Equal(t, int32(2), allowCount.Load()) // Once for GetSize, once for Has
 	})
 }
 
@@ -317,6 +344,11 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
 		// Verify block is NOT stored - should query underlying blockstore
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(1024, nil)
+
 		mockBlockstore.EXPECT().
 			Has(mock.Anything, testCID).
 			Return(false, nil)
@@ -324,6 +356,7 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		has, err := rlb.Has(context.Background(), testCID)
 		assert.NoError(t, err)
 		assert.False(t, has)
+		assert.Equal(t, int32(2), allowCount.Load()) // Has calls GetSize and Has for rate limiting
 	})
 
 	t.Run("PutMany is a no-op without rate limiting", func(t *testing.T) {
@@ -344,6 +377,11 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
 		// Verify block is NOT stored - should query underlying blockstore
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(1024, nil)
+
 		mockBlockstore.EXPECT().
 			Has(mock.Anything, testCID).
 			Return(false, nil)
@@ -351,6 +389,7 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		has, err := rlb.Has(context.Background(), testCID)
 		assert.NoError(t, err)
 		assert.False(t, has)
+		assert.Equal(t, int32(2), allowCount.Load()) // Has calls GetSize and Has for rate limiting
 	})
 
 	t.Run("DeleteBlock is a no-op without rate limiting", func(t *testing.T) {
@@ -376,6 +415,11 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		assert.Equal(t, int32(0), allowCount.Load()) // No rate limit check
 
 		// Verify it's not there - should query underlying blockstore which doesn't have it
+		// GetSize is called first to get block size
+		mockBlockstore.EXPECT().
+			GetSize(mock.Anything, testCID).
+			Return(1024, nil)
+
 		mockBlockstore.EXPECT().
 			Get(mock.Anything, testCID).
 			Return(nil, errors.New("not found"))
@@ -383,6 +427,7 @@ func TestRateLimitedBlockstore_WriteOperations(t *testing.T) {
 		_, err = rlb.Get(context.Background(), testCID)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
+		assert.Equal(t, int32(4), allowCount.Load()) // 2 from Has, 2 from Get (each calls GetSize + actual method)
 	})
 
 	t.Run("AllKeysChan returns empty channel", func(t *testing.T) {

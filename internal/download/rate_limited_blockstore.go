@@ -65,14 +65,21 @@ func (r *RateLimitedBlockstore) Stop() {
 
 // Get fetches a block with rate limiting.
 // Goes directly to the underlying blockstore without using the memory store.
-// The size parameter for rate limiting is estimated as unknown (0) since we don't know the block size beforehand.
+// Calls GetSize first to determine block size for accurate rate limiting.
 func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+	// Get block size first for accurate rate limiting
+	size, err := r.GetSize(ctx, c)
+	if err != nil {
+		// If GetSize fails, fall back to unknown size (0)
+		size = 0
+	}
+
 	var blk blocks.Block
-	err := r.engine.ExecuteWithRetry(ctx, func() error {
+	err = r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
 		blk, innerErr = r.underlying.Get(ctx, c)
 		return innerErr
-	}, 0)
+	}, int64(size))
 	return blk, err
 }
 
@@ -90,13 +97,21 @@ func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, er
 
 // Has checks if a block exists with rate limiting.
 // Goes directly to the underlying blockstore without using the memory store.
+// Calls GetSize first to determine block size for accurate rate limiting.
 func (r *RateLimitedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
+	// Get block size first for accurate rate limiting
+	size, err := r.GetSize(ctx, c)
+	if err != nil {
+		// If GetSize fails, fall back to unknown size (0)
+		size = 0
+	}
+
 	var exists bool
-	err := r.engine.ExecuteWithRetry(ctx, func() error {
+	err = r.engine.ExecuteWithRetry(ctx, func() error {
 		var innerErr error
 		exists, innerErr = r.underlying.Has(ctx, c)
 		return innerErr
-	}, 0)
+	}, int64(size))
 	return exists, err
 }
 
