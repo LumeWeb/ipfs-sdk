@@ -1,3 +1,17 @@
+## 0.1.33 (2026-04-08)
+
+### Features
+
+- optimize metadata queries with block meta API
+- track UnixFS and DAG sizes in upload results
+
+### Fixes
+
+- add unixfs_size field to BlockMetaResponse schema
+- eliminate unnecessary memory usage in RateLimitedBlockstore
+- improve rate limiting accuracy by passing actual block sizes
+- avoid incorrect bandwidth charging in Has operation
+
 ## 0.1.32 (2026-04-07)
 
 ### Fixes
