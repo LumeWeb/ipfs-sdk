@@ -122,7 +122,7 @@ func TestDownloadService_BlockSize(t *testing.T) {
 		ctx := context.Background()
 		testCID := getTestCID(t)
 
-		setupMockBlockMetaForFileSize(mockBlockMeta, 1024)
+		setupMockBlockMetaForBlockSize(mockBlockMeta, 1024)
 
 		size, err := service.BlockSize(ctx, testCID)
 		require.NoError(t, err)
@@ -425,15 +425,32 @@ func setupMockDownloadService(t *testing.T) (*DownloadService, *mocks.MockBacken
 }
 
 // setupMockBlockMetaForFileSize sets up a mock block meta response for file size queries.
-func setupMockBlockMetaForFileSize(mockBlockMeta *mocks.MockBlockMetaClient, blockSize int) {
+func setupMockBlockMetaForFileSize(mockBlockMeta *mocks.MockBlockMetaClient, unixfsSize int) {
 	response := &internalclient.GetApiBlockMetaCidResponse{
 		Body:         []byte("{}"),
 		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 		JSON200: &internalclient.BlockMetaResponse{
-			Name:      "",
-			Type:      2,
-			BlockSize: blockSize,
-			ChildCid:  []string{},
+			Name:       "",
+			Type:       2,
+			BlockSize:  0,
+			UnixfsSize: unixfsSize,
+			ChildCid:   []string{},
+		},
+	}
+	mockBlockMeta.EXPECT().GetApiBlockMetaCidWithResponse(mock.Anything, mock.Anything).Return(response, nil)
+}
+
+// setupMockBlockMetaForBlockSize sets up a mock block meta response for block size queries.
+func setupMockBlockMetaForBlockSize(mockBlockMeta *mocks.MockBlockMetaClient, blockSize int) {
+	response := &internalclient.GetApiBlockMetaCidResponse{
+		Body:         []byte("{}"),
+		HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+		JSON200: &internalclient.BlockMetaResponse{
+			Name:       "",
+			Type:       2,
+			BlockSize:  blockSize,
+			UnixfsSize: 0,
+			ChildCid:   []string{},
 		},
 	}
 	mockBlockMeta.EXPECT().GetApiBlockMetaCidWithResponse(mock.Anything, mock.Anything).Return(response, nil)

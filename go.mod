@@ -19,7 +19,7 @@ require (
 	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tus/tusd/v2 v2.9.1
-	go.lumeweb.com/ipfs-content v0.1.9
+	go.lumeweb.com/ipfs-content v0.1.15
 )
 
 require (
