@@ -220,27 +220,27 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 }
 
 
-// parseUnixFSFileSize queries the block meta REST API to extract the file size from a block.
-func (s *DownloadService) parseUnixFSFileSize(ctx context.Context, c cid.Cid) (int64, error) {
+// queryBlockMeta queries the block meta REST API for metadata.
+func (s *DownloadService) queryBlockMeta(ctx context.Context, c cid.Cid) (*internalclient.GetApiBlockMetaCidResponse, error) {
 	if s.blockMeta == nil {
-		return -1, fmt.Errorf("block meta client not initialized")
+		return nil, fmt.Errorf("block meta client not initialized")
 	}
 
 	// Use the block meta REST API to get UnixFS metadata
 	response, err := s.blockMeta.GetApiBlockMetaCidWithResponse(ctx, c.String())
 	if err != nil {
-		return -1, fmt.Errorf("failed to query block meta API: %w", err)
+		return nil, fmt.Errorf("failed to query block meta API: %w", err)
 	}
 
 	if response.StatusCode() < 200 || response.StatusCode() >= 300 {
-		return -1, fmt.Errorf("block meta API returned status %d: %s", response.StatusCode(), string(response.Body))
+		return nil, fmt.Errorf("block meta API returned status %d: %s", response.StatusCode(), string(response.Body))
 	}
 
 	if response.JSON200 == nil {
-		return -1, fmt.Errorf("block meta API returned no data")
+		return nil, fmt.Errorf("block meta API returned no data")
 	}
 
-	return int64(response.JSON200.BlockSize), nil
+	return response, nil
 }
 
 // FileSize returns the actual size of a UnixFS file by CID.
@@ -248,17 +248,23 @@ func (s *DownloadService) parseUnixFSFileSize(ctx context.Context, c cid.Cid) (i
 // For chunked files, the API returns the total file size by summing all chunk sizes.
 // For inline files, returns the actual data size.
 func (s *DownloadService) FileSize(ctx context.Context, c cid.Cid) (int64, error) {
-	return s.parseUnixFSFileSize(ctx, c)
+	response, err := s.queryBlockMeta(ctx, c)
+	if err != nil {
+		return -1, err
+	}
+
+	return int64(response.JSON200.UnixfsSize), nil
 }
 
 // BlockSize returns the size of a block by CID.
 // Uses the block meta REST API to query UnixFS metadata without loading file contents.
 func (s *DownloadService) BlockSize(ctx context.Context, c cid.Cid) (int, error) {
-	size, err := s.parseUnixFSFileSize(ctx, c)
+	response, err := s.queryBlockMeta(ctx, c)
 	if err != nil {
 		return -1, err
 	}
-	return int(size), nil
+
+	return response.JSON200.BlockSize, nil
 }
 
 // Raw downloads an IPFS block and returns the raw byte data.
