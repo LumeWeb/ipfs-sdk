@@ -1,3 +1,9 @@
+## 0.1.34 (2026-04-10)
+
+### Fixes
+
+- FileSize returns correct UnixFS logical file size instead of block size
+
 ## 0.1.33 (2026-04-08)
 
 ### Features
