@@ -548,6 +548,94 @@ func TestDNSService_BulkDeleteRecords(t *testing.T) {
 	})
 }
 
+func TestDNSService_GetZoneStatus(t *testing.T) {
+	t.Run("returns zone status on success", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		expectedZone := &internalclient.ZoneResponse{
+			Id:     123,
+			Domain: "example.com",
+			Status: "active",
+		}
+
+		mockClient.EXPECT().
+			GetApiDnsZonesIdStatusWithResponse(mock.Anything, "123").
+			Return(&internalclient.GetApiDnsZonesIdStatusResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedZone,
+			}, nil).
+			Once()
+
+		zone, err := service.GetZoneStatus(context.Background(), "123")
+
+		require.NoError(t, err)
+		assert.NotNil(t, zone)
+		assert.Equal(t, 123, zone.Id)
+		assert.Equal(t, "active", zone.Status)
+	})
+
+	t.Run("returns error on non-200 status", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			GetApiDnsZonesIdStatusWithResponse(mock.Anything, "999").
+			Return(&internalclient.GetApiDnsZonesIdStatusResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+			}, nil).
+			Once()
+
+		zone, err := service.GetZoneStatus(context.Background(), "999")
+
+		assert.Error(t, err)
+		assert.Nil(t, zone)
+	})
+}
+
+func TestDNSService_ValidateZone(t *testing.T) {
+	t.Run("returns validation result on success", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		validatedAt := time.Now()
+		expectedValidation := &internalclient.ValidationResponse{
+			Valid:       true,
+			Message:     "Zone is properly configured",
+			CheckedAt:   validatedAt,
+			Nameservers: &[]string{"ns1.example.com", "ns2.example.com"},
+		}
+
+		mockClient.EXPECT().
+			PostApiDnsZonesIdValidateWithResponse(mock.Anything, "123").
+			Return(&internalclient.PostApiDnsZonesIdValidateResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedValidation,
+			}, nil).
+			Once()
+
+		validation, err := service.ValidateZone(context.Background(), "123")
+
+		require.NoError(t, err)
+		assert.NotNil(t, validation)
+		assert.True(t, validation.Valid)
+		assert.Equal(t, "Zone is properly configured", validation.Message)
+	})
+
+	t.Run("returns error on non-200 status", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			PostApiDnsZonesIdValidateWithResponse(mock.Anything, "999").
+			Return(&internalclient.PostApiDnsZonesIdValidateResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+			}, nil).
+			Once()
+
+		validation, err := service.ValidateZone(context.Background(), "999")
+
+		assert.Error(t, err)
+		assert.Nil(t, validation)
+	})
+}
+
 // mockReadCloser creates a ReadCloser from byte slice
 type mockReadCloser []byte
 

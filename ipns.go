@@ -52,16 +52,36 @@ func WithIPNSClient(client IPNSClientWithResponsesInterface) IPNSOption {
 	}
 }
 
+// CreateKeyOption applies optional parameters to CreateKey
+type CreateKeyOption func(*IPNSKeyRequest)
+
+// WithIPNSKey sets an existing private key to import (instead of generating a new key)
+func WithIPNSKey(key string) CreateKeyOption {
+	return func(req *IPNSKeyRequest) {
+		req.Key = &key
+	}
+}
+
+// PublishOption applies optional parameters to Publish
+type PublishOption func(*IPNSPublishRequest)
+
+// WithTTL sets the TTL for the IPNS publish request
+func WithTTL(ttl string) PublishOption {
+	return func(req *IPNSPublishRequest) {
+		req.Ttl = &ttl
+	}
+}
+
 // IPNSService provides IPNS key management functionality
 type IPNSService interface {
 	// Key management
 	ListKeys(ctx context.Context) ([]IPNSKeyResponse, error)
 	GetKey(ctx context.Context, id string) (*IPNSKeyResponse, error)
-	CreateKey(ctx context.Context, name string) (*IPNSKeyResponse, error)
+	CreateKey(ctx context.Context, name string, opts ...CreateKeyOption) (*IPNSKeyResponse, error)
 	DeleteKey(ctx context.Context, id string) error
 
 	// Publishing management
-	Publish(ctx context.Context, keyID int, cid string) (*IPNSPublishResponse, error)
+	Publish(ctx context.Context, keyID int, cid string, opts ...PublishOption) (*IPNSPublishResponse, error)
 	Republish(ctx context.Context) error
 
 	// Resolution
@@ -159,10 +179,14 @@ func (s *ipnsService) GetKey(ctx context.Context, id string) (*IPNSKeyResponse, 
 	return result, nil
 }
 
-// CreateKey creates a new IPNS key
-func (s *ipnsService) CreateKey(ctx context.Context, name string) (*IPNSKeyResponse, error) {
+// CreateKey creates a new IPNS key or imports an existing one if key is provided via WithKey option
+func (s *ipnsService) CreateKey(ctx context.Context, name string, opts ...CreateKeyOption) (*IPNSKeyResponse, error) {
 	req := IPNSKeyRequest{
 		Name: name,
+	}
+
+	for _, opt := range opts {
+		opt(&req)
 	}
 
 	var result *IPNSKeyResponse
@@ -205,11 +229,15 @@ func (s *ipnsService) DeleteKey(ctx context.Context, id string) error {
 	return err
 }
 
-// Publish publishes a content CID to an IPNS key
-func (s *ipnsService) Publish(ctx context.Context, keyID int, cid string) (*IPNSPublishResponse, error) {
+// Publish publishes a content CID to an IPNS key with optional TTL via WithTTL option
+func (s *ipnsService) Publish(ctx context.Context, keyID int, cid string, opts ...PublishOption) (*IPNSPublishResponse, error) {
 	req := IPNSPublishRequest{
 		KeyId: keyID,
 		Cid:   cid,
+	}
+
+	for _, opt := range opts {
+		opt(&req)
 	}
 
 	var result *IPNSPublishResponse

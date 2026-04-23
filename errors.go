@@ -24,6 +24,8 @@ const (
 	OpDeleteRecord
 	OpBulkCreateRecords
 	OpBulkDeleteRecords
+	OpGetZoneStatus
+	OpValidateZone
 
 	// IPNS operations
 	OpListIPNSKeys
@@ -67,6 +69,8 @@ var operationString = map[int]string{
 	OpDeleteRecord:      "delete DNS record",
 	OpBulkCreateRecords: "bulk create DNS records",
 	OpBulkDeleteRecords: "bulk delete DNS records",
+	OpGetZoneStatus:     "get DNS zone status",
+	OpValidateZone:      "validate DNS zone",
 
 	// IPNS operations
 	OpListIPNSKeys:  "list IPNS keys",
@@ -194,6 +198,14 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpBulkDeleteRecords: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid record identifiers"),
+	},
+	OpGetZoneStatus: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     plainErr("zone not found"),
+	},
+	OpValidateZone: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     plainErr("zone not found"),
 	},
 
 	// IPNS operations

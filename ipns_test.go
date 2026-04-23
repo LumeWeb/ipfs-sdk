@@ -193,6 +193,30 @@ func TestIPNSService_CreateKey_Success(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Equal(t, newKey.Id, result.Id)
 	})
+
+	t.Run("imports existing key with WithIPNSKey option", func(t *testing.T) {
+		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		newKey := &client.IPNSKeyResponse{Id: 2, Name: "importedkey"}
+		privateKey := "existing-private-key-data"
+
+		mockClient.EXPECT().
+			PostApiIpnsKeysWithResponse(mock.Anything, mock.MatchedBy(func(req client.IPNSKeyRequest) bool {
+				return req.Name == "importedkey" && req.Key != nil && *req.Key == privateKey
+			})).
+			Return(&client.PostApiIpnsKeysResponse{
+				Body:         []byte("{}"),
+				HTTPResponse: &http.Response{StatusCode: http.StatusCreated},
+				JSON201:      newKey,
+			}, nil).
+			Once()
+
+		service := NewIPNSService(mockClient)
+		result, err := service.CreateKey(context.Background(), "importedkey", WithIPNSKey(privateKey))
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, newKey.Id, result.Id)
+	})
 }
 
 func TestIPNSService_DeleteKey_Success(t *testing.T) {
@@ -260,6 +284,32 @@ func TestIPNSService_Publish_Success(t *testing.T) {
 
 		service := NewIPNSService(mockClient)
 		result, err := service.Publish(context.Background(), 123, "QmTest")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("publishes with TTL option", func(t *testing.T) {
+		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		expectedResponse := &client.IPNSPublishResponse{
+			Name:  "test",
+			Value: "QmTest",
+		}
+		ttl := "24h"
+
+		mockClient.EXPECT().
+			PostApiIpnsPublishWithResponse(mock.Anything, mock.MatchedBy(func(req client.IPNSPublishRequest) bool {
+				return req.KeyId == 123 && req.Cid == "QmTest" && req.Ttl != nil && *req.Ttl == ttl
+			})).
+			Return(&client.PostApiIpnsPublishResponse{
+				Body:         []byte("{}"),
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		service := NewIPNSService(mockClient)
+		result, err := service.Publish(context.Background(), 123, "QmTest", WithTTL(ttl))
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
