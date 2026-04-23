@@ -1,3 +1,9 @@
+## 0.1.35 (2026-04-23)
+
+### Features
+
+- add optional params to IPNS and new DNS methods
+
 ## 0.1.34 (2026-04-10)
 
 ### Fixes
