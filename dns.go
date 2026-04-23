@@ -52,6 +52,9 @@ func WithDNSClient(client DNSClientWithResponsesInterface) DNSOption {
 	}
 }
 
+// Type aliases for DNS validation response
+type ValidationResponse = internalclient.ValidationResponse
+
 // DNSService provides DNS management functionality
 type DNSService interface {
 	// Zone management
@@ -59,6 +62,8 @@ type DNSService interface {
 	GetZone(ctx context.Context, id string) (*ZoneResponse, error)
 	CreateZone(ctx context.Context, domain string, nameservers []string) (*ZoneResponse, error)
 	DeleteZone(ctx context.Context, id string) error
+	GetZoneStatus(ctx context.Context, id string) (*ZoneResponse, error)
+	ValidateZone(ctx context.Context, id string) (*ValidationResponse, error)
 
 	// Record management
 	ListRecords(ctx context.Context, zoneID string) ([]RecordResponse, error)
@@ -193,6 +198,62 @@ func (s *dnsService) DeleteZone(ctx context.Context, id string) error {
 
 		return handleResponse(resp.StatusCode(), resp.Body, OpDeleteZone, []int{http.StatusOK, http.StatusNoContent})
 	})
+}
+
+// GetZoneStatus retrieves the status of a specific DNS zone by ID
+func (s *dnsService) GetZoneStatus(ctx context.Context, id string) (*ZoneResponse, error) {
+	var result *ZoneResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiDnsZonesIdStatusWithResponse(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetZoneStatus, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpGetZoneStatus) + " no response data for zone status " + id)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// ValidateZone validates a DNS zone by ID
+func (s *dnsService) ValidateZone(ctx context.Context, id string) (*ValidationResponse, error) {
+	var result *ValidationResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiDnsZonesIdValidateWithResponse(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpValidateZone, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpValidateZone) + " no response data for zone validation " + id)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 // ListRecords retrieves all DNS records for a zone

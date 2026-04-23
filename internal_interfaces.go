@@ -62,6 +62,8 @@ type DNSClientWithResponsesInterface interface {
 	GetApiDnsZonesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdResponse, error)
 	PostApiDnsZonesWithResponse(ctx context.Context, body dnsreq.ZoneRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesResponse, error)
 	DeleteApiDnsZonesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdResponse, error)
+	GetApiDnsZonesIdStatusWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdStatusResponse, error)
+	PostApiDnsZonesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdValidateResponse, error)
 	GetApiDnsZonesIdRecordsWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdRecordsResponse, error)
 	PostApiDnsZonesIdRecordsWithResponse(ctx context.Context, id string, body dnsreq.RecordRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsResponse, error)
 	GetApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdRecordsNameTypeResponse, error)
@@ -90,6 +92,14 @@ func (a *internalClientToDNSAdapter) PostApiDnsZonesWithResponse(ctx context.Con
 
 func (a *internalClientToDNSAdapter) DeleteApiDnsZonesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdResponse, error) {
 	return a.client.DeleteApiDnsZonesIdWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToDNSAdapter) GetApiDnsZonesIdStatusWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdStatusResponse, error) {
+	return a.client.GetApiDnsZonesIdStatusWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToDNSAdapter) PostApiDnsZonesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdValidateResponse, error) {
+	return a.client.PostApiDnsZonesIdValidateWithResponse(ctx, id, reqEditors...)
 }
 
 func (a *internalClientToDNSAdapter) GetApiDnsZonesIdRecordsWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdRecordsResponse, error) {

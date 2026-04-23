@@ -411,6 +411,93 @@ func (_c *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdRecordsWithRespons
 	return _c
 }
 
+// GetApiDnsZonesIdStatusWithResponse provides a mock function for the type MockDNSClientWithResponsesInterface
+func (_mock *MockDNSClientWithResponsesInterface) GetApiDnsZonesIdStatusWithResponse(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.GetApiDnsZonesIdStatusResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, id)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetApiDnsZonesIdStatusWithResponse")
+	}
+
+	var r0 *client.GetApiDnsZonesIdStatusResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...client.RequestEditorFn) (*client.GetApiDnsZonesIdStatusResponse, error)); ok {
+		return returnFunc(ctx, id, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...client.RequestEditorFn) *client.GetApiDnsZonesIdStatusResponse); ok {
+		r0 = returnFunc(ctx, id, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.GetApiDnsZonesIdStatusResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, id, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetApiDnsZonesIdStatusWithResponse'
+type MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call struct {
+	*mock.Call
+}
+
+// GetApiDnsZonesIdStatusWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockDNSClientWithResponsesInterface_Expecter) GetApiDnsZonesIdStatusWithResponse(ctx interface{}, id interface{}, reqEditors ...interface{}) *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call {
+	return &MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call{Call: _e.mock.On("GetApiDnsZonesIdStatusWithResponse",
+		append([]interface{}{ctx, id}, reqEditors...)...)}
+}
+
+func (_c *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call) Run(run func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn)) *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call) Return(getApiDnsZonesIdStatusResponse *client.GetApiDnsZonesIdStatusResponse, err error) *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call {
+	_c.Call.Return(getApiDnsZonesIdStatusResponse, err)
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.GetApiDnsZonesIdStatusResponse, error)) *MockDNSClientWithResponsesInterface_GetApiDnsZonesIdStatusWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetApiDnsZonesIdWithResponse provides a mock function for the type MockDNSClientWithResponsesInterface
 func (_mock *MockDNSClientWithResponsesInterface) GetApiDnsZonesIdWithResponse(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.GetApiDnsZonesIdResponse, error) {
 	// client.RequestEditorFn
@@ -854,6 +941,93 @@ func (_c *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdRecordsWithRespon
 }
 
 func (_c *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdRecordsWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, body dnsreq.RecordRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiDnsZonesIdRecordsResponse, error)) *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdRecordsWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PostApiDnsZonesIdValidateWithResponse provides a mock function for the type MockDNSClientWithResponsesInterface
+func (_mock *MockDNSClientWithResponsesInterface) PostApiDnsZonesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.PostApiDnsZonesIdValidateResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, id)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostApiDnsZonesIdValidateWithResponse")
+	}
+
+	var r0 *client.PostApiDnsZonesIdValidateResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...client.RequestEditorFn) (*client.PostApiDnsZonesIdValidateResponse, error)); ok {
+		return returnFunc(ctx, id, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...client.RequestEditorFn) *client.PostApiDnsZonesIdValidateResponse); ok {
+		r0 = returnFunc(ctx, id, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.PostApiDnsZonesIdValidateResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, id, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostApiDnsZonesIdValidateWithResponse'
+type MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call struct {
+	*mock.Call
+}
+
+// PostApiDnsZonesIdValidateWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockDNSClientWithResponsesInterface_Expecter) PostApiDnsZonesIdValidateWithResponse(ctx interface{}, id interface{}, reqEditors ...interface{}) *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call {
+	return &MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call{Call: _e.mock.On("PostApiDnsZonesIdValidateWithResponse",
+		append([]interface{}{ctx, id}, reqEditors...)...)}
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call) Run(run func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn)) *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call) Return(postApiDnsZonesIdValidateResponse *client.PostApiDnsZonesIdValidateResponse, err error) *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call {
+	_c.Call.Return(postApiDnsZonesIdValidateResponse, err)
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.PostApiDnsZonesIdValidateResponse, error)) *MockDNSClientWithResponsesInterface_PostApiDnsZonesIdValidateWithResponse_Call {
 	_c.Call.Return(run)
 	return _c
 }
