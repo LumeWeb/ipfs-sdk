@@ -18,6 +18,7 @@ type WebsiteValidateResponse = internalclient.WebsiteValidateResponse
 type GatewayWebsiteResponse = internalclient.GatewayWebsiteResponse
 type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
 type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
+type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 
 // WebsitesConfig holds configuration for Websites service operations
 type WebsitesConfig struct {
@@ -62,6 +63,7 @@ type WebsitesClientWithResponsesInterface interface {
 	PostInternalWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, body internalclient.SSLStatusUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalWebsitesDomainSslStatusResponse, error)
 	GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainResponse, error)
 	GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainStatusResponse, error)
+	GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesConfigResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -110,6 +112,10 @@ func (a *internalClientToWebsitesAdapter) GetInternalWebsitesDomainStatusWithRes
 
 }
 
+func (a *internalClientToWebsitesAdapter) GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesConfigResponse, error) {
+	return a.client.GetApiWebsitesConfigWithResponse(ctx, reqEditors...)
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -148,6 +154,8 @@ type WebsitesService interface {
 	// WaitForDNSValidation polls DNS validation endpoint until it returns valid
 	// Suitable for: Waiting for DNS propagation after TXT record creation/update, testing validation
 	WaitForDNSValidation(ctx context.Context, id string, opts ...httputil.PollOption) error
+	// GetConfig returns website hosting configuration including the gateway domain
+	GetConfig(ctx context.Context) (*WebsiteConfigResponse, error)
 }
 
 type websitesService struct {
@@ -520,7 +528,6 @@ func (s *websitesService) WaitForDNSValidation(ctx context.Context, id string, o
 	_, err := httputil.PollUntil(ctx, cfg, func(ctx context.Context) (bool, interface{}, error) {
 		resp, err := s.ValidateDNS(ctx, id)
 		if err != nil {
-			// Returning err will stop polling and return the error immediately
 			return false, nil, err
 		}
 
@@ -531,5 +538,32 @@ func (s *websitesService) WaitForDNSValidation(ctx context.Context, id string, o
 	})
 
 	return err
+}
+
+func (s *websitesService) GetConfig(ctx context.Context) (*WebsiteConfigResponse, error) {
+	var result *WebsiteConfigResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiWebsitesConfigWithResponse(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetWebsiteConfig, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpGetWebsiteConfig) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 

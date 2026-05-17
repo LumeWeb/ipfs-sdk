@@ -47,6 +47,7 @@ const (
 	OpUpdateSSLStatusInternal
 	OpGetGatewayWebsite
 	OpGetGatewayWebsiteStatus
+	OpGetWebsiteConfig
 
 	// Pinning operations
 	OpListPins
@@ -92,6 +93,7 @@ var operationString = map[int]string{
 	OpUpdateSSLStatusInternal:  "update SSL status internal",
 	OpGetGatewayWebsite:        "get gateway website",
 	OpGetGatewayWebsiteStatus:  "get gateway website status",
+	OpGetWebsiteConfig:          "get website config",
 
 	// Pinning operations
 	OpListPins:  "list pins",
@@ -272,6 +274,10 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid SSL status data"),
 		http.StatusNotFound:     plainErr("website not found"),
+	},
+	OpGetWebsiteConfig: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     plainErr("website config not found"),
 	},
 }
 
