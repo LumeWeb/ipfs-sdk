@@ -11,12 +11,13 @@ import (
 
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
+	"github.com/ipfs/boxo/ipld/unixfs/importer/trickle"
 	"github.com/ipfs/go-cid"
 	"go.lumeweb.com/ipfs-content/car"
+	"go.lumeweb.com/ipfs-content/unixfs"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 )
-
 // StreamToPipe runs a blocking function in a goroutine that writes to a pipe.
 // This allows you to generate data (e.g., CAR files) without blocking the calling
 // thread. The pipe reader is returned immediately for consumption.
@@ -98,6 +99,16 @@ type UploadService struct {
 	uploadLimit   int64
 }
 
+// ChunkerStrategy is the DAG layout strategy for UnixFS node generation.
+type ChunkerStrategy = unixfs.DAGLayoutFunc
+
+var (
+	// BalancedLayout is the default balanced DAG layout strategy.
+	BalancedLayout ChunkerStrategy = unixfs.BalancedLayout
+	// TrickleLayout is the trickle DAG layout strategy.
+	TrickleLayout ChunkerStrategy = trickle.Layout
+)
+
 // UploadOptions configures an upload operation.
 type UploadOptions struct {
 	// MemoryLimit is the memory limit for CAR generation in bytes.
@@ -124,6 +135,18 @@ type UploadOptions struct {
 	//
 	// Default: ArchiveModeAuto (process/unpack files on server)
 	ArchiveConfig *ArchiveMode
+
+	// ChunkSize is the chunk size in bytes for UnixFS file splitting.
+	// If 0, the default of 1MB (1024 * 1024) is used.
+	ChunkSize int64
+
+	// ChunkerStrategy sets the DAG layout function (e.g. BalancedLayout).
+	// If nil, the default balanced layout is used.
+	ChunkerStrategy ChunkerStrategy
+
+	// MaxLinks is the maximum number of links per DAG node.
+	// If 0, the default of 174 (helpers.DefaultLinksPerBlock) is used.
+	MaxLinks int
 }
 
 // NewUploadService creates a new UploadService.
@@ -323,8 +346,18 @@ func (s *UploadService) UploadFromFS(ctx context.Context, filesystem fs.FS, name
 
 	var pr io.ReadCloser
 
-	// Pass 1: Build tree summary to get root CID and calculate CAR size
-	builder, summary, err := car.PrepareCAR(ctx, filesystem, wrapInDir)
+	var carBuilderOpts []car.CARBuilderOption
+	if opts.ChunkSize > 0 {
+		carBuilderOpts = append(carBuilderOpts, car.WithChunkSize(opts.ChunkSize))
+	}
+	if opts.ChunkerStrategy != nil {
+		carBuilderOpts = append(carBuilderOpts, car.WithChunkerStrategy(opts.ChunkerStrategy))
+	}
+	if opts.MaxLinks > 0 {
+		carBuilderOpts = append(carBuilderOpts, car.WithMaxLinks(opts.MaxLinks))
+	}
+
+	builder, summary, err := car.PrepareCARWithOptions(ctx, filesystem, wrapInDir, carBuilderOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare upload: %w. Try reducing memory limit if this is a large directory", err)
 	}
