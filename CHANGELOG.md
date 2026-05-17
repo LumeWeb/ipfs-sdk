@@ -1,3 +1,9 @@
+## 0.1.38 (2026-05-17)
+
+### Fixes
+
+- re-export RetryConfig and PollOption from internal/http
+
 ## 0.1.37 (2026-05-17)
 
 ### Fixes
