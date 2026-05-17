@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
-	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 // HostOverride holds the configuration for host header override.
@@ -36,7 +35,7 @@ type Client struct {
 	gatewaySecret string
 	internalGen   *internalclient.ClientWithResponses
 	genClientOpts internalclient.ClientOption
-	retry         httputil.RetryConfig
+	retry         RetryConfig
 	hostOverride  *HostOverride
 	
 	// Download service configuration
@@ -46,13 +45,13 @@ type Client struct {
 
 // ClientConfig holds configuration for the main SDK client
 type ClientConfig struct {
-	Retry httputil.RetryConfig
+	Retry RetryConfig
 }
 
 // DefaultClientConfig returns default configuration for the main SDK client
 func DefaultClientConfig() ClientConfig {
 	return ClientConfig{
-		Retry: httputil.DefaultRetryConfig(),
+		Retry: DefaultRetryConfig(),
 	}
 }
 
@@ -60,7 +59,7 @@ func DefaultClientConfig() ClientConfig {
 type ClientOption func(*Client)
 
 // WithRetryConfig sets the retry configuration for the main SDK client
-func WithRetryConfig(cfg httputil.RetryConfig) ClientOption {
+func WithRetryConfig(cfg RetryConfig) ClientOption {
 	return func(c *Client) {
 		c.retry = cfg
 	}

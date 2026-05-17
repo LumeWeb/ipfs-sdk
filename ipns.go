@@ -23,14 +23,14 @@ type IPNSResolveResponse = internalclient.IPNSResolveResponse
 
 // IPNSConfig holds configuration for IPNS service operations
 type IPNSConfig struct {
-	Retry  httputil.RetryConfig
+	Retry  RetryConfig
 	Client IPNSClientWithResponsesInterface
 }
 
 // DefaultIPNSConfig returns default configuration for IPNS service
 func DefaultIPNSConfig() IPNSConfig {
 	return IPNSConfig{
-		Retry: httputil.DefaultRetryConfig(),
+		Retry: DefaultRetryConfig(),
 	}
 }
 
@@ -38,7 +38,7 @@ func DefaultIPNSConfig() IPNSConfig {
 type IPNSOption func(*IPNSConfig)
 
 // WithIPNSRetry sets the retry configuration for IPNS operations
-func WithIPNSRetry(cfg httputil.RetryConfig) IPNSOption {
+func WithIPNSRetry(cfg RetryConfig) IPNSOption {
 	return func(c *IPNSConfig) {
 		c.Retry = cfg
 	}
@@ -91,7 +91,7 @@ type IPNSService interface {
 	// WaitForIPNSResolution polls IPNS until record resolves to expected CID
 	// Suitable for: IPNS integration website tests, verifying CID changes propagate,
 	// testing content updates without DNS changes
-	WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...httputil.PollOption) (*IPNSResolveResponse, error)
+	WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...PollOption) (*IPNSResolveResponse, error)
 }
 
 // ipnsService implements IPNSService using the generated internal client
@@ -314,7 +314,7 @@ func (s *ipnsService) Resolve(ctx context.Context, name string) (*IPNSResolveRes
 // WaitForIPNSResolution polls IPNS resolution until it resolves to the expected CID.
 // This is useful for IPNS integration website tests, verifying CID changes propagate,
 // and testing content updates without DNS changes.
-func (s *ipnsService) WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...httputil.PollOption) (*IPNSResolveResponse, error) {
+func (s *ipnsService) WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...PollOption) (*IPNSResolveResponse, error) {
 	// Create default poll config and apply options
 	cfg := httputil.DefaultPollConfig()
 	for _, opt := range opts {

@@ -22,14 +22,14 @@ type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 
 // WebsitesConfig holds configuration for Websites service operations
 type WebsitesConfig struct {
-	Retry  httputil.RetryConfig
+	Retry  RetryConfig
 	Client WebsitesClientWithResponsesInterface
 }
 
 // DefaultWebsitesConfig returns default configuration for Websites service
 func DefaultWebsitesConfig() WebsitesConfig {
 	return WebsitesConfig{
-		Retry: httputil.DefaultRetryConfig(),
+		Retry: DefaultRetryConfig(),
 	}
 }
 
@@ -37,7 +37,7 @@ func DefaultWebsitesConfig() WebsitesConfig {
 type WebsitesOption func(*WebsitesConfig)
 
 // WithWebsitesRetry sets the retry configuration for Websites operations
-func WithWebsitesRetry(cfg httputil.RetryConfig) WebsitesOption {
+func WithWebsitesRetry(cfg RetryConfig) WebsitesOption {
 	return func(c *WebsitesConfig) {
 		c.Retry = cfg
 	}
@@ -147,13 +147,13 @@ type WebsitesService interface {
 	GetGatewayWebsiteStatus(ctx context.Context, domain string) (*GatewayWebsiteStatusResponse, error)
 	// WaitForSSLStatusReady polls SSL status until it reaches ready or failed state
 	// Suitable for: SSL certificate provisioning, ACME challenge completion, timeout detection
-	WaitForSSLStatusReady(ctx context.Context, domain string, opts ...httputil.PollOption) (string, error)
+	WaitForSSLStatusReady(ctx context.Context, domain string, opts ...PollOption) (string, error)
 	// WaitForWebsiteStatus polls website status until it reaches expected state
 	// Suitable for: Post-validation checks, janitor cleanup, monitoring broken/deleted states
-	WaitForWebsiteStatus(ctx context.Context, id string, expectedStatus string, opts ...httputil.PollOption) error
+	WaitForWebsiteStatus(ctx context.Context, id string, expectedStatus string, opts ...PollOption) error
 	// WaitForDNSValidation polls DNS validation endpoint until it returns valid
 	// Suitable for: Waiting for DNS propagation after TXT record creation/update, testing validation
-	WaitForDNSValidation(ctx context.Context, id string, opts ...httputil.PollOption) error
+	WaitForDNSValidation(ctx context.Context, id string, opts ...PollOption) error
 	// GetConfig returns website hosting configuration including the gateway domain
 	GetConfig(ctx context.Context) (*WebsiteConfigResponse, error)
 }
@@ -452,7 +452,7 @@ func (s *websitesService) GetGatewayWebsiteStatus(ctx context.Context, domain st
 // to complete, and detecting timeouts for failed provisioning.
 //
 // Returns the final SSL status ("ready", "failed", "provisioning", etc.) or an error.
-func (s *websitesService) WaitForSSLStatusReady(ctx context.Context, domain string, opts ...httputil.PollOption) (string, error) {
+func (s *websitesService) WaitForSSLStatusReady(ctx context.Context, domain string, opts ...PollOption) (string, error) {
 	// Define settled states - we want to know when SSL is either ready or failed
 	settledStates := []string{"ready", "failed"}
 
@@ -491,7 +491,7 @@ func (s *websitesService) WaitForSSLStatusReady(ctx context.Context, domain stri
 // website cleanup after deletion, or detecting broken status from janitor.
 //
 // Expected status values: "active", "broken", "deleted", "pending", or any custom status.
-func (s *websitesService) WaitForWebsiteStatus(ctx context.Context, id string, expectedStatus string, opts ...httputil.PollOption) error {
+func (s *websitesService) WaitForWebsiteStatus(ctx context.Context, id string, expectedStatus string, opts ...PollOption) error {
 	// Define settled states - the one status we're waiting for
 	settledStates := []string{expectedStatus}
 
@@ -519,7 +519,7 @@ func (s *websitesService) WaitForWebsiteStatus(ctx context.Context, id string, e
 // - maxAttempts: maximum number of validation attempts (default: 60)
 //
 // Returns nil if DNS is validated successfully, otherwise returns error.
-func (s *websitesService) WaitForDNSValidation(ctx context.Context, id string, opts ...httputil.PollOption) error {
+func (s *websitesService) WaitForDNSValidation(ctx context.Context, id string, opts ...PollOption) error {
 	cfg := httputil.DefaultPollConfig()
 	for _, opt := range opts {
 		opt(cfg)
