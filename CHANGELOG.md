@@ -1,3 +1,9 @@
+## 0.1.36 (2026-05-17)
+
+### Features
+
+- expose CAR builder options for configurable chunk size, DAG layout, and max links
+
 ## 0.1.35 (2026-04-23)
 
 ### Features
