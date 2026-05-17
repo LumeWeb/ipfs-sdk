@@ -7,23 +7,39 @@ packages:
   go.lumeweb.com/ipfs-sdk:
     config:
       dir: ./mocks
-      pkgname: "mocks"
+      pkgname: mocks
     interfaces:
       BlockMetaClient: {}
       DNSClientWithResponsesInterface: {}
       IPNSClientWithResponsesInterface: {}
       WebsitesClientWithResponsesInterface: {}
+      DNSService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
+      IPNSService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
+      PinningService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
+      WebsitesService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
   go.lumeweb.com/ipfs-sdk/internal/download:
     config:
       dir: ./mocks
-      pkgname: "mocks"
+      pkgname: mocks
     interfaces:
       Backend: {}
       Blockstore: {}
   go.lumeweb.com/ipfs-sdk/fs:
     config:
       dir: ./mocks
-      pkgname: "mocks"
+      pkgname: mocks
     interfaces:
       File: {}
       FileInfo: {}
@@ -34,7 +50,6 @@ packages:
   go.lumeweb.com/ipfs-sdk/internal/testing:
     config:
       dir: ./internal/testing/mocks
-      pkgname: "testingmocks"
+      pkgname: testingmocks
     interfaces:
       Blockstore: {}
-

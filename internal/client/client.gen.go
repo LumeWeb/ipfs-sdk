@@ -249,6 +249,11 @@ type ValidationResponse struct {
 	Valid       bool      `json:"valid"`
 }
 
+// WebsiteConfigResponse defines model for WebsiteConfigResponse.
+type WebsiteConfigResponse struct {
+	GatewayDomain *string `json:"gateway_domain,omitempty"`
+}
+
 // WebsiteItem defines model for WebsiteItem.
 type WebsiteItem struct {
 	Created             time.Time      `json:"created"`
@@ -256,6 +261,7 @@ type WebsiteItem struct {
 	DnsZoneId           *int           `json:"dns_zone_id,omitempty"`
 	Domain              string         `json:"domain"`
 	Expired             bool           `json:"expired"`
+	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
 	Id                  int            `json:"id"`
 	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
 	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
@@ -288,6 +294,7 @@ type WebsiteResponse struct {
 	DnsZoneId           *int           `json:"dns_zone_id,omitempty"`
 	Domain              string         `json:"domain"`
 	Expired             bool           `json:"expired"`
+	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
 	Id                  int            `json:"id"`
 	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
 	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
@@ -670,6 +677,9 @@ type ClientInterface interface {
 	PostApiWebsitesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostApiWebsites(ctx context.Context, body PostApiWebsitesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApiWebsitesConfig request
+	GetApiWebsitesConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiWebsitesDomainSslStatus request
 	GetApiWebsitesDomainSslStatus(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1270,6 +1280,18 @@ func (c *Client) PostApiWebsitesWithBody(ctx context.Context, contentType string
 
 func (c *Client) PostApiWebsites(ctx context.Context, body PostApiWebsitesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostApiWebsitesRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetApiWebsitesConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiWebsitesConfigRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2988,6 +3010,33 @@ func NewPostApiWebsitesRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
+// NewGetApiWebsitesConfigRequest generates requests for GetApiWebsitesConfig
+func NewGetApiWebsitesConfigRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/websites/config")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetApiWebsitesDomainSslStatusRequest generates requests for GetApiWebsitesDomainSslStatus
 func NewGetApiWebsitesDomainSslStatusRequest(server string, domain string) (*http.Request, error) {
 	var err error
@@ -3874,6 +3923,9 @@ type ClientWithResponsesInterface interface {
 	PostApiWebsitesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiWebsitesResponse, error)
 
 	PostApiWebsitesWithResponse(ctx context.Context, body PostApiWebsitesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiWebsitesResponse, error)
+
+	// GetApiWebsitesConfigWithResponse request
+	GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesConfigResponse, error)
 
 	// GetApiWebsitesDomainSslStatusWithResponse request
 	GetApiWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*GetApiWebsitesDomainSslStatusResponse, error)
@@ -4886,6 +4938,33 @@ func (r PostApiWebsitesResponse) StatusCode() int {
 	return 0
 }
 
+type GetApiWebsitesConfigResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *WebsiteConfigResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApiWebsitesConfigResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiWebsitesConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetApiWebsitesDomainSslStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5723,6 +5802,15 @@ func (c *ClientWithResponses) PostApiWebsitesWithResponse(ctx context.Context, b
 		return nil, err
 	}
 	return ParsePostApiWebsitesResponse(rsp)
+}
+
+// GetApiWebsitesConfigWithResponse request returning *GetApiWebsitesConfigResponse
+func (c *ClientWithResponses) GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesConfigResponse, error) {
+	rsp, err := c.GetApiWebsitesConfig(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApiWebsitesConfigResponse(rsp)
 }
 
 // GetApiWebsitesDomainSslStatusWithResponse request returning *GetApiWebsitesDomainSslStatusResponse
@@ -7930,6 +8018,67 @@ func ParsePostApiWebsitesResponse(rsp *http.Response) (*PostApiWebsitesResponse,
 			return nil, err
 		}
 		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApiWebsitesConfigResponse parses an HTTP response from a GetApiWebsitesConfigWithResponse call
+func ParseGetApiWebsitesConfigResponse(rsp *http.Response) (*GetApiWebsitesConfigResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiWebsitesConfigResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WebsiteConfigResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse

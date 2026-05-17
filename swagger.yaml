@@ -500,6 +500,12 @@ components:
       - message
       - checked_at
       type: object
+    WebsiteConfigResponse:
+      additionalProperties: false
+      properties:
+        gateway_domain:
+          type: string
+      type: object
     WebsiteItem:
       additionalProperties: false
       properties:
@@ -514,6 +520,8 @@ components:
           type: string
         expired:
           type: boolean
+        gateway_domain:
+          type: string
         id:
           type: integer
         last_checked_at:
@@ -590,6 +598,8 @@ components:
           type: string
         expired:
           type: boolean
+        gateway_domain:
+          type: string
         id:
           type: integer
         last_checked_at:
@@ -3380,6 +3390,54 @@ paths:
       summary: Validate website DNS
       tags:
       - Websites
+  /api/websites/config:
+    get:
+      description: |-
+        Returns website hosting configuration including the gateway domain.
+
+        Clients use this endpoint to discover the gateway domain they should point their custom domain's DNS records to when hosting a website. This is required when dns_hosting_enabled is false and the user manages their own DNS.
+
+        See also:.*
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebsiteConfigResponse'
+          description: Website configuration
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Get website hosting configuration
+      tags:
+      - Websites
   /internal/websites/{domain}:
     get:
       description: |-
@@ -4066,4 +4124,4 @@ paths:
       tags:
       - Pinning
 servers:
-- url: /api
+- url: /
