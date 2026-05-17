@@ -9,7 +9,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 	"go.lumeweb.com/ipfs-sdk"
-	"go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 // NewMockIPNSService creates a new instance of MockIPNSService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -526,8 +525,8 @@ func (_c *MockIPNSService_Resolve_Call) RunAndReturn(run func(ctx context.Contex
 }
 
 // WaitForIPNSResolution provides a mock function for the type MockIPNSService
-func (_mock *MockIPNSService) WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...http.PollOption) (*ipfs.IPNSResolveResponse, error) {
-	// http.PollOption
+func (_mock *MockIPNSService) WaitForIPNSResolution(ctx context.Context, name string, expectedCID string, opts ...ipfs.PollOption) (*ipfs.IPNSResolveResponse, error) {
+	// ipfs.PollOption
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -543,17 +542,17 @@ func (_mock *MockIPNSService) WaitForIPNSResolution(ctx context.Context, name st
 
 	var r0 *ipfs.IPNSResolveResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...http.PollOption) (*ipfs.IPNSResolveResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...ipfs.PollOption) (*ipfs.IPNSResolveResponse, error)); ok {
 		return returnFunc(ctx, name, expectedCID, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...http.PollOption) *ipfs.IPNSResolveResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...ipfs.PollOption) *ipfs.IPNSResolveResponse); ok {
 		r0 = returnFunc(ctx, name, expectedCID, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*ipfs.IPNSResolveResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ...http.PollOption) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ...ipfs.PollOption) error); ok {
 		r1 = returnFunc(ctx, name, expectedCID, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -570,13 +569,13 @@ type MockIPNSService_WaitForIPNSResolution_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - expectedCID string
-//   - opts ...http.PollOption
+//   - opts ...ipfs.PollOption
 func (_e *MockIPNSService_Expecter) WaitForIPNSResolution(ctx interface{}, name interface{}, expectedCID interface{}, opts ...interface{}) *MockIPNSService_WaitForIPNSResolution_Call {
 	return &MockIPNSService_WaitForIPNSResolution_Call{Call: _e.mock.On("WaitForIPNSResolution",
 		append([]interface{}{ctx, name, expectedCID}, opts...)...)}
 }
 
-func (_c *MockIPNSService_WaitForIPNSResolution_Call) Run(run func(ctx context.Context, name string, expectedCID string, opts ...http.PollOption)) *MockIPNSService_WaitForIPNSResolution_Call {
+func (_c *MockIPNSService_WaitForIPNSResolution_Call) Run(run func(ctx context.Context, name string, expectedCID string, opts ...ipfs.PollOption)) *MockIPNSService_WaitForIPNSResolution_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -590,11 +589,11 @@ func (_c *MockIPNSService_WaitForIPNSResolution_Call) Run(run func(ctx context.C
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 []http.PollOption
-		variadicArgs := make([]http.PollOption, len(args)-3)
+		var arg3 []ipfs.PollOption
+		variadicArgs := make([]ipfs.PollOption, len(args)-3)
 		for i, a := range args[3:] {
 			if a != nil {
-				variadicArgs[i] = a.(http.PollOption)
+				variadicArgs[i] = a.(ipfs.PollOption)
 			}
 		}
 		arg3 = variadicArgs
@@ -613,7 +612,7 @@ func (_c *MockIPNSService_WaitForIPNSResolution_Call) Return(v *ipfs.IPNSResolve
 	return _c
 }
 
-func (_c *MockIPNSService_WaitForIPNSResolution_Call) RunAndReturn(run func(ctx context.Context, name string, expectedCID string, opts ...http.PollOption) (*ipfs.IPNSResolveResponse, error)) *MockIPNSService_WaitForIPNSResolution_Call {
+func (_c *MockIPNSService_WaitForIPNSResolution_Call) RunAndReturn(run func(ctx context.Context, name string, expectedCID string, opts ...ipfs.PollOption) (*ipfs.IPNSResolveResponse, error)) *MockIPNSService_WaitForIPNSResolution_Call {
 	_c.Call.Return(run)
 	return _c
 }

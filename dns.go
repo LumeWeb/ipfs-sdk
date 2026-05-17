@@ -23,14 +23,14 @@ type BulkDeleteRequest = dnsreq.BulkDeleteRequest
 
 // DNSConfig holds configuration for DNS service operations
 type DNSConfig struct {
-	Retry  httputil.RetryConfig
+	Retry  RetryConfig
 	Client DNSClientWithResponsesInterface
 }
 
 // DefaultDNSConfig returns default configuration for DNS service
 func DefaultDNSConfig() DNSConfig {
 	return DNSConfig{
-		Retry: httputil.DefaultRetryConfig(),
+		Retry: DefaultRetryConfig(),
 	}
 }
 
@@ -38,7 +38,7 @@ func DefaultDNSConfig() DNSConfig {
 type DNSOption func(*DNSConfig)
 
 // WithDNSRetry sets the retry configuration for DNS operations
-func WithDNSRetry(cfg httputil.RetryConfig) DNSOption {
+func WithDNSRetry(cfg RetryConfig) DNSOption {
 	return func(c *DNSConfig) {
 		c.Retry = cfg
 	}

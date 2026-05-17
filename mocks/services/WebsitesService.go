@@ -9,7 +9,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 	"go.lumeweb.com/ipfs-sdk"
-	"go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 // NewMockWebsitesService creates a new instance of MockWebsitesService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -932,8 +931,8 @@ func (_c *MockWebsitesService_ValidateDNS_Call) RunAndReturn(run func(ctx contex
 }
 
 // WaitForDNSValidation provides a mock function for the type MockWebsitesService
-func (_mock *MockWebsitesService) WaitForDNSValidation(ctx context.Context, id string, opts ...http.PollOption) error {
-	// http.PollOption
+func (_mock *MockWebsitesService) WaitForDNSValidation(ctx context.Context, id string, opts ...ipfs.PollOption) error {
+	// ipfs.PollOption
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -948,7 +947,7 @@ func (_mock *MockWebsitesService) WaitForDNSValidation(ctx context.Context, id s
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...http.PollOption) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...ipfs.PollOption) error); ok {
 		r0 = returnFunc(ctx, id, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -964,13 +963,13 @@ type MockWebsitesService_WaitForDNSValidation_Call struct {
 // WaitForDNSValidation is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-//   - opts ...http.PollOption
+//   - opts ...ipfs.PollOption
 func (_e *MockWebsitesService_Expecter) WaitForDNSValidation(ctx interface{}, id interface{}, opts ...interface{}) *MockWebsitesService_WaitForDNSValidation_Call {
 	return &MockWebsitesService_WaitForDNSValidation_Call{Call: _e.mock.On("WaitForDNSValidation",
 		append([]interface{}{ctx, id}, opts...)...)}
 }
 
-func (_c *MockWebsitesService_WaitForDNSValidation_Call) Run(run func(ctx context.Context, id string, opts ...http.PollOption)) *MockWebsitesService_WaitForDNSValidation_Call {
+func (_c *MockWebsitesService_WaitForDNSValidation_Call) Run(run func(ctx context.Context, id string, opts ...ipfs.PollOption)) *MockWebsitesService_WaitForDNSValidation_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -980,11 +979,11 @@ func (_c *MockWebsitesService_WaitForDNSValidation_Call) Run(run func(ctx contex
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 []http.PollOption
-		variadicArgs := make([]http.PollOption, len(args)-2)
+		var arg2 []ipfs.PollOption
+		variadicArgs := make([]ipfs.PollOption, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(http.PollOption)
+				variadicArgs[i] = a.(ipfs.PollOption)
 			}
 		}
 		arg2 = variadicArgs
@@ -1002,14 +1001,14 @@ func (_c *MockWebsitesService_WaitForDNSValidation_Call) Return(err error) *Mock
 	return _c
 }
 
-func (_c *MockWebsitesService_WaitForDNSValidation_Call) RunAndReturn(run func(ctx context.Context, id string, opts ...http.PollOption) error) *MockWebsitesService_WaitForDNSValidation_Call {
+func (_c *MockWebsitesService_WaitForDNSValidation_Call) RunAndReturn(run func(ctx context.Context, id string, opts ...ipfs.PollOption) error) *MockWebsitesService_WaitForDNSValidation_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // WaitForSSLStatusReady provides a mock function for the type MockWebsitesService
-func (_mock *MockWebsitesService) WaitForSSLStatusReady(ctx context.Context, domain string, opts ...http.PollOption) (string, error) {
-	// http.PollOption
+func (_mock *MockWebsitesService) WaitForSSLStatusReady(ctx context.Context, domain string, opts ...ipfs.PollOption) (string, error) {
+	// ipfs.PollOption
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -1025,15 +1024,15 @@ func (_mock *MockWebsitesService) WaitForSSLStatusReady(ctx context.Context, dom
 
 	var r0 string
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...http.PollOption) (string, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...ipfs.PollOption) (string, error)); ok {
 		return returnFunc(ctx, domain, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...http.PollOption) string); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...ipfs.PollOption) string); ok {
 		r0 = returnFunc(ctx, domain, opts...)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...http.PollOption) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...ipfs.PollOption) error); ok {
 		r1 = returnFunc(ctx, domain, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -1049,13 +1048,13 @@ type MockWebsitesService_WaitForSSLStatusReady_Call struct {
 // WaitForSSLStatusReady is a helper method to define mock.On call
 //   - ctx context.Context
 //   - domain string
-//   - opts ...http.PollOption
+//   - opts ...ipfs.PollOption
 func (_e *MockWebsitesService_Expecter) WaitForSSLStatusReady(ctx interface{}, domain interface{}, opts ...interface{}) *MockWebsitesService_WaitForSSLStatusReady_Call {
 	return &MockWebsitesService_WaitForSSLStatusReady_Call{Call: _e.mock.On("WaitForSSLStatusReady",
 		append([]interface{}{ctx, domain}, opts...)...)}
 }
 
-func (_c *MockWebsitesService_WaitForSSLStatusReady_Call) Run(run func(ctx context.Context, domain string, opts ...http.PollOption)) *MockWebsitesService_WaitForSSLStatusReady_Call {
+func (_c *MockWebsitesService_WaitForSSLStatusReady_Call) Run(run func(ctx context.Context, domain string, opts ...ipfs.PollOption)) *MockWebsitesService_WaitForSSLStatusReady_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1065,11 +1064,11 @@ func (_c *MockWebsitesService_WaitForSSLStatusReady_Call) Run(run func(ctx conte
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 []http.PollOption
-		variadicArgs := make([]http.PollOption, len(args)-2)
+		var arg2 []ipfs.PollOption
+		variadicArgs := make([]ipfs.PollOption, len(args)-2)
 		for i, a := range args[2:] {
 			if a != nil {
-				variadicArgs[i] = a.(http.PollOption)
+				variadicArgs[i] = a.(ipfs.PollOption)
 			}
 		}
 		arg2 = variadicArgs
@@ -1087,14 +1086,14 @@ func (_c *MockWebsitesService_WaitForSSLStatusReady_Call) Return(s string, err e
 	return _c
 }
 
-func (_c *MockWebsitesService_WaitForSSLStatusReady_Call) RunAndReturn(run func(ctx context.Context, domain string, opts ...http.PollOption) (string, error)) *MockWebsitesService_WaitForSSLStatusReady_Call {
+func (_c *MockWebsitesService_WaitForSSLStatusReady_Call) RunAndReturn(run func(ctx context.Context, domain string, opts ...ipfs.PollOption) (string, error)) *MockWebsitesService_WaitForSSLStatusReady_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // WaitForWebsiteStatus provides a mock function for the type MockWebsitesService
-func (_mock *MockWebsitesService) WaitForWebsiteStatus(ctx context.Context, id string, expectedStatus string, opts ...http.PollOption) error {
-	// http.PollOption
+func (_mock *MockWebsitesService) WaitForWebsiteStatus(ctx context.Context, id string, expectedStatus string, opts ...ipfs.PollOption) error {
+	// ipfs.PollOption
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -1109,7 +1108,7 @@ func (_mock *MockWebsitesService) WaitForWebsiteStatus(ctx context.Context, id s
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...http.PollOption) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...ipfs.PollOption) error); ok {
 		r0 = returnFunc(ctx, id, expectedStatus, opts...)
 	} else {
 		r0 = ret.Error(0)
@@ -1126,13 +1125,13 @@ type MockWebsitesService_WaitForWebsiteStatus_Call struct {
 //   - ctx context.Context
 //   - id string
 //   - expectedStatus string
-//   - opts ...http.PollOption
+//   - opts ...ipfs.PollOption
 func (_e *MockWebsitesService_Expecter) WaitForWebsiteStatus(ctx interface{}, id interface{}, expectedStatus interface{}, opts ...interface{}) *MockWebsitesService_WaitForWebsiteStatus_Call {
 	return &MockWebsitesService_WaitForWebsiteStatus_Call{Call: _e.mock.On("WaitForWebsiteStatus",
 		append([]interface{}{ctx, id, expectedStatus}, opts...)...)}
 }
 
-func (_c *MockWebsitesService_WaitForWebsiteStatus_Call) Run(run func(ctx context.Context, id string, expectedStatus string, opts ...http.PollOption)) *MockWebsitesService_WaitForWebsiteStatus_Call {
+func (_c *MockWebsitesService_WaitForWebsiteStatus_Call) Run(run func(ctx context.Context, id string, expectedStatus string, opts ...ipfs.PollOption)) *MockWebsitesService_WaitForWebsiteStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1146,11 +1145,11 @@ func (_c *MockWebsitesService_WaitForWebsiteStatus_Call) Run(run func(ctx contex
 		if args[2] != nil {
 			arg2 = args[2].(string)
 		}
-		var arg3 []http.PollOption
-		variadicArgs := make([]http.PollOption, len(args)-3)
+		var arg3 []ipfs.PollOption
+		variadicArgs := make([]ipfs.PollOption, len(args)-3)
 		for i, a := range args[3:] {
 			if a != nil {
-				variadicArgs[i] = a.(http.PollOption)
+				variadicArgs[i] = a.(ipfs.PollOption)
 			}
 		}
 		arg3 = variadicArgs
@@ -1169,7 +1168,7 @@ func (_c *MockWebsitesService_WaitForWebsiteStatus_Call) Return(err error) *Mock
 	return _c
 }
 
-func (_c *MockWebsitesService_WaitForWebsiteStatus_Call) RunAndReturn(run func(ctx context.Context, id string, expectedStatus string, opts ...http.PollOption) error) *MockWebsitesService_WaitForWebsiteStatus_Call {
+func (_c *MockWebsitesService_WaitForWebsiteStatus_Call) RunAndReturn(run func(ctx context.Context, id string, expectedStatus string, opts ...ipfs.PollOption) error) *MockWebsitesService_WaitForWebsiteStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
