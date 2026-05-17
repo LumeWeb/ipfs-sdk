@@ -1,3 +1,9 @@
+## 0.1.37 (2026-05-17)
+
+### Fixes
+
+- update swagger spec and add GetConfig/WebsiteConfigResponse
+
 ## 0.1.36 (2026-05-17)
 
 ### Features
