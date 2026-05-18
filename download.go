@@ -348,34 +348,77 @@ func (s *DownloadService) ListDirectory(ctx context.Context, c cid.Cid) ([]files
 		return nil, err
 	}
 	defer node.Close()
-	
-	// Convert the node to a Directory if it is one
+
+	return directoryEntriesFromNode(node)
+}
+
+// ListDirectoryPath lists directory entries for a path within a directory CID.
+// The dirPath is relative to the directory's root (e.g., "a/b/c").
+// Returns a slice of directory entries for the resolved path.
+// Only includes immediate children, not nested descendants.
+func (s *DownloadService) ListDirectoryPath(ctx context.Context, dirCID cid.Cid, dirPath string) ([]files.DirEntry, error) {
+	basePath := path.FromCid(dirCID)
+
+	if strings.Trim(dirPath, "/") == "" {
+		return s.ListDirectory(ctx, dirCID)
+	}
+
+	trimmedPath := strings.Trim(dirPath, "/")
+	pathSegments := strings.Split(trimmedPath, "/")
+
+	var segments []string
+	for _, seg := range pathSegments {
+		if seg != "" {
+			if seg == ".." {
+				return nil, fmt.Errorf("invalid path segment: %s", seg)
+			}
+			segments = append(segments, seg)
+		}
+	}
+
+	fullPath, err := path.Join(basePath, segments...)
+	if err != nil {
+		return nil, fmt.Errorf("invalid path: %w", err)
+	}
+
+	immutablePath, err := path.NewImmutablePath(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create immutable path: %w", err)
+	}
+
+	_, node, err := s.backend.GetAll(ctx, immutablePath)
+	if err != nil {
+		return nil, err
+	}
+	defer node.Close()
+
+	return directoryEntriesFromNode(node)
+}
+
+func directoryEntriesFromNode(node files.Node) ([]files.DirEntry, error) {
 	dir, ok := node.(files.Directory)
 	if !ok {
-		return nil, fmt.Errorf("CID is not a directory")
+		return nil, fmt.Errorf("path is not a directory")
 	}
-	
-	// Use Directory.Entries() to get immediate children only
-	// This avoids the flattened recursive behavior of files.Walk
+
 	entries := make([]files.DirEntry, 0)
 	it := dir.Entries()
 	for it.Next() {
 		name := it.Name()
 		nd := it.Node()
-		
+
 		if name == car.CurrentDir || name == car.ParentDir {
 			nd.Close()
 			continue
 		}
-		
-		// Create a DirEntry using boxo's FileEntry helper
+
 		entries = append(entries, files.FileEntry(name, nd))
 	}
-	
+
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
-	
+
 	return entries, nil
 }
 

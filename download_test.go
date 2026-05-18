@@ -1015,6 +1015,274 @@ func TestDownloadService_ListDirectory(t *testing.T) {
 	})
 }
 
+func TestDownloadService_ListDirectoryPath(t *testing.T) {
+	t.Run("delegates_to_ListDirectory_for_empty_path", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+		}
+
+		setupMockGetAll(t, mockBackend, ctx, testCID, mockDir, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "")
+
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+	})
+
+	t.Run("delegates_to_ListDirectory_for_slash_only_path", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+			entries: []mockDirEntry{
+				{name: "file1.txt", node: mockBaseNode},
+			},
+		}
+
+		setupMockGetAll(t, mockBackend, ctx, testCID, mockDir, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "/")
+
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+		assert.Equal(t, 1, len(entries))
+	})
+
+	t.Run("resolves_single_segment_path", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		fileNode := &mockNode{
+			Reader: bytes.NewReader([]byte("data")),
+			Closer: io.NopCloser(bytes.NewReader([]byte("data"))),
+			mode:   0644,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+			entries: []mockDirEntry{
+				{name: "file1.txt", node: fileNode},
+			},
+		}
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, mockDir, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "subdir")
+
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+		assert.Equal(t, 1, len(entries))
+		assert.Equal(t, "file1.txt", entries[0].Name())
+	})
+
+	t.Run("resolves_multi_segment_path", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		fileNode := &mockNode{
+			Reader: bytes.NewReader([]byte("data")),
+			Closer: io.NopCloser(bytes.NewReader([]byte("data"))),
+			mode:   0644,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+			entries: []mockDirEntry{
+				{name: "nested.txt", node: fileNode},
+			},
+		}
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, mockDir, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "a/b/c")
+
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+		assert.Equal(t, 1, len(entries))
+		assert.Equal(t, "nested.txt", entries[0].Name())
+	})
+
+	t.Run("trims_leading_and_trailing_slashes", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+		}
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, mockDir, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "/subdir/")
+
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+	})
+
+	t.Run("rejects_parent_directory_traversal", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, _, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "../etc")
+
+		assert.Nil(t, entries)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid path segment")
+	})
+
+	t.Run("rejects_embedded_parent_traversal", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, _, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "a/../b")
+
+		assert.Nil(t, entries)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid path segment")
+	})
+
+	t.Run("returns_error_when_backend_fails", func(t *testing.T) {
+		ctx := context.Background()
+		testErr := errors.New("backend failure")
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, nil, testErr)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "missing")
+
+		assert.Nil(t, entries)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), testErr.Error())
+	})
+
+	t.Run("returns_error_when_path_is_not_directory", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		fileNode := &mockNode{
+			Reader: bytes.NewReader([]byte("data")),
+			Closer: io.NopCloser(bytes.NewReader([]byte("data"))),
+			mode:   0644,
+		}
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, fileNode, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "file.txt")
+
+		assert.Nil(t, entries)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "path is not a directory")
+	})
+
+	t.Run("handles_cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, nil, context.Canceled)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "subdir")
+
+		assert.Nil(t, entries)
+		assert.Error(t, err)
+	})
+
+	t.Run("excludes_dot_paths_from_results", func(t *testing.T) {
+		ctx := context.Background()
+
+		service, mockBackend, _ := setupMockDownloadService(t)
+		testCID := getTestCID(t)
+
+		mockBaseNode := &mockNode{
+			Reader: bytes.NewReader([]byte{}),
+			Closer: io.NopCloser(bytes.NewReader([]byte{})),
+			mode:   os.ModeDir | 0755,
+		}
+		fileNode := &mockNode{
+			Reader: bytes.NewReader([]byte("data")),
+			Closer: io.NopCloser(bytes.NewReader([]byte("data"))),
+			mode:   0644,
+		}
+		mockDir := &mockDirectory{
+			mockNode: mockBaseNode,
+			entries: []mockDirEntry{
+				{name: car.CurrentDir, node: mockBaseNode},
+				{name: car.ParentDir, node: mockBaseNode},
+				{name: "real.txt", node: fileNode},
+			},
+		}
+
+		mockBackend.EXPECT().
+			GetAll(ctx, mock.Anything).
+			Return(gateway.ContentPathMetadata{}, mockDir, nil)
+
+		entries, err := service.ListDirectoryPath(ctx, testCID, "dir")
+
+		require.NoError(t, err)
+		require.NotNil(t, entries)
+		assert.Equal(t, 1, len(entries))
+		assert.Equal(t, "real.txt", entries[0].Name())
+	})
+}
+
 // Tests for GetFile method
 func TestDownloadService_GetFile(t *testing.T) {
 	t.Run("retrieves file from directory successfully", func(t *testing.T) {
