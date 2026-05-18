@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -513,9 +514,15 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 		dataType = UploadDataTypeCAR
 	}
 
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, reader); err != nil {
+		return nil, fmt.Errorf("failed to buffer upload data: %w", err)
+	}
+
 	uploadEndpoint := s.buildEndpoint("/api/upload")
 
 	for range maxRedirectHops {
+		reader = bytes.NewReader(buf.Bytes())
 		pr, pw := io.Pipe()
 		writer := multipart.NewWriter(pw)
 
