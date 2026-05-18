@@ -25,6 +25,17 @@ import (
 const maxRedirectHops = 5
 
 var errRedirectUpgraded = errors.New("redirect-upgraded:")
+
+type errReader struct{ err error }
+
+func (e errReader) Read(_ []byte) (int, error) { return 0, e.err }
+
+func unwrapErrReader(r io.Reader) (error, bool) {
+	if er, ok := r.(errReader); ok {
+		return er.err, true
+	}
+	return nil, false
+}
 // StreamToPipe runs a blocking function in a goroutine that writes to a pipe.
 // This allows you to generate data (e.g., CAR files) without blocking the calling
 // thread. The pipe reader is returned immediately for consumption.
@@ -514,15 +525,32 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 		dataType = UploadDataTypeCAR
 	}
 
+	seeker, isSeeker := reader.(io.Seeker)
 	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, reader); err != nil {
-		return nil, fmt.Errorf("failed to buffer upload data: %w", err)
+	bufReader := func() io.Reader {
+		if isSeeker {
+			return reader
+		}
+		if buf.Len() == 0 {
+			if _, err := io.Copy(&buf, reader); err != nil {
+				return errReader{err}
+			}
+		}
+		return bytes.NewReader(buf.Bytes())
 	}
 
 	uploadEndpoint := s.buildEndpoint("/api/upload")
 
 	for range maxRedirectHops {
-		reader = bytes.NewReader(buf.Bytes())
+		if isSeeker {
+			if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+				return nil, fmt.Errorf("failed to seek upload reader: %w", err)
+			}
+		}
+		r := bufReader()
+		if err, ok := unwrapErrReader(r); ok {
+			return nil, err
+		}
 		pr, pw := io.Pipe()
 		writer := multipart.NewWriter(pw)
 
@@ -549,7 +577,7 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 				resultErr = fmt.Errorf("failed to create form file: %w", err)
 				return
 			}
-			if _, err := io.Copy(part, reader); err != nil {
+			if _, err := io.Copy(part, r); err != nil {
 				resultErr = fmt.Errorf("failed to write %s to multipart form: %w", dataType.String(), err)
 				return
 			}
