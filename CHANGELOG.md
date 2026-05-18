@@ -1,3 +1,11 @@
+## 0.1.40 (2026-05-18)
+
+### Fixes
+
+- handle 307/308 redirects in uploadViaPOST and fix error priority
+- buffer reader before redirect retry loop in uploadViaPOST
+- avoid buffering entire upload for seekable readers on redirect retry
+
 ## 0.1.39 (2026-05-18)
 
 ### Features
