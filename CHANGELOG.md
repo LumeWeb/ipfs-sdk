@@ -1,3 +1,9 @@
+## 0.1.39 (2026-05-18)
+
+### Features
+
+- add ListDirectoryPath and tests for directory path listing
+
 ## 0.1.38 (2026-05-17)
 
 ### Fixes
