@@ -2,12 +2,14 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
@@ -18,6 +20,10 @@ import (
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 )
+
+const maxRedirectHops = 5
+
+var errRedirectUpgraded = errors.New("redirect-upgraded:")
 // StreamToPipe runs a blocking function in a goroutine that writes to a pipe.
 // This allows you to generate data (e.g., CAR files) without blocking the calling
 // thread. The pipe reader is returned immediately for consumption.
@@ -497,19 +503,9 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 
 // uploadViaPOST uploads data via HTTP POST as multipart form.
 // This is used for smaller files that fit within the upload limit.
+// It handles 307/308 redirects (e.g. Caddy HTTP→HTTPS) by detecting the
+// redirect, discarding the pipe, and retrying with a fresh pipe + goroutine.
 func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, name string, size int64, isCAR bool, archiveConfig *ArchiveMode, unixFSSize int64, dagSize int64) (*UploadResult, error) {
-	// Create a pipe for streaming multipart form
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-
-	type result struct {
-		err error
-	}
-
-	// Channel to capture results from multipart writing
-	resultChan := make(chan result, 1)
-
-	// Determine filename based on whether this is a CAR file
 	fileName := name
 	dataType := UploadDataTypeData
 	if isCAR {
@@ -517,89 +513,88 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 		dataType = UploadDataTypeCAR
 	}
 
-	// Write data to multipart form in goroutine
-	go func() {
-		var resultErr error
+	uploadEndpoint := s.buildEndpoint("/api/upload")
 
-		defer func() {
-			// Close writer first to finalize multipart form
-			if err := writer.Close(); err != nil && resultErr == nil {
-				resultErr = fmt.Errorf("failed to close multipart writer: %w", err)
+	for range maxRedirectHops {
+		pr, pw := io.Pipe()
+		writer := multipart.NewWriter(pw)
+
+		type result struct {
+			err error
+		}
+		resultChan := make(chan result, 1)
+
+		go func() {
+			var resultErr error
+			defer func() {
+				if err := writer.Close(); err != nil && resultErr == nil {
+					resultErr = fmt.Errorf("failed to close multipart writer: %w", err)
+				}
+				if err := pw.Close(); err != nil && resultErr == nil {
+					resultErr = fmt.Errorf("failed to close pipe writer: %w", err)
+				}
+				resultChan <- result{err: resultErr}
+				close(resultChan)
+			}()
+
+			part, err := writer.CreateFormFile("file", fileName)
+			if err != nil {
+				resultErr = fmt.Errorf("failed to create form file: %w", err)
+				return
 			}
-			// Then close pipe writer
-			if err := pw.Close(); err != nil && resultErr == nil {
-				resultErr = fmt.Errorf("failed to close pipe writer: %w", err)
+			if _, err := io.Copy(part, reader); err != nil {
+				resultErr = fmt.Errorf("failed to write %s to multipart form: %w", dataType.String(), err)
+				return
 			}
-			// Always send result
-			resultChan <- result{err: resultErr}
-			close(resultChan)
 		}()
 
-		// Create form file field
-		part, err := writer.CreateFormFile("file", fileName)
-		if err != nil {
-			resultErr = fmt.Errorf("failed to create form file: %w", err)
-			return
+		uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig)
+		if uploadErr != nil {
+			pw.CloseWithError(uploadErr)
+		}
+		res := <-resultChan
+
+		if uploadErr != nil {
+			if errors.Is(uploadErr, errRedirectUpgraded) {
+				uploadEndpoint = strings.TrimPrefix(uploadErr.Error(), errRedirectUpgraded.Error())
+				continue
+			}
+			return nil, uploadErr
+		}
+		if res.err != nil {
+			return nil, res.err
 		}
 
-		// Copy data from reader to multipart form
-		if _, err := io.Copy(part, reader); err != nil {
-			resultErr = fmt.Errorf("failed to write %s to multipart form: %w", dataType.String(), err)
-			return
-		}
-	}()
-
-	// Upload as multipart form
-	uploadEndpoint := s.buildEndpoint("/api/upload")
-	uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig)
-
-	// If the upload fails, the reading side of the pipe is abandoned.
-	// We must close the pipe writer to unblock the writing goroutine, allowing it to terminate gracefully.
-	if uploadErr != nil {
-		pw.CloseWithError(uploadErr)
+		return &UploadResult{
+			CID:     "",
+			Size:    getUploadResultSize(unixFSSize, size),
+			DAGSize: dagSize,
+		}, nil
 	}
 
-	// Always wait for the multipart writing goroutine to complete to prevent leaks.
-	res := <-resultChan
-	if res.err != nil {
-		// The writer goroutine failed, which is a more specific and critical error.
-		return nil, res.err
-	}
-
-	// If the upload itself failed, return that error now that we've cleaned up the goroutine.
-	if uploadErr != nil {
-		return nil, uploadErr
-	}
-
-	return &UploadResult{
-		CID:     "", // Will be filled by the server response
-		Size:    getUploadResultSize(unixFSSize, size),
-		DAGSize: dagSize,
-	}, nil
+	return nil, fmt.Errorf("upload exceeded %d redirect hops", maxRedirectHops)
 }
 
 // postUpload sends the CAR data via HTTP POST as multipart form.
+// If the server responds with 307/308, it returns errRedirectUpgraded
+// with the resolved URL so the caller can retry with a fresh pipe.
 func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io.Reader, contentType string, archiveConfig *ArchiveMode) error {
-	// Build query parameters with archive config
-	fullEndpoint := endpoint
 	if archiveConfig != nil {
-		parsedURL, err := url.Parse(fullEndpoint)
+		parsedURL, err := url.Parse(endpoint)
 		if err != nil {
 			return fmt.Errorf("failed to parse endpoint URL: %w", err)
 		}
 		q := parsedURL.Query()
 		q.Set("archive", string(*archiveConfig))
 		parsedURL.RawQuery = q.Encode()
-		fullEndpoint = parsedURL.String()
+		endpoint = parsedURL.String()
 	}
 
-	// Create HTTP request with streaming body
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullEndpoint, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// Add auth token if present
 	if s.authToken != "" {
 		req.Header.Set("Authorization", "Bearer "+s.authToken)
 	}
@@ -610,6 +605,25 @@ func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io
 		return fmt.Errorf("upload request failed: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTemporaryRedirect || resp.StatusCode == http.StatusPermanentRedirect {
+		loc := resp.Header.Get("Location")
+		if loc == "" {
+			return fmt.Errorf("upload redirect (HTTP %d) with no Location header", resp.StatusCode)
+		}
+		resolved, err := url.Parse(loc)
+		if err != nil {
+			return fmt.Errorf("upload redirect with invalid Location %q: %w", loc, err)
+		}
+		if !resolved.IsAbs() {
+			base, err := url.Parse(endpoint)
+			if err != nil {
+				return fmt.Errorf("upload redirect with unresolvable base: %w", err)
+			}
+			resolved = base.ResolveReference(resolved)
+		}
+		return fmt.Errorf("%w%s", errRedirectUpgraded, resolved.String())
+	}
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
