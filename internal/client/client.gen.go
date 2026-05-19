@@ -251,7 +251,8 @@ type ValidationResponse struct {
 
 // WebsiteConfigResponse defines model for WebsiteConfigResponse.
 type WebsiteConfigResponse struct {
-	GatewayDomain *string `json:"gateway_domain,omitempty"`
+	GatewayDomain *string   `json:"gateway_domain,omitempty"`
+	Nameservers   *[]string `json:"nameservers,omitempty"`
 }
 
 // WebsiteItem defines model for WebsiteItem.

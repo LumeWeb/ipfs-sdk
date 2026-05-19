@@ -505,6 +505,10 @@ components:
       properties:
         gateway_domain:
           type: string
+        nameservers:
+          items:
+            type: string
+          type: array
       type: object
     WebsiteItem:
       additionalProperties: false
