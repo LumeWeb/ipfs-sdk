@@ -1,3 +1,9 @@
+## 0.1.41 (2026-05-19)
+
+### Fixes
+
+- update swagger, use WebsiteUpdateRequest for partial updates
+
 ## 0.1.40 (2026-05-18)
 
 ### Fixes
