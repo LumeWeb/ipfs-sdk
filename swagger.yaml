@@ -633,6 +633,18 @@ components:
       - updated
       - expired
       type: object
+    WebsiteUpdateRequest:
+      additionalProperties: false
+      properties:
+        dns_hosting_enabled:
+          type: boolean
+        domain:
+          type: string
+        target_hash:
+          type: string
+        target_type:
+          type: string
+      type: object
     WebsiteValidateResponse:
       additionalProperties: false
       properties:
@@ -3276,7 +3288,7 @@ paths:
       description: |-
         Updates an existing website configuration.
 
-        Modifies domain, target CID, or settings for a website. Changes take effect after validation and DNS propagation.
+        Modifies domain, target CID, DNS hosting, or other settings for a website. Only fields included in the request body will be updated; omitted fields remain unchanged. Changes take effect after validation and DNS propagation.
 
         See also:.*
       parameters:
@@ -3290,8 +3302,8 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/WebsiteRequest'
-        description: Website request
+              $ref: '#/components/schemas/WebsiteUpdateRequest'
+        description: Website update request
         required: true
       responses:
         "200":

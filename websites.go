@@ -12,6 +12,7 @@ import (
 // Type aliases for Websites types from generated client
 type WebsiteResponse = internalclient.WebsiteResponse
 type WebsiteRequest = internalclient.WebsiteRequest
+type WebsiteUpdateRequest = internalclient.WebsiteUpdateRequest
 type WebsiteItem = internalclient.WebsiteItem
 type WebsiteItemResponse = internalclient.WebsiteItemResponse
 type WebsiteValidateResponse = internalclient.WebsiteValidateResponse
@@ -56,7 +57,7 @@ type WebsitesClientWithResponsesInterface interface {
 	GetApiWebsitesWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesResponse, error)
 	GetApiWebsitesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdResponse, error)
 	PostApiWebsitesWithResponse(ctx context.Context, body internalclient.WebsiteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesResponse, error)
-	PutApiWebsitesIdWithResponse(ctx context.Context, id string, body internalclient.WebsiteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PutApiWebsitesIdResponse, error)
+	PutApiWebsitesIdWithResponse(ctx context.Context, id string, body internalclient.WebsiteUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PutApiWebsitesIdResponse, error)
 	DeleteApiWebsitesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWebsitesIdResponse, error)
 	GetApiWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesDomainSslStatusResponse, error)
 	PostApiWebsitesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdValidateResponse, error)
@@ -83,7 +84,7 @@ func (a *internalClientToWebsitesAdapter) PostApiWebsitesWithResponse(ctx contex
 	return a.client.PostApiWebsitesWithResponse(ctx, body, reqEditors...)
 }
 
-func (a *internalClientToWebsitesAdapter) PutApiWebsitesIdWithResponse(ctx context.Context, id string, body internalclient.WebsiteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PutApiWebsitesIdResponse, error) {
+func (a *internalClientToWebsitesAdapter) PutApiWebsitesIdWithResponse(ctx context.Context, id string, body internalclient.WebsiteUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PutApiWebsitesIdResponse, error) {
 	return a.client.PutApiWebsitesIdWithResponse(ctx, id, body, reqEditors...)
 }
 
@@ -129,7 +130,7 @@ type WebsitesService interface {
 	Create(ctx context.Context, domain string, targetHash string, targetType string) (*WebsiteResponse, error)
 	CreateWithOptions(ctx context.Context, req WebsiteRequest) (*WebsiteResponse, error)
 	Update(ctx context.Context, id string, domain string, targetHash string, targetType string) (*WebsiteResponse, error)
-	UpdateWithOptions(ctx context.Context, id string, req WebsiteRequest) (*WebsiteResponse, error)
+	UpdateWithOptions(ctx context.Context, id string, req WebsiteUpdateRequest) (*WebsiteResponse, error)
 	Delete(ctx context.Context, id string) error
 
 	// DNS validation
@@ -268,15 +269,15 @@ func (s *websitesService) CreateWithOptions(ctx context.Context, req WebsiteRequ
 
 // Update updates an existing website
 func (s *websitesService) Update(ctx context.Context, id string, domain string, targetHash string, targetType string) (*WebsiteResponse, error) {
-	return s.UpdateWithOptions(ctx, id, WebsiteRequest{
-		Domain:      domain,
-		TargetHash:  targetHash,
-		TargetType:  targetType,
+	return s.UpdateWithOptions(ctx, id, WebsiteUpdateRequest{
+		Domain:     &domain,
+		TargetHash: &targetHash,
+		TargetType: &targetType,
 	})
 }
 
-// UpdateWithOptions updates an existing website with full request options including dns_hosting_enabled
-func (s *websitesService) UpdateWithOptions(ctx context.Context, id string, req WebsiteRequest) (*WebsiteResponse, error) {
+// UpdateWithOptions updates an existing website with partial request options
+func (s *websitesService) UpdateWithOptions(ctx context.Context, id string, req WebsiteUpdateRequest) (*WebsiteResponse, error) {
 	var result *WebsiteResponse
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {

@@ -330,10 +330,10 @@ func TestWebsitesService_UpdateWithOptions_DisableDNSHosting(t *testing.T) {
 			DnsHostingEnabled: false,
 		}
 
-		var capturedReq client.WebsiteRequest
+		var capturedReq client.WebsiteUpdateRequest
 		mockClient.EXPECT().
-			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteRequest")).
-			RunAndReturn(func(ctx context.Context, id string, req client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
+			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteUpdateRequest")).
+			RunAndReturn(func(ctx context.Context, id string, req client.WebsiteUpdateRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
 				capturedReq = req
 				return &client.PutApiWebsitesIdResponse{
 					Body:         []byte("{}"),
@@ -344,11 +344,8 @@ func TestWebsitesService_UpdateWithOptions_DisableDNSHosting(t *testing.T) {
 			Once()
 
 		service := NewWebsitesService(mockClient)
-		result, err := service.UpdateWithOptions(context.Background(), "1", client.WebsiteRequest{
-			Domain:            "example.com",
-			TargetHash:        "QmTest",
-			TargetType:        "ipfs",
-			DnsHostingEnabled: new(bool),
+		result, err := service.UpdateWithOptions(context.Background(), "1", client.WebsiteUpdateRequest{
+			DnsHostingEnabled: new(false),
 		})
 
 		require.NoError(t, err)
@@ -369,10 +366,10 @@ func TestWebsitesService_UpdateWithOptions_EnableDNSHosting(t *testing.T) {
 			DnsHostingEnabled: true,
 		}
 
-		var capturedReq client.WebsiteRequest
+		var capturedReq client.WebsiteUpdateRequest
 		mockClient.EXPECT().
-			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteRequest")).
-			RunAndReturn(func(ctx context.Context, id string, req client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
+			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteUpdateRequest")).
+			RunAndReturn(func(ctx context.Context, id string, req client.WebsiteUpdateRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
 				capturedReq = req
 				return &client.PutApiWebsitesIdResponse{
 					Body:         []byte("{}"),
@@ -383,11 +380,8 @@ func TestWebsitesService_UpdateWithOptions_EnableDNSHosting(t *testing.T) {
 			Once()
 
 		service := NewWebsitesService(mockClient)
-		result, err := service.UpdateWithOptions(context.Background(), "1", client.WebsiteRequest{
-			Domain:            "example.com",
-			TargetHash:        "QmTest",
-			TargetType:        "ipfs",
-			DnsHostingEnabled: &[]bool{true}[0],
+		result, err := service.UpdateWithOptions(context.Background(), "1", client.WebsiteUpdateRequest{
+			DnsHostingEnabled: new(true),
 		})
 
 		require.NoError(t, err)
@@ -398,7 +392,7 @@ func TestWebsitesService_UpdateWithOptions_EnableDNSHosting(t *testing.T) {
 }
 
 func TestWebsitesService_Update_CallsUpdateWithOptions(t *testing.T) {
-	t.Run("Update() calls UpdateWithOptions() with default dns_hosting_enabled", func(t *testing.T) {
+	t.Run("Update() calls UpdateWithOptions() with pointer fields", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
 		expectedWebsite := &client.WebsiteResponse{
 			Id:         1,
@@ -407,10 +401,10 @@ func TestWebsitesService_Update_CallsUpdateWithOptions(t *testing.T) {
 			TargetType: "ipfs",
 		}
 
-		var capturedReq client.WebsiteRequest
+		var capturedReq client.WebsiteUpdateRequest
 		mockClient.EXPECT().
-			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteRequest")).
-			RunAndReturn(func(ctx context.Context, id string, req client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
+			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteUpdateRequest")).
+			RunAndReturn(func(ctx context.Context, id string, req client.WebsiteUpdateRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
 				capturedReq = req
 				return &client.PutApiWebsitesIdResponse{
 					Body:         []byte("{}"),
@@ -426,10 +420,9 @@ func TestWebsitesService_Update_CallsUpdateWithOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedWebsite.Id, result.Id)
-		assert.Equal(t, "example.com", capturedReq.Domain)
-		assert.Equal(t, "QmTest", capturedReq.TargetHash)
-		assert.Equal(t, "ipfs", capturedReq.TargetType)
-		// DnsHostingEnabled should be nil when not specified
+		assert.Equal(t, "example.com", *capturedReq.Domain)
+		assert.Equal(t, "QmTest", *capturedReq.TargetHash)
+		assert.Equal(t, "ipfs", *capturedReq.TargetType)
 		assert.Nil(t, capturedReq.DnsHostingEnabled, "default dns_hosting_enabled should be nil")
 	})
 }
@@ -439,15 +432,13 @@ func TestWebsitesService_UpdateWithOptions_HTTPError(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
 
 		mockClient.EXPECT().
-			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteRequest")).
+			PutApiWebsitesIdWithResponse(mock.Anything, "1", mock.AnythingOfType("client.WebsiteUpdateRequest")).
 			Return(nil, assert.AnError).
-			Times(3) // Retry will attempt 3 times before failing
+			Times(3)
 
 		service := NewWebsitesService(mockClient)
-		result, err := service.UpdateWithOptions(context.Background(), "1", client.WebsiteRequest{
-			Domain:     "example.com",
-			TargetHash: "QmTest",
-			TargetType: "ipfs",
+		result, err := service.UpdateWithOptions(context.Background(), "1", client.WebsiteUpdateRequest{
+			Domain: new("example.com"),
 		})
 
 		require.Error(t, err)
