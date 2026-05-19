@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -105,7 +106,13 @@ var operationString = map[int]string{
 // Named error types for error comparison.
 var (
 	// ErrUnauthorized is returned when authentication fails.
-	ErrUnauthorized = fmt.Errorf("unauthorized")
+	ErrUnauthorized = errors.New("unauthorized")
+
+	// ErrNotFound is returned when a requested resource is not found.
+	ErrNotFound = errors.New("not found")
+
+	// ErrGone is returned when a resource exists but is in a deleted or broken state.
+	ErrGone = errors.New("gone")
 
 	// ErrRateLimitExceeded is returned when a download rate limit is exceeded.
 	// This error is returned by download operations when the configured rate limiter
@@ -116,21 +123,32 @@ var (
 
 // errorFactory is a helper for creating errors with optional wrapping.
 type errorFactory struct {
-	wrapErr bool
-	message string
+	wrapErr  bool
+	sentinel error
+	message  string
 }
 
 // Error creates the actual error.
 func (ef errorFactory) Error() error {
-	if ef.wrapErr {
-		return fmt.Errorf("%w: %s", ErrUnauthorized, ef.message)
+	if ef.wrapErr && ef.sentinel != nil {
+		return fmt.Errorf("%w: %s", ef.sentinel, ef.message)
 	}
 	return fmt.Errorf("%s", ef.message)
 }
 
 // authErr creates an error factory that wraps with ErrUnauthorized.
 func authErr(msg string) errorFactory {
-	return errorFactory{wrapErr: true, message: msg}
+	return errorFactory{wrapErr: true, sentinel: ErrUnauthorized, message: msg}
+}
+
+// notFoundErr creates an error factory that wraps with ErrNotFound.
+func notFoundErr(msg string) errorFactory {
+	return errorFactory{wrapErr: true, sentinel: ErrNotFound, message: msg}
+}
+
+// goneErr creates an error factory that wraps with ErrGone.
+func goneErr(msg string) errorFactory {
+	return errorFactory{wrapErr: true, sentinel: ErrGone, message: msg}
 }
 
 // plainErr creates an error factory without wrapping.
@@ -167,18 +185,18 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpGetZone: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("zone not found"),
+		http.StatusNotFound:     notFoundErr("zone not found"),
 	},
 	OpDeleteZone: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("zone not found"),
+		http.StatusNotFound:     notFoundErr("zone not found"),
 	},
 	OpListRecords: {
 		http.StatusUnauthorized: authErr("authentication required"),
 	},
 	OpGetRecord: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("record not found"),
+		http.StatusNotFound:     notFoundErr("record not found"),
 	},
 	OpCreateRecord: {
 		http.StatusUnauthorized: authErr("authentication required"),
@@ -187,11 +205,11 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpUpdateRecord: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid record data"),
-		http.StatusNotFound:     plainErr("record not found"),
+		http.StatusNotFound:     notFoundErr("record not found"),
 	},
 	OpDeleteRecord: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("record not found"),
+		http.StatusNotFound:     notFoundErr("record not found"),
 	},
 	OpBulkCreateRecords: {
 		http.StatusUnauthorized: authErr("authentication required"),
@@ -203,11 +221,11 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpGetZoneStatus: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("zone not found"),
+		http.StatusNotFound:     notFoundErr("zone not found"),
 	},
 	OpValidateZone: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("zone not found"),
+		http.StatusNotFound:     notFoundErr("zone not found"),
 	},
 
 	// IPNS operations
@@ -216,7 +234,7 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpGetIPNSKey: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("IPNS key not found"),
+		http.StatusNotFound:     notFoundErr("IPNS key not found"),
 	},
 	OpCreateIPNSKey: {
 		http.StatusUnauthorized: authErr("authentication required"),
@@ -224,7 +242,7 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpDeleteIPNSKey: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("IPNS key not found"),
+		http.StatusNotFound:     notFoundErr("IPNS key not found"),
 	},
 	OpPublishIPNS: {
 		http.StatusUnauthorized: authErr("authentication required"),
@@ -232,11 +250,11 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpRepublishIPNS: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("no keys to republish"),
+		http.StatusNotFound:     notFoundErr("no keys to republish"),
 	},
 	OpResolveIPNS: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("IPNS name not found"),
+		http.StatusNotFound:     notFoundErr("IPNS name not found"),
 	},
 
 	// Websites operations
@@ -245,7 +263,7 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpGetWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("website not found"),
+		http.StatusNotFound:     notFoundErr("website not found"),
 	},
 	OpCreateWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
@@ -255,29 +273,39 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpUpdateWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid website data"),
-		http.StatusNotFound:     plainErr("website not found"),
+		http.StatusNotFound:     notFoundErr("website not found"),
 	},
 	OpDeleteWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("website not found"),
+		http.StatusNotFound:     notFoundErr("website not found"),
 	},
 	OpValidateWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("website not found"),
+		http.StatusNotFound:     notFoundErr("website not found"),
 		http.StatusBadRequest:   plainErr("validation failed"),
 	},
 	OpGetSSLStatus: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("website not found"),
+		http.StatusNotFound:     notFoundErr("website not found"),
 	},
 	OpUpdateSSLStatusInternal: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid SSL status data"),
-		http.StatusNotFound:     plainErr("website not found"),
+		http.StatusNotFound:     notFoundErr("website not found"),
 	},
 	OpGetWebsiteConfig: {
 		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     plainErr("website config not found"),
+		http.StatusNotFound:     notFoundErr("website config not found"),
+	},
+	OpGetGatewayWebsite: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("website not found"),
+		http.StatusGone:         goneErr("website is broken or deleted"),
+	},
+	OpGetGatewayWebsiteStatus: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("website not found"),
+		http.StatusGone:         goneErr("website is broken or deleted"),
 	},
 }
 

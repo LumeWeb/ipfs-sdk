@@ -39,6 +39,7 @@ var UnrecoverableStatusCodes = []int{
 	http.StatusNotFound,
 	http.StatusMethodNotAllowed,
 	http.StatusConflict,
+	http.StatusGone,
 	http.StatusUnprocessableEntity,
 }
 
