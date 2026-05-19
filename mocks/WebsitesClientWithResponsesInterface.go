@@ -903,7 +903,7 @@ func (_c *MockWebsitesClientWithResponsesInterface_PostInternalWebsitesDomainSsl
 }
 
 // PutApiWebsitesIdWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
-func (_mock *MockWebsitesClientWithResponsesInterface) PutApiWebsitesIdWithResponse(ctx context.Context, id string, body client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
+func (_mock *MockWebsitesClientWithResponsesInterface) PutApiWebsitesIdWithResponse(ctx context.Context, id string, body client.WebsiteUpdateRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error) {
 	// client.RequestEditorFn
 	_va := make([]interface{}, len(reqEditors))
 	for _i := range reqEditors {
@@ -920,17 +920,17 @@ func (_mock *MockWebsitesClientWithResponsesInterface) PutApiWebsitesIdWithRespo
 
 	var r0 *client.PutApiWebsitesIdResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.WebsiteRequest, ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.WebsiteUpdateRequest, ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error)); ok {
 		return returnFunc(ctx, id, body, reqEditors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.WebsiteRequest, ...client.RequestEditorFn) *client.PutApiWebsitesIdResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.WebsiteUpdateRequest, ...client.RequestEditorFn) *client.PutApiWebsitesIdResponse); ok {
 		r0 = returnFunc(ctx, id, body, reqEditors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*client.PutApiWebsitesIdResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.WebsiteRequest, ...client.RequestEditorFn) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.WebsiteUpdateRequest, ...client.RequestEditorFn) error); ok {
 		r1 = returnFunc(ctx, id, body, reqEditors...)
 	} else {
 		r1 = ret.Error(1)
@@ -946,14 +946,14 @@ type MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call 
 // PutApiWebsitesIdWithResponse is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-//   - body client.WebsiteRequest
+//   - body client.WebsiteUpdateRequest
 //   - reqEditors ...client.RequestEditorFn
 func (_e *MockWebsitesClientWithResponsesInterface_Expecter) PutApiWebsitesIdWithResponse(ctx interface{}, id interface{}, body interface{}, reqEditors ...interface{}) *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call {
 	return &MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call{Call: _e.mock.On("PutApiWebsitesIdWithResponse",
 		append([]interface{}{ctx, id, body}, reqEditors...)...)}
 }
 
-func (_c *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call) Run(run func(ctx context.Context, id string, body client.WebsiteRequest, reqEditors ...client.RequestEditorFn)) *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call {
+func (_c *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call) Run(run func(ctx context.Context, id string, body client.WebsiteUpdateRequest, reqEditors ...client.RequestEditorFn)) *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -963,9 +963,9 @@ func (_c *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 client.WebsiteRequest
+		var arg2 client.WebsiteUpdateRequest
 		if args[2] != nil {
-			arg2 = args[2].(client.WebsiteRequest)
+			arg2 = args[2].(client.WebsiteUpdateRequest)
 		}
 		var arg3 []client.RequestEditorFn
 		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
@@ -990,7 +990,7 @@ func (_c *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_
 	return _c
 }
 
-func (_c *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, body client.WebsiteRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error)) *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call {
+func (_c *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, body client.WebsiteUpdateRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiWebsitesIdResponse, error)) *MockWebsitesClientWithResponsesInterface_PutApiWebsitesIdWithResponse_Call {
 	_c.Call.Return(run)
 	return _c
 }

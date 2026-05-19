@@ -306,6 +306,14 @@ type WebsiteResponse struct {
 	ValidationToken     string         `json:"validation_token"`
 }
 
+// WebsiteUpdateRequest defines model for WebsiteUpdateRequest.
+type WebsiteUpdateRequest struct {
+	DnsHostingEnabled *bool   `json:"dns_hosting_enabled,omitempty"`
+	Domain            *string `json:"domain,omitempty"`
+	TargetHash        *string `json:"target_hash,omitempty"`
+	TargetType        *string `json:"target_type,omitempty"`
+}
+
 // WebsiteValidateResponse defines model for WebsiteValidateResponse.
 type WebsiteValidateResponse struct {
 	Domain  string `json:"domain"`
@@ -466,7 +474,7 @@ type PostApiUploadMultipartRequestBody PostApiUploadMultipartBody
 type PostApiWebsitesJSONRequestBody = WebsiteRequest
 
 // PutApiWebsitesIdJSONRequestBody defines body for PutApiWebsitesId for application/json ContentType.
-type PutApiWebsitesIdJSONRequestBody = WebsiteRequest
+type PutApiWebsitesIdJSONRequestBody = WebsiteUpdateRequest
 
 // PostInternalWebsitesDomainSslStatusJSONRequestBody defines body for PostInternalWebsitesDomainSslStatus for application/json ContentType.
 type PostInternalWebsitesDomainSslStatusJSONRequestBody = SSLStatusUpdateRequest

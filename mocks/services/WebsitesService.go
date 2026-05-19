@@ -789,7 +789,7 @@ func (_c *MockWebsitesService_UpdateSSLStatusInternal_Call) RunAndReturn(run fun
 }
 
 // UpdateWithOptions provides a mock function for the type MockWebsitesService
-func (_mock *MockWebsitesService) UpdateWithOptions(ctx context.Context, id string, req ipfs.WebsiteRequest) (*ipfs.WebsiteResponse, error) {
+func (_mock *MockWebsitesService) UpdateWithOptions(ctx context.Context, id string, req ipfs.WebsiteUpdateRequest) (*ipfs.WebsiteResponse, error) {
 	ret := _mock.Called(ctx, id, req)
 
 	if len(ret) == 0 {
@@ -798,17 +798,17 @@ func (_mock *MockWebsitesService) UpdateWithOptions(ctx context.Context, id stri
 
 	var r0 *ipfs.WebsiteResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ipfs.WebsiteRequest) (*ipfs.WebsiteResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ipfs.WebsiteUpdateRequest) (*ipfs.WebsiteResponse, error)); ok {
 		return returnFunc(ctx, id, req)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ipfs.WebsiteRequest) *ipfs.WebsiteResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ipfs.WebsiteUpdateRequest) *ipfs.WebsiteResponse); ok {
 		r0 = returnFunc(ctx, id, req)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*ipfs.WebsiteResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ipfs.WebsiteRequest) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ipfs.WebsiteUpdateRequest) error); ok {
 		r1 = returnFunc(ctx, id, req)
 	} else {
 		r1 = ret.Error(1)
@@ -824,12 +824,12 @@ type MockWebsitesService_UpdateWithOptions_Call struct {
 // UpdateWithOptions is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-//   - req ipfs.WebsiteRequest
+//   - req ipfs.WebsiteUpdateRequest
 func (_e *MockWebsitesService_Expecter) UpdateWithOptions(ctx interface{}, id interface{}, req interface{}) *MockWebsitesService_UpdateWithOptions_Call {
 	return &MockWebsitesService_UpdateWithOptions_Call{Call: _e.mock.On("UpdateWithOptions", ctx, id, req)}
 }
 
-func (_c *MockWebsitesService_UpdateWithOptions_Call) Run(run func(ctx context.Context, id string, req ipfs.WebsiteRequest)) *MockWebsitesService_UpdateWithOptions_Call {
+func (_c *MockWebsitesService_UpdateWithOptions_Call) Run(run func(ctx context.Context, id string, req ipfs.WebsiteUpdateRequest)) *MockWebsitesService_UpdateWithOptions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -839,9 +839,9 @@ func (_c *MockWebsitesService_UpdateWithOptions_Call) Run(run func(ctx context.C
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 ipfs.WebsiteRequest
+		var arg2 ipfs.WebsiteUpdateRequest
 		if args[2] != nil {
-			arg2 = args[2].(ipfs.WebsiteRequest)
+			arg2 = args[2].(ipfs.WebsiteUpdateRequest)
 		}
 		run(
 			arg0,
@@ -857,7 +857,7 @@ func (_c *MockWebsitesService_UpdateWithOptions_Call) Return(v *ipfs.WebsiteResp
 	return _c
 }
 
-func (_c *MockWebsitesService_UpdateWithOptions_Call) RunAndReturn(run func(ctx context.Context, id string, req ipfs.WebsiteRequest) (*ipfs.WebsiteResponse, error)) *MockWebsitesService_UpdateWithOptions_Call {
+func (_c *MockWebsitesService_UpdateWithOptions_Call) RunAndReturn(run func(ctx context.Context, id string, req ipfs.WebsiteUpdateRequest) (*ipfs.WebsiteResponse, error)) *MockWebsitesService_UpdateWithOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }
