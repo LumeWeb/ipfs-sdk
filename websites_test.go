@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -912,4 +913,107 @@ func TestWebsitesService_WaitForDNSValidation(t *testing.T) {
 
 func strPtr(s string) *string {
 	return &s
+}
+
+func TestSentinels_ErrNotFound(t *testing.T) {
+	t.Run("GetWebsite 404 wraps ErrNotFound", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "999").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"error":"website not found"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.Get(context.Background(), "999")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrNotFound), "error should wrap ErrNotFound")
+	})
+
+	t.Run("ValidateDNS 404 wraps ErrNotFound", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			PostApiWebsitesIdValidateWithResponse(mock.Anything, "999").
+			Return(&client.PostApiWebsitesIdValidateResponse{
+				Body:         []byte(`{"error":"website not found"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.ValidateDNS(context.Background(), "999")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrNotFound), "error should wrap ErrNotFound")
+	})
+}
+
+func TestSentinels_ErrGone(t *testing.T) {
+	t.Run("GetGatewayWebsite 410 wraps ErrGone", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetInternalWebsitesDomainWithResponse(mock.Anything, "broken.example.com").
+			Return(&client.GetInternalWebsitesDomainResponse{
+				Body:         []byte(`{"error":"website is broken or deleted"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.GetGatewayWebsite(context.Background(), "broken.example.com")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrGone), "error should wrap ErrGone")
+	})
+
+	t.Run("GetGatewayWebsiteStatus 410 wraps ErrGone", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetInternalWebsitesDomainStatusWithResponse(mock.Anything, "broken.example.com").
+			Return(&client.GetInternalWebsitesDomainStatusResponse{
+				Body:         []byte(`{"error":"website is broken or deleted"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.GetGatewayWebsiteStatus(context.Background(), "broken.example.com")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrGone), "error should wrap ErrGone")
+	})
+
+	t.Run("GetGatewayWebsite 404 wraps ErrNotFound not ErrGone", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetInternalWebsitesDomainWithResponse(mock.Anything, "missing.example.com").
+			Return(&client.GetInternalWebsitesDomainResponse{
+				Body:         []byte(`{"error":"website not found"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.GetGatewayWebsite(context.Background(), "missing.example.com")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrNotFound), "404 should wrap ErrNotFound")
+		assert.False(t, errors.Is(err, ErrGone), "404 should not wrap ErrGone")
+	})
+}
+
+func TestSentinels_ErrUnauthorized(t *testing.T) {
+	t.Run("List 401 wraps ErrUnauthorized", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetApiWebsitesWithResponse(mock.Anything).
+			Return(&client.GetApiWebsitesResponse{
+				Body:         []byte(`{"error":"unauthorized"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.List(context.Background())
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrUnauthorized), "error should wrap ErrUnauthorized")
+	})
 }
