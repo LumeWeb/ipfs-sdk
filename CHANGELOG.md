@@ -1,3 +1,9 @@
+## 0.1.42 (2026-05-19)
+
+### Fixes
+
+- update swagger, add nameservers to WebsiteConfigResponse
+
 ## 0.1.41 (2026-05-19)
 
 ### Fixes
