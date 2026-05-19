@@ -1,3 +1,9 @@
+## 0.1.43 (2026-05-19)
+
+### Features
+
+- add ErrNotFound and ErrGone sentinels for errors.Is() matching
+
 ## 0.1.42 (2026-05-19)
 
 ### Fixes
