@@ -1,3 +1,9 @@
+## 0.1.44 (2026-05-20)
+
+### Fixes
+
+- update swagger, republish per-key and add is_subdomain
+
 ## 0.1.43 (2026-05-19)
 
 ### Features
