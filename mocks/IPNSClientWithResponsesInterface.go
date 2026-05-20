@@ -386,6 +386,93 @@ func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsResolveNameWithResponse
 	return _c
 }
 
+// PostApiIpnsKeysIdRepublishWithResponse provides a mock function for the type MockIPNSClientWithResponsesInterface
+func (_mock *MockIPNSClientWithResponsesInterface) PostApiIpnsKeysIdRepublishWithResponse(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.PostApiIpnsKeysIdRepublishResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, id)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostApiIpnsKeysIdRepublishWithResponse")
+	}
+
+	var r0 *client.PostApiIpnsKeysIdRepublishResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...client.RequestEditorFn) (*client.PostApiIpnsKeysIdRepublishResponse, error)); ok {
+		return returnFunc(ctx, id, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, ...client.RequestEditorFn) *client.PostApiIpnsKeysIdRepublishResponse); ok {
+		r0 = returnFunc(ctx, id, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.PostApiIpnsKeysIdRepublishResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, id, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostApiIpnsKeysIdRepublishWithResponse'
+type MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call struct {
+	*mock.Call
+}
+
+// PostApiIpnsKeysIdRepublishWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockIPNSClientWithResponsesInterface_Expecter) PostApiIpnsKeysIdRepublishWithResponse(ctx interface{}, id interface{}, reqEditors ...interface{}) *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call {
+	return &MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call{Call: _e.mock.On("PostApiIpnsKeysIdRepublishWithResponse",
+		append([]interface{}{ctx, id}, reqEditors...)...)}
+}
+
+func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call) Run(run func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn)) *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call) Return(postApiIpnsKeysIdRepublishResponse *client.PostApiIpnsKeysIdRepublishResponse, err error) *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call {
+	_c.Call.Return(postApiIpnsKeysIdRepublishResponse, err)
+	return _c
+}
+
+func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.PostApiIpnsKeysIdRepublishResponse, error)) *MockIPNSClientWithResponsesInterface_PostApiIpnsKeysIdRepublishWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PostApiIpnsKeysWithResponse provides a mock function for the type MockIPNSClientWithResponsesInterface
 func (_mock *MockIPNSClientWithResponsesInterface) PostApiIpnsKeysWithResponse(ctx context.Context, body client.IPNSKeyRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiIpnsKeysResponse, error) {
 	// client.RequestEditorFn
@@ -556,87 +643,6 @@ func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsPublishWithResponse_Ca
 }
 
 func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsPublishWithResponse_Call) RunAndReturn(run func(ctx context.Context, body client.IPNSPublishRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiIpnsPublishResponse, error)) *MockIPNSClientWithResponsesInterface_PostApiIpnsPublishWithResponse_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// PostApiIpnsRepublishWithResponse provides a mock function for the type MockIPNSClientWithResponsesInterface
-func (_mock *MockIPNSClientWithResponsesInterface) PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...client.RequestEditorFn) (*client.PostApiIpnsRepublishResponse, error) {
-	// client.RequestEditorFn
-	_va := make([]interface{}, len(reqEditors))
-	for _i := range reqEditors {
-		_va[_i] = reqEditors[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx)
-	_ca = append(_ca, _va...)
-	ret := _mock.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for PostApiIpnsRepublishWithResponse")
-	}
-
-	var r0 *client.PostApiIpnsRepublishResponse
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ...client.RequestEditorFn) (*client.PostApiIpnsRepublishResponse, error)); ok {
-		return returnFunc(ctx, reqEditors...)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ...client.RequestEditorFn) *client.PostApiIpnsRepublishResponse); ok {
-		r0 = returnFunc(ctx, reqEditors...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*client.PostApiIpnsRepublishResponse)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, ...client.RequestEditorFn) error); ok {
-		r1 = returnFunc(ctx, reqEditors...)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostApiIpnsRepublishWithResponse'
-type MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call struct {
-	*mock.Call
-}
-
-// PostApiIpnsRepublishWithResponse is a helper method to define mock.On call
-//   - ctx context.Context
-//   - reqEditors ...client.RequestEditorFn
-func (_e *MockIPNSClientWithResponsesInterface_Expecter) PostApiIpnsRepublishWithResponse(ctx interface{}, reqEditors ...interface{}) *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call {
-	return &MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call{Call: _e.mock.On("PostApiIpnsRepublishWithResponse",
-		append([]interface{}{ctx}, reqEditors...)...)}
-}
-
-func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call) Run(run func(ctx context.Context, reqEditors ...client.RequestEditorFn)) *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 []client.RequestEditorFn
-		variadicArgs := make([]client.RequestEditorFn, len(args)-1)
-		for i, a := range args[1:] {
-			if a != nil {
-				variadicArgs[i] = a.(client.RequestEditorFn)
-			}
-		}
-		arg1 = variadicArgs
-		run(
-			arg0,
-			arg1...,
-		)
-	})
-	return _c
-}
-
-func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call) Return(postApiIpnsRepublishResponse *client.PostApiIpnsRepublishResponse, err error) *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call {
-	_c.Call.Return(postApiIpnsRepublishResponse, err)
-	return _c
-}
-
-func (_c *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call) RunAndReturn(run func(ctx context.Context, reqEditors ...client.RequestEditorFn) (*client.PostApiIpnsRepublishResponse, error)) *MockIPNSClientWithResponsesInterface_PostApiIpnsRepublishWithResponse_Call {
 	_c.Call.Return(run)
 	return _c
 }

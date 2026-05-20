@@ -19,6 +19,7 @@ type IPNSKeyResponse = internalclient.IPNSKeyResponse
 type IPNSKeyRequest = internalclient.IPNSKeyRequest
 type IPNSPublishRequest = internalclient.IPNSPublishRequest
 type IPNSPublishResponse = internalclient.IPNSPublishResponse
+type IPNSRepublishResponse = internalclient.IPNSRepublishResponse
 type IPNSResolveResponse = internalclient.IPNSResolveResponse
 
 // IPNSConfig holds configuration for IPNS service operations
@@ -82,7 +83,7 @@ type IPNSService interface {
 
 	// Publishing management
 	Publish(ctx context.Context, keyID int, cid string, opts ...PublishOption) (*IPNSPublishResponse, error)
-	Republish(ctx context.Context) error
+	Republish(ctx context.Context, id string) (*IPNSRepublishResponse, error)
 
 	// Resolution
 	Resolve(ctx context.Context, name string) (*IPNSResolveResponse, error)
@@ -265,10 +266,12 @@ func (s *ipnsService) Publish(ctx context.Context, keyID int, cid string, opts .
 	return result, nil
 }
 
-// Republish republishes all IPNS entries
-func (s *ipnsService) Republish(ctx context.Context) error {
+// Republish republishes an IPNS record for a specific key
+func (s *ipnsService) Republish(ctx context.Context, id string) (*IPNSRepublishResponse, error) {
+	var result *IPNSRepublishResponse
+
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.PostApiIpnsRepublishWithResponse(ctx)
+		resp, err := s.client.PostApiIpnsKeysIdRepublishWithResponse(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -277,10 +280,18 @@ func (s *ipnsService) Republish(ctx context.Context) error {
 			return err
 		}
 
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpRepublishIPNS) + " no response data for republish " + id)
+		}
+
+		result = resp.JSON200
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return err
+	return result, nil
 }
 
 // Resolve resolves an IPNS name to a CID

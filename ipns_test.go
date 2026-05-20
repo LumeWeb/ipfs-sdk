@@ -375,21 +375,27 @@ func TestIPNSService_Resolve_RetryOnTimeout(t *testing.T) {
 }
 
 func TestIPNSService_Republish_Success(t *testing.T) {
-	t.Run("republishes all IPNS records", func(t *testing.T) {
+	t.Run("republishes IPNS record for a specific key", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 
 		mockClient.EXPECT().
-			PostApiIpnsRepublishWithResponse(mock.Anything).
-			Return(&client.PostApiIpnsRepublishResponse{
+			PostApiIpnsKeysIdRepublishWithResponse(mock.Anything, "1").
+			Return(&client.PostApiIpnsKeysIdRepublishResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200: &client.IPNSRepublishResponse{
+					Count:   1,
+					Message: "republished",
+				},
 			}, nil).
 			Once()
 
 		service := NewIPNSService(mockClient)
-		err := service.Republish(context.Background())
+		result, err := service.Republish(context.Background(), "1")
 
 		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, 1, result.Count)
 	})
 }
 
@@ -398,25 +404,30 @@ func TestIPNSService_Republish_RetryOn502(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 
 		mockClient.EXPECT().
-			PostApiIpnsRepublishWithResponse(mock.Anything).
-			Return(&client.PostApiIpnsRepublishResponse{
+			PostApiIpnsKeysIdRepublishWithResponse(mock.Anything, "1").
+			Return(&client.PostApiIpnsKeysIdRepublishResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadGateway},
 			}, nil).
 			Once()
 
 		mockClient.EXPECT().
-			PostApiIpnsRepublishWithResponse(mock.Anything).
-			Return(&client.PostApiIpnsRepublishResponse{
+			PostApiIpnsKeysIdRepublishWithResponse(mock.Anything, "1").
+			Return(&client.PostApiIpnsKeysIdRepublishResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200: &client.IPNSRepublishResponse{
+					Count:   1,
+					Message: "republished",
+				},
 			}, nil).
 			Once()
 
 		service := NewIPNSService(mockClient)
-		err := service.Republish(context.Background())
+		result, err := service.Republish(context.Background(), "1")
 
 		require.NoError(t, err)
+		assert.NotNil(t, result)
 	})
 }
 
@@ -425,8 +436,8 @@ func TestIPNSService_Republish_NoRetryOn400(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 
 		mockClient.EXPECT().
-			PostApiIpnsRepublishWithResponse(mock.Anything).
-			Return(&client.PostApiIpnsRepublishResponse{
+			PostApiIpnsKeysIdRepublishWithResponse(mock.Anything, "1").
+			Return(&client.PostApiIpnsKeysIdRepublishResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
 				JSON400:      &client.ErrorResponse{Error: "Bad request"},
@@ -434,7 +445,7 @@ func TestIPNSService_Republish_NoRetryOn400(t *testing.T) {
 			Once()
 
 		service := NewIPNSService(mockClient)
-		err := service.Republish(context.Background())
+		_, err := service.Republish(context.Background(), "1")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed with status 400")

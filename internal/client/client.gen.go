@@ -143,6 +143,12 @@ type IPNSPublishResponse struct {
 	Value     string    `json:"value"`
 }
 
+// IPNSRepublishResponse defines model for IPNSRepublishResponse.
+type IPNSRepublishResponse struct {
+	Count   int    `json:"count"`
+	Message string `json:"message"`
+}
+
 // IPNSResolveResponse defines model for IPNSResolveResponse.
 type IPNSResolveResponse struct {
 	Expired  bool      `json:"expired"`
@@ -264,6 +270,7 @@ type WebsiteItem struct {
 	Expired             bool           `json:"expired"`
 	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
 	Id                  int            `json:"id"`
+	IsSubdomain         bool           `json:"is_subdomain"`
 	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
 	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
 	Status              string         `json:"status"`
@@ -297,6 +304,7 @@ type WebsiteResponse struct {
 	Expired             bool           `json:"expired"`
 	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
 	Id                  int            `json:"id"`
+	IsSubdomain         bool           `json:"is_subdomain"`
 	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
 	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
 	Status              string         `json:"status"`
@@ -647,13 +655,13 @@ type ClientInterface interface {
 	// GetApiIpnsKeysId request
 	GetApiIpnsKeysId(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostApiIpnsKeysIdRepublish request
+	PostApiIpnsKeysIdRepublish(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostApiIpnsPublishWithBody request with any body
 	PostApiIpnsPublishWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostApiIpnsPublish(ctx context.Context, body PostApiIpnsPublishJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// PostApiIpnsRepublish request
-	PostApiIpnsRepublish(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiIpnsResolveName request
 	GetApiIpnsResolveName(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1131,6 +1139,18 @@ func (c *Client) GetApiIpnsKeysId(ctx context.Context, id string, reqEditors ...
 	return c.Client.Do(req)
 }
 
+func (c *Client) PostApiIpnsKeysIdRepublish(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiIpnsKeysIdRepublishRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostApiIpnsPublishWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostApiIpnsPublishRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -1145,18 +1165,6 @@ func (c *Client) PostApiIpnsPublishWithBody(ctx context.Context, contentType str
 
 func (c *Client) PostApiIpnsPublish(ctx context.Context, body PostApiIpnsPublishJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostApiIpnsPublishRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) PostApiIpnsRepublish(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostApiIpnsRepublishRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -2450,6 +2458,40 @@ func NewGetApiIpnsKeysIdRequest(server string, id string) (*http.Request, error)
 	return req, nil
 }
 
+// NewPostApiIpnsKeysIdRepublishRequest generates requests for PostApiIpnsKeysIdRepublish
+func NewPostApiIpnsKeysIdRepublishRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/ipns/keys/%s/republish", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostApiIpnsPublishRequest calls the generic PostApiIpnsPublish builder with application/json body
 func NewPostApiIpnsPublishRequest(server string, body PostApiIpnsPublishJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -2486,33 +2528,6 @@ func NewPostApiIpnsPublishRequestWithBody(server string, contentType string, bod
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewPostApiIpnsRepublishRequest generates requests for PostApiIpnsRepublish
-func NewPostApiIpnsRepublishRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/ipns/republish")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -3893,13 +3908,13 @@ type ClientWithResponsesInterface interface {
 	// GetApiIpnsKeysIdWithResponse request
 	GetApiIpnsKeysIdWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetApiIpnsKeysIdResponse, error)
 
+	// PostApiIpnsKeysIdRepublishWithResponse request
+	PostApiIpnsKeysIdRepublishWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*PostApiIpnsKeysIdRepublishResponse, error)
+
 	// PostApiIpnsPublishWithBodyWithResponse request with any body
 	PostApiIpnsPublishWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiIpnsPublishResponse, error)
 
 	PostApiIpnsPublishWithResponse(ctx context.Context, body PostApiIpnsPublishJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiIpnsPublishResponse, error)
-
-	// PostApiIpnsRepublishWithResponse request
-	PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostApiIpnsRepublishResponse, error)
 
 	// GetApiIpnsResolveNameWithResponse request
 	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error)
@@ -4644,6 +4659,33 @@ func (r GetApiIpnsKeysIdResponse) StatusCode() int {
 	return 0
 }
 
+type PostApiIpnsKeysIdRepublishResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *IPNSRepublishResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostApiIpnsKeysIdRepublishResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostApiIpnsKeysIdRepublishResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostApiIpnsPublishResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -4665,33 +4707,6 @@ func (r PostApiIpnsPublishResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostApiIpnsPublishResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type PostApiIpnsRepublishResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ErrorResponse
-	JSON400      *ErrorResponse
-	JSON401      *ErrorResponse
-	JSON403      *ErrorResponse
-	JSON404      *ErrorResponse
-	JSON500      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r PostApiIpnsRepublishResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r PostApiIpnsRepublishResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5689,6 +5704,15 @@ func (c *ClientWithResponses) GetApiIpnsKeysIdWithResponse(ctx context.Context, 
 	return ParseGetApiIpnsKeysIdResponse(rsp)
 }
 
+// PostApiIpnsKeysIdRepublishWithResponse request returning *PostApiIpnsKeysIdRepublishResponse
+func (c *ClientWithResponses) PostApiIpnsKeysIdRepublishWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*PostApiIpnsKeysIdRepublishResponse, error) {
+	rsp, err := c.PostApiIpnsKeysIdRepublish(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostApiIpnsKeysIdRepublishResponse(rsp)
+}
+
 // PostApiIpnsPublishWithBodyWithResponse request with arbitrary body returning *PostApiIpnsPublishResponse
 func (c *ClientWithResponses) PostApiIpnsPublishWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiIpnsPublishResponse, error) {
 	rsp, err := c.PostApiIpnsPublishWithBody(ctx, contentType, body, reqEditors...)
@@ -5704,15 +5728,6 @@ func (c *ClientWithResponses) PostApiIpnsPublishWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParsePostApiIpnsPublishResponse(rsp)
-}
-
-// PostApiIpnsRepublishWithResponse request returning *PostApiIpnsRepublishResponse
-func (c *ClientWithResponses) PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*PostApiIpnsRepublishResponse, error) {
-	rsp, err := c.PostApiIpnsRepublish(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParsePostApiIpnsRepublishResponse(rsp)
 }
 
 // GetApiIpnsResolveNameWithResponse request returning *GetApiIpnsResolveNameResponse
@@ -7483,22 +7498,22 @@ func ParseGetApiIpnsKeysIdResponse(rsp *http.Response) (*GetApiIpnsKeysIdRespons
 	return response, nil
 }
 
-// ParsePostApiIpnsPublishResponse parses an HTTP response from a PostApiIpnsPublishWithResponse call
-func ParsePostApiIpnsPublishResponse(rsp *http.Response) (*PostApiIpnsPublishResponse, error) {
+// ParsePostApiIpnsKeysIdRepublishResponse parses an HTTP response from a PostApiIpnsKeysIdRepublishWithResponse call
+func ParsePostApiIpnsKeysIdRepublishResponse(rsp *http.Response) (*PostApiIpnsKeysIdRepublishResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostApiIpnsPublishResponse{
+	response := &PostApiIpnsKeysIdRepublishResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest IPNSPublishResponse
+		var dest IPNSRepublishResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -7544,22 +7559,22 @@ func ParsePostApiIpnsPublishResponse(rsp *http.Response) (*PostApiIpnsPublishRes
 	return response, nil
 }
 
-// ParsePostApiIpnsRepublishResponse parses an HTTP response from a PostApiIpnsRepublishWithResponse call
-func ParsePostApiIpnsRepublishResponse(rsp *http.Response) (*PostApiIpnsRepublishResponse, error) {
+// ParsePostApiIpnsPublishResponse parses an HTTP response from a PostApiIpnsPublishWithResponse call
+func ParsePostApiIpnsPublishResponse(rsp *http.Response) (*PostApiIpnsPublishResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &PostApiIpnsRepublishResponse{
+	response := &PostApiIpnsPublishResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ErrorResponse
+		var dest IPNSPublishResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

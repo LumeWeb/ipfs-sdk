@@ -406,20 +406,31 @@ func (_c *MockIPNSService_Publish_Call) RunAndReturn(run func(ctx context.Contex
 }
 
 // Republish provides a mock function for the type MockIPNSService
-func (_mock *MockIPNSService) Republish(ctx context.Context) error {
-	ret := _mock.Called(ctx)
+func (_mock *MockIPNSService) Republish(ctx context.Context, id string) (*ipfs.IPNSRepublishResponse, error) {
+	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Republish")
 	}
 
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = returnFunc(ctx)
-	} else {
-		r0 = ret.Error(0)
+	var r0 *ipfs.IPNSRepublishResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*ipfs.IPNSRepublishResponse, error)); ok {
+		return returnFunc(ctx, id)
 	}
-	return r0
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *ipfs.IPNSRepublishResponse); ok {
+		r0 = returnFunc(ctx, id)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.IPNSRepublishResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, id)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
 }
 
 // MockIPNSService_Republish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Republish'
@@ -429,29 +440,35 @@ type MockIPNSService_Republish_Call struct {
 
 // Republish is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockIPNSService_Expecter) Republish(ctx interface{}) *MockIPNSService_Republish_Call {
-	return &MockIPNSService_Republish_Call{Call: _e.mock.On("Republish", ctx)}
+//   - id string
+func (_e *MockIPNSService_Expecter) Republish(ctx interface{}, id interface{}) *MockIPNSService_Republish_Call {
+	return &MockIPNSService_Republish_Call{Call: _e.mock.On("Republish", ctx, id)}
 }
 
-func (_c *MockIPNSService_Republish_Call) Run(run func(ctx context.Context)) *MockIPNSService_Republish_Call {
+func (_c *MockIPNSService_Republish_Call) Run(run func(ctx context.Context, id string)) *MockIPNSService_Republish_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
 }
 
-func (_c *MockIPNSService_Republish_Call) Return(err error) *MockIPNSService_Republish_Call {
-	_c.Call.Return(err)
+func (_c *MockIPNSService_Republish_Call) Return(v *ipfs.IPNSRepublishResponse, err error) *MockIPNSService_Republish_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
-func (_c *MockIPNSService_Republish_Call) RunAndReturn(run func(ctx context.Context) error) *MockIPNSService_Republish_Call {
+func (_c *MockIPNSService_Republish_Call) RunAndReturn(run func(ctx context.Context, id string) (*ipfs.IPNSRepublishResponse, error)) *MockIPNSService_Republish_Call {
 	_c.Call.Return(run)
 	return _c
 }
