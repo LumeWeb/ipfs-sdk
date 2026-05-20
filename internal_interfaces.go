@@ -14,7 +14,7 @@ type IPNSClientWithResponsesInterface interface {
 	PostApiIpnsKeysWithResponse(ctx context.Context, body internalclient.IPNSKeyRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsKeysResponse, error)
 	DeleteApiIpnsKeysIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiIpnsKeysIdResponse, error)
 	PostApiIpnsPublishWithResponse(ctx context.Context, body internalclient.IPNSPublishRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsPublishResponse, error)
-	PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsRepublishResponse, error)
+	PostApiIpnsKeysIdRepublishWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsKeysIdRepublishResponse, error)
 	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *internalclient.GetApiIpnsResolveNameParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsResolveNameResponse, error)
 }
 
@@ -43,8 +43,8 @@ func (a *internalClientToIPNSAdapter) PostApiIpnsPublishWithResponse(ctx context
 	return a.client.PostApiIpnsPublishWithResponse(ctx, body, reqEditors...)
 }
 
-func (a *internalClientToIPNSAdapter) PostApiIpnsRepublishWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsRepublishResponse, error) {
-	return a.client.PostApiIpnsRepublishWithResponse(ctx, reqEditors...)
+func (a *internalClientToIPNSAdapter) PostApiIpnsKeysIdRepublishWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsKeysIdRepublishResponse, error) {
+	return a.client.PostApiIpnsKeysIdRepublishWithResponse(ctx, id, reqEditors...)
 }
 
 func (a *internalClientToIPNSAdapter) GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *internalclient.GetApiIpnsResolveNameParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsResolveNameResponse, error) {
