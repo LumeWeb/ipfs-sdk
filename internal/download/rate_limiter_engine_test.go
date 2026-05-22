@@ -97,30 +97,20 @@ func TestRateLimiterEngine_submitAndWait(t *testing.T) {
 	t.Run("cancels when context is cancelled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		engine := NewRateLimiterEngine(nil, nil, htputil.RetryConfig{})
+		defer engine.Close()
 
-		var started, cancelled atomic.Bool
 		go func() {
-			started.Store(true)
 			time.Sleep(100 * time.Millisecond)
 			cancel()
-			cancelled.Store(true)
 		}()
 
-		// Wait for goroutine to start
-		for !started.Load() {
-			time.Sleep(1 * time.Millisecond)
-		}
-
 		err := engine.submitAndWait(ctx, func() error {
-			// Long-running task
 			time.Sleep(1 * time.Second)
 			return nil
 		})
 
-		assert.True(t, cancelled.Load())
 		assert.Error(t, err)
 		assert.Equal(t, context.Canceled, err)
-		engine.Close()
 	})
 }
 
