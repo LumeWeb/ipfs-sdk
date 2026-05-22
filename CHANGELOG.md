@@ -1,3 +1,9 @@
+## 0.1.46 (2026-05-22)
+
+### Fixes
+
+- add required reason field to ZoneStatus/WebsiteValidateResponse
+
 ## 0.1.45 (2026-05-22)
 
 ### Fixes
