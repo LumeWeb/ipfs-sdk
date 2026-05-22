@@ -332,6 +332,7 @@ type WebsiteValidateResponse struct {
 	Domain  string `json:"domain"`
 	Id      int    `json:"id"`
 	Message string `json:"message"`
+	Reason  string `json:"reason"`
 	Valid   bool   `json:"valid"`
 }
 
