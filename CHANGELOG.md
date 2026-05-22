@@ -1,3 +1,9 @@
+## 0.1.47 (2026-05-22)
+
+### Features
+
+- add WebsiteValidationReason enum and helpers, fix flaky test
+
 ## 0.1.46 (2026-05-22)
 
 ### Fixes
