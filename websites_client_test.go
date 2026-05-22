@@ -215,7 +215,8 @@ func TestWebsitesClient_GetSSLStatus_Success(t *testing.T) {
 
 func TestWebsitesClient_ValidateDNS_Success(t *testing.T) {
 	expectedResponse := internalclient.WebsiteValidateResponse{
-		Valid: true,
+		Valid:  true,
+		Reason: string(WebsiteValidationReasonValidated),
 	}
 
 	server := testutil.NewTestServer(t, testutil.HTTPTestServerConfig{

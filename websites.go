@@ -21,6 +21,30 @@ type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
 type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
 type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 
+type WebsiteValidationReason string
+
+const (
+	WebsiteValidationReasonValidated    WebsiteValidationReason = "validated"
+	WebsiteValidationReasonTokenExpired WebsiteValidationReason = "token_expired"
+	WebsiteValidationReasonDNSMissing   WebsiteValidationReason = "dns_missing"
+	WebsiteValidationReasonDNSMismatch  WebsiteValidationReason = "dns_mismatch"
+	WebsiteValidationReasonTokenMissing WebsiteValidationReason = "token_missing"
+)
+
+func WebsiteValidationReasonOf(r *WebsiteValidateResponse) WebsiteValidationReason {
+	if r == nil {
+		return ""
+	}
+	return WebsiteValidationReason(r.Reason)
+}
+
+func IsWebsiteValidationReason(r *WebsiteValidateResponse, reason WebsiteValidationReason) bool {
+	if r == nil {
+		return false
+	}
+	return WebsiteValidationReason(r.Reason) == reason
+}
+
 // WebsitesConfig holds configuration for Websites service operations
 type WebsitesConfig struct {
 	Retry  RetryConfig

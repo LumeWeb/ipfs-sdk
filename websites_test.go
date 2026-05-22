@@ -470,7 +470,8 @@ func TestWebsitesService_ValidateDNS_Success(t *testing.T) {
 	t.Run("validates DNS configuration successfully", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
 		expectedResponse := &client.WebsiteValidateResponse{
-			Valid: true,
+			Valid:  true,
+			Reason: string(WebsiteValidationReasonValidated),
 		}
 
 		mockClient.EXPECT().
@@ -839,14 +840,17 @@ func TestWebsitesService_WaitForDNSValidation(t *testing.T) {
 		expectedResponse1 := client.WebsiteValidateResponse{
 			Valid:   false,
 			Message: "DNS not yet propagated",
+			Reason:  string(WebsiteValidationReasonDNSMissing),
 		}
 		expectedResponse2 := client.WebsiteValidateResponse{
 			Valid:   false,
 			Message: "Still waiting",
+			Reason:  string(WebsiteValidationReasonDNSMissing),
 		}
 		expectedResponse3 := client.WebsiteValidateResponse{
 			Valid:   true,
 			Message: "DNS validated successfully",
+			Reason:  string(WebsiteValidationReasonValidated),
 		}
 
 		mockClient.EXPECT().
@@ -890,6 +894,7 @@ func TestWebsitesService_WaitForDNSValidation(t *testing.T) {
 		timeoutResponse := client.WebsiteValidateResponse{
 			Valid:   false,
 			Message: "Timeout",
+			Reason:  string(WebsiteValidationReasonDNSMissing),
 		}
 
 		mockClient.EXPECT().
