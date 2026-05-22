@@ -263,6 +263,7 @@ type WebsiteConfigResponse struct {
 
 // WebsiteItem defines model for WebsiteItem.
 type WebsiteItem struct {
+	ActiveCid           *string        `json:"active_cid,omitempty"`
 	Created             time.Time      `json:"created"`
 	DnsHostingEnabled   bool           `json:"dns_hosting_enabled"`
 	DnsZoneId           *int           `json:"dns_zone_id,omitempty"`
@@ -270,6 +271,7 @@ type WebsiteItem struct {
 	Expired             bool           `json:"expired"`
 	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
 	Id                  int            `json:"id"`
+	IpnsKeyId           *int           `json:"ipns_key_id,omitempty"`
 	IsSubdomain         bool           `json:"is_subdomain"`
 	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
 	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
@@ -297,6 +299,7 @@ type WebsiteRequest struct {
 
 // WebsiteResponse defines model for WebsiteResponse.
 type WebsiteResponse struct {
+	ActiveCid           *string        `json:"active_cid,omitempty"`
 	Created             time.Time      `json:"created"`
 	DnsHostingEnabled   bool           `json:"dns_hosting_enabled"`
 	DnsZoneId           *int           `json:"dns_zone_id,omitempty"`
@@ -304,6 +307,7 @@ type WebsiteResponse struct {
 	Expired             bool           `json:"expired"`
 	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
 	Id                  int            `json:"id"`
+	IpnsKeyId           *int           `json:"ipns_key_id,omitempty"`
 	IsSubdomain         bool           `json:"is_subdomain"`
 	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
 	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`

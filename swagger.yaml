@@ -524,6 +524,8 @@ components:
     WebsiteItem:
       additionalProperties: false
       properties:
+        active_cid:
+          type: string
         created:
           format: date-time
           type: string
@@ -538,6 +540,8 @@ components:
         gateway_domain:
           type: string
         id:
+          type: integer
+        ipns_key_id:
           type: integer
         is_subdomain:
           type: boolean
@@ -605,6 +609,8 @@ components:
     WebsiteResponse:
       additionalProperties: false
       properties:
+        active_cid:
+          type: string
         created:
           format: date-time
           type: string
@@ -619,6 +625,8 @@ components:
         gateway_domain:
           type: string
         id:
+          type: integer
+        ipns_key_id:
           type: integer
         is_subdomain:
           type: boolean
