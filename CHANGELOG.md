@@ -1,3 +1,9 @@
+## 0.1.45 (2026-05-22)
+
+### Fixes
+
+- add active_cid and ipns_key_id to WebsiteItem/WebsiteResponse
+
 ## 0.1.44 (2026-05-20)
 
 ### Fixes
