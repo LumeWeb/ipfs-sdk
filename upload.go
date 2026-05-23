@@ -3,6 +3,7 @@ package ipfs
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.lumeweb.com/ipfs-content/car"
 	"go.lumeweb.com/ipfs-content/unixfs"
+	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 )
@@ -254,6 +256,9 @@ type UploadResult struct {
 	Size    int64   // UnixFS logical file size (the actual file size users expect)
 	DAGSize int64   // Raw size of all blocks in the DAG
 }
+
+// UploadResultInfo is the result of querying upload status by identifier.
+type UploadResultInfo = internalclient.UploadResultResponse
 
 // getUploadResultSize determines the appropriate Size field value for UploadResult.
 // For CAR uploads (unixFSSize > 0), returns the UnixFS logical size.
@@ -687,6 +692,43 @@ func (s *UploadService) GetUploadStatus(ctx context.Context, location string) (*
 	}
 
 	return upload, nil
+}
+
+// GetUploadResult retrieves the result of an upload operation by identifier.
+// Accepts either a TUS upload ID or a numeric request ID as the identifier.
+func (s *UploadService) GetUploadResult(ctx context.Context, identifier string) (*UploadResultInfo, error) {
+	if identifier == "" {
+		return nil, fmt.Errorf("identifier cannot be empty")
+	}
+
+	endpoint := s.buildEndpoint(fmt.Sprintf("/api/upload/result/%s", url.PathEscape(identifier)))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if s.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+s.authToken)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get upload result: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get upload result failed (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result UploadResultInfo
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode upload result: %w", err)
+	}
+
+	return &result, nil
 }
 
 // CancelUpload cancels an in-progress TUS upload.
