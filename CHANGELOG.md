@@ -1,3 +1,9 @@
+## 0.1.48 (2026-05-23)
+
+### Features
+
+- update swagger spec with upload result endpoint
+
 ## 0.1.47 (2026-05-22)
 
 ### Features
