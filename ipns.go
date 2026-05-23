@@ -136,11 +136,13 @@ func (s *ipnsService) ListKeys(ctx context.Context) ([]IPNSKeyResponse, error) {
 		// (they have identical struct definitions, just different type names)
 		result = lo.Map(resp.JSON200.Data, func(item internalclient.IPNSKeyListResponse, _ int) internalclient.IPNSKeyResponse {
 			return internalclient.IPNSKeyResponse{
-				Created:  item.Created,
-				Id:       item.Id,
-				IpnsName: item.IpnsName,
-				Name:     item.Name,
-				PeerId:   item.PeerId,
+				Created:         item.Created,
+				Id:              item.Id,
+				IpnsName:        item.IpnsName,
+				LastPublishedAt: item.LastPublishedAt,
+				Name:            item.Name,
+				PeerId:          item.PeerId,
+				Value:           item.Value,
 			}
 		})
 		return nil

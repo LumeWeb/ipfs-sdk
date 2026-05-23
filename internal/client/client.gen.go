@@ -99,11 +99,13 @@ type GetBlockMetaBatchRequest struct {
 
 // IPNSKeyListResponse defines model for IPNSKeyListResponse.
 type IPNSKeyListResponse struct {
-	Created  time.Time `json:"created"`
-	Id       int       `json:"id"`
-	IpnsName string    `json:"ipns_name"`
-	Name     string    `json:"name"`
-	PeerId   string    `json:"peer_id"`
+	Created         time.Time  `json:"created"`
+	Id              int        `json:"id"`
+	IpnsName        string     `json:"ipns_name"`
+	LastPublishedAt *time.Time `json:"last_published_at,omitempty"`
+	Name            string     `json:"name"`
+	PeerId          string     `json:"peer_id"`
+	Value           *string    `json:"value,omitempty"`
 }
 
 // IPNSKeyListResponseResponse defines model for IPNSKeyListResponseResponse.
@@ -120,11 +122,13 @@ type IPNSKeyRequest struct {
 
 // IPNSKeyResponse defines model for IPNSKeyResponse.
 type IPNSKeyResponse struct {
-	Created  time.Time `json:"created"`
-	Id       int       `json:"id"`
-	IpnsName string    `json:"ipns_name"`
-	Name     string    `json:"name"`
-	PeerId   string    `json:"peer_id"`
+	Created         time.Time  `json:"created"`
+	Id              int        `json:"id"`
+	IpnsName        string     `json:"ipns_name"`
+	LastPublishedAt *time.Time `json:"last_published_at,omitempty"`
+	Name            string     `json:"name"`
+	PeerId          string     `json:"peer_id"`
+	Value           *string    `json:"value,omitempty"`
 }
 
 // IPNSPublishRequest defines model for IPNSPublishRequest.
@@ -247,6 +251,13 @@ type SSLStatusUpdateRequest struct {
 	Timestamp *string `json:"timestamp,omitempty"`
 }
 
+// UploadResultResponse defines model for UploadResultResponse.
+type UploadResultResponse struct {
+	Cid    *string `json:"cid,omitempty"`
+	Error  *string `json:"error,omitempty"`
+	Status string  `json:"status"`
+}
+
 // ValidationResponse defines model for ValidationResponse.
 type ValidationResponse struct {
 	CheckedAt   time.Time `json:"checked_at"`
@@ -263,24 +274,25 @@ type WebsiteConfigResponse struct {
 
 // WebsiteItem defines model for WebsiteItem.
 type WebsiteItem struct {
-	ActiveCid           *string        `json:"active_cid,omitempty"`
-	Created             time.Time      `json:"created"`
-	DnsHostingEnabled   bool           `json:"dns_hosting_enabled"`
-	DnsZoneId           *int           `json:"dns_zone_id,omitempty"`
-	Domain              string         `json:"domain"`
-	Expired             bool           `json:"expired"`
-	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
-	Id                  int            `json:"id"`
-	IpnsKeyId           *int           `json:"ipns_key_id,omitempty"`
-	IsSubdomain         bool           `json:"is_subdomain"`
-	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
-	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
-	Status              string         `json:"status"`
-	TargetHash          string         `json:"target_hash"`
-	TargetType          string         `json:"target_type"`
-	Updated             time.Time      `json:"updated"`
-	ValidationExpiresAt *time.Time     `json:"validation_expires_at,omitempty"`
-	ValidationToken     string         `json:"validation_token"`
+	ActiveCid            *string        `json:"active_cid,omitempty"`
+	Created              time.Time      `json:"created"`
+	DnsHostingEnabled    bool           `json:"dns_hosting_enabled"`
+	DnsZoneId            *int           `json:"dns_zone_id,omitempty"`
+	Domain               string         `json:"domain"`
+	Expired              bool           `json:"expired"`
+	GatewayDomain        *string        `json:"gateway_domain,omitempty"`
+	Id                   int            `json:"id"`
+	IpnsKeyId            *int           `json:"ipns_key_id,omitempty"`
+	IsSubdomain          bool           `json:"is_subdomain"`
+	LastCheckedAt        *time.Time     `json:"last_checked_at,omitempty"`
+	Ssl                  *SSLStatusInfo `json:"ssl,omitempty"`
+	Status               string         `json:"status"`
+	TargetHash           string         `json:"target_hash"`
+	TargetType           string         `json:"target_type"`
+	Updated              time.Time      `json:"updated"`
+	ValidationExpiresAt  *time.Time     `json:"validation_expires_at,omitempty"`
+	ValidationRecordHost *string        `json:"validation_record_host,omitempty"`
+	ValidationToken      string         `json:"validation_token"`
 }
 
 // WebsiteItemResponse defines model for WebsiteItemResponse.
@@ -299,24 +311,25 @@ type WebsiteRequest struct {
 
 // WebsiteResponse defines model for WebsiteResponse.
 type WebsiteResponse struct {
-	ActiveCid           *string        `json:"active_cid,omitempty"`
-	Created             time.Time      `json:"created"`
-	DnsHostingEnabled   bool           `json:"dns_hosting_enabled"`
-	DnsZoneId           *int           `json:"dns_zone_id,omitempty"`
-	Domain              string         `json:"domain"`
-	Expired             bool           `json:"expired"`
-	GatewayDomain       *string        `json:"gateway_domain,omitempty"`
-	Id                  int            `json:"id"`
-	IpnsKeyId           *int           `json:"ipns_key_id,omitempty"`
-	IsSubdomain         bool           `json:"is_subdomain"`
-	LastCheckedAt       *time.Time     `json:"last_checked_at,omitempty"`
-	Ssl                 *SSLStatusInfo `json:"ssl,omitempty"`
-	Status              string         `json:"status"`
-	TargetHash          string         `json:"target_hash"`
-	TargetType          string         `json:"target_type"`
-	Updated             time.Time      `json:"updated"`
-	ValidationExpiresAt *time.Time     `json:"validation_expires_at,omitempty"`
-	ValidationToken     string         `json:"validation_token"`
+	ActiveCid            *string        `json:"active_cid,omitempty"`
+	Created              time.Time      `json:"created"`
+	DnsHostingEnabled    bool           `json:"dns_hosting_enabled"`
+	DnsZoneId            *int           `json:"dns_zone_id,omitempty"`
+	Domain               string         `json:"domain"`
+	Expired              bool           `json:"expired"`
+	GatewayDomain        *string        `json:"gateway_domain,omitempty"`
+	Id                   int            `json:"id"`
+	IpnsKeyId            *int           `json:"ipns_key_id,omitempty"`
+	IsSubdomain          bool           `json:"is_subdomain"`
+	LastCheckedAt        *time.Time     `json:"last_checked_at,omitempty"`
+	Ssl                  *SSLStatusInfo `json:"ssl,omitempty"`
+	Status               string         `json:"status"`
+	TargetHash           string         `json:"target_hash"`
+	TargetType           string         `json:"target_type"`
+	Updated              time.Time      `json:"updated"`
+	ValidationExpiresAt  *time.Time     `json:"validation_expires_at,omitempty"`
+	ValidationRecordHost *string        `json:"validation_record_host,omitempty"`
+	ValidationToken      string         `json:"validation_token"`
 }
 
 // WebsiteUpdateRequest defines model for WebsiteUpdateRequest.
@@ -673,6 +686,9 @@ type ClientInterface interface {
 
 	// PostApiUploadWithBody request with any body
 	PostApiUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApiUploadResultIdentifier request
+	GetApiUploadResultIdentifier(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// OptionsApiUploadTus request
 	OptionsApiUploadTus(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1194,6 +1210,18 @@ func (c *Client) GetApiIpnsResolveName(ctx context.Context, name string, params 
 
 func (c *Client) PostApiUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostApiUploadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetApiUploadResultIdentifier(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiUploadResultIdentifierRequest(c.Server, identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -2622,6 +2650,40 @@ func NewPostApiUploadRequestWithBody(server string, contentType string, body io.
 	return req, nil
 }
 
+// NewGetApiUploadResultIdentifierRequest generates requests for GetApiUploadResultIdentifier
+func NewGetApiUploadResultIdentifierRequest(server string, identifier string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "identifier", identifier, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/upload/result/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewOptionsApiUploadTusRequest generates requests for OptionsApiUploadTus
 func NewOptionsApiUploadTusRequest(server string) (*http.Request, error) {
 	var err error
@@ -3927,6 +3989,9 @@ type ClientWithResponsesInterface interface {
 	// PostApiUploadWithBodyWithResponse request with any body
 	PostApiUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiUploadResponse, error)
 
+	// GetApiUploadResultIdentifierWithResponse request
+	GetApiUploadResultIdentifierWithResponse(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*GetApiUploadResultIdentifierResponse, error)
+
 	// OptionsApiUploadTusWithResponse request
 	OptionsApiUploadTusWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OptionsApiUploadTusResponse, error)
 
@@ -4765,6 +4830,33 @@ func (r PostApiUploadResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostApiUploadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetApiUploadResultIdentifierResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *UploadResultResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApiUploadResultIdentifierResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiUploadResultIdentifierResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5751,6 +5843,15 @@ func (c *ClientWithResponses) PostApiUploadWithBodyWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParsePostApiUploadResponse(rsp)
+}
+
+// GetApiUploadResultIdentifierWithResponse request returning *GetApiUploadResultIdentifierResponse
+func (c *ClientWithResponses) GetApiUploadResultIdentifierWithResponse(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*GetApiUploadResultIdentifierResponse, error) {
+	rsp, err := c.GetApiUploadResultIdentifier(ctx, identifier, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApiUploadResultIdentifierResponse(rsp)
 }
 
 // OptionsApiUploadTusWithResponse request returning *OptionsApiUploadTusResponse
@@ -7700,6 +7801,67 @@ func ParsePostApiUploadResponse(rsp *http.Response) (*PostApiUploadResponse, err
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApiUploadResultIdentifierResponse parses an HTTP response from a GetApiUploadResultIdentifierWithResponse call
+func ParseGetApiUploadResultIdentifierResponse(rsp *http.Response) (*GetApiUploadResultIdentifierResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiUploadResultIdentifierResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest UploadResultResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
