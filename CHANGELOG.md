@@ -1,3 +1,9 @@
+## 0.1.49 (2026-06-05)
+
+### Features
+
+- add PingService + update swagger from live portal
+
 ## 0.1.48 (2026-05-23)
 
 ### Features
