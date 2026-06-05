@@ -134,3 +134,22 @@ func (a *internalClientToDNSAdapter) PostApiDnsZonesIdRecordsBulkDeleteWithRespo
 func ConvertClientToDNS(client *internalclient.ClientWithResponses) DNSClientWithResponsesInterface {
 	return &internalClientToDNSAdapter{client: client}
 }
+
+// PingClientWithResponsesInterface defines the methods needed from the generated internal client for Ping
+type PingClientWithResponsesInterface interface {
+	GetInternalPingWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalPingResponse, error)
+}
+
+// internalClientToPingAdapter adapts internalclient.ClientWithResponses to PingClientWithResponsesInterface
+type internalClientToPingAdapter struct {
+	client *internalclient.ClientWithResponses
+}
+
+func (a *internalClientToPingAdapter) GetInternalPingWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalPingResponse, error) {
+	return a.client.GetInternalPingWithResponse(ctx, reqEditors...)
+}
+
+// ConvertClientToPing converts a ClientWithResponses to PingClientWithResponsesInterface
+func ConvertClientToPing(client *internalclient.ClientWithResponses) PingClientWithResponsesInterface {
+	return &internalClientToPingAdapter{client: client}
+}
