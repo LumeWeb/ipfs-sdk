@@ -55,6 +55,9 @@ const (
 	OpAddPin
 	OpGetPin
 	OpRemovePin
+
+	// Ping operations
+	OpPing
 )
 
 // operationString maps operation IDs to human-readable names.
@@ -101,6 +104,9 @@ var operationString = map[int]string{
 	OpAddPin:    "add pin",
 	OpGetPin:    "get pin",
 	OpRemovePin: "remove pin",
+
+	// Ping operations
+	OpPing: "ping",
 }
 
 // Named error types for error comparison.
@@ -306,6 +312,12 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusNotFound:     notFoundErr("website not found"),
 		http.StatusGone:         goneErr("website is broken or deleted"),
+	},
+
+	// Ping operations
+	OpPing: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusForbidden:    plainErr("gateway secret required"),
 	},
 }
 

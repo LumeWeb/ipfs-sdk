@@ -393,6 +393,22 @@ components:
       - pin
       - delegates
       type: object
+    PingResponse:
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+      required:
+      - status
+      type: object
+    PostUploadResponse:
+      additionalProperties: false
+      properties:
+        CID:
+          type: string
+      required:
+      - CID
+      type: object
     RecordIdentifier:
       additionalProperties: false
       properties:
@@ -2410,6 +2426,10 @@ paths:
         required: true
       responses:
         "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostUploadResponse'
           description: File uploaded successfully
         "400":
           content:
@@ -3570,6 +3590,50 @@ paths:
       summary: Get website hosting configuration
       tags:
       - Websites
+  /internal/ping:
+    get:
+      description: Returns service liveness status. Requires X-Gateway-Secret header
+        for authentication.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+          description: Service is alive
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Health check
+      tags:
+      - Gateway
   /internal/websites/{domain}:
     get:
       description: |-
@@ -4255,5 +4319,115 @@ paths:
       summary: Replace pinned content
       tags:
       - Pinning
+  /routing/v1/ipns/{name}:
+    get:
+      description: |-
+        Returns the signed IPNS record for the given peer ID.
+
+        Implements the IPFS Delegated Routing V1 HTTP API (IPIP-337). The response is a raw IPNS record in binary format (application/vnd.ipfs.ipns-record). Accepts both CIDv1 (bafzaajaiaejc...) and raw peer ID (12D3KooW...) formats.
+
+        See also: https://specs.ipfs.tech/ipips/ipip-337/
+      parameters:
+      - description: Peer ID of the IPNS key (CIDv1 or raw peer ID format)
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/vnd.ipfs.ipns-record:
+              schema:
+                type: string
+          description: IPNS record
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Get IPNS record
+      tags:
+      - Routing
+  /routing/v1/providers/{cid}:
+    get:
+      description: |-
+        Returns provider records for the given CID.
+
+        Implements the IPFS Delegated Routing V1 HTTP API (IPIP-337). Supports both JSON and streaming NDJSON response formats via content negotiation (Accept header).
+
+        See also: https://specs.ipfs.tech/ipips/ipip-337/
+      parameters:
+      - description: Content identifier
+        in: path
+        name: cid
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/x-ndjson:
+              schema:
+                type: string
+          description: Provider records
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Find providers for a CID
+      tags:
+      - Routing
 servers:
 - url: /

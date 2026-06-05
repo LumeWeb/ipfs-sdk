@@ -28,6 +28,7 @@ type Client struct {
 	websites WebsitesService
 	upload   *UploadService
 	download *DownloadService
+	ping     PingService
 
 	httpClient    *http.Client
 	baseURL       string
@@ -292,6 +293,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
 	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
+	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
 	
 	upload, err := NewUploadService(normalizedURL, bearerToken, WithHTTPClient(httpClient))
 	if err != nil {
@@ -344,6 +346,11 @@ func (c *Client) Upload() *UploadService {
 // Download returns the download service for downloading IPFS blocks and content.
 func (c *Client) Download() *DownloadService {
 	return c.download
+}
+
+// Ping returns the ping service for health checking the IPFS gateway.
+func (c *Client) Ping() PingService {
+	return c.ping
 }
 
 // SetHTTPClient sets a custom HTTP client for all API requests.

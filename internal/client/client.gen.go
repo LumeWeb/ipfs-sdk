@@ -197,6 +197,16 @@ type PinStatusResponse struct {
 	Status    string             `json:"status"`
 }
 
+// PingResponse defines model for PingResponse.
+type PingResponse struct {
+	Status string `json:"status"`
+}
+
+// PostUploadResponse defines model for PostUploadResponse.
+type PostUploadResponse struct {
+	CID string `json:"CID"`
+}
+
 // RecordIdentifier defines model for RecordIdentifier.
 type RecordIdentifier struct {
 	Name string `json:"name"`
@@ -736,6 +746,9 @@ type ClientInterface interface {
 	// PostApiWebsitesIdValidate request
 	PostApiWebsitesIdValidate(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetInternalPing request
+	GetInternalPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetInternalWebsitesDomain request
 	GetInternalWebsitesDomain(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -774,6 +787,12 @@ type ClientInterface interface {
 	PostPinsRequestidWithBody(ctx context.Context, requestid string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostPinsRequestid(ctx context.Context, requestid string, body PostPinsRequestidJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRoutingV1IpnsName request
+	GetRoutingV1IpnsName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRoutingV1ProvidersCid request
+	GetRoutingV1ProvidersCid(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) PostApiBlockMetaBatchWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -1424,6 +1443,18 @@ func (c *Client) PostApiWebsitesIdValidate(ctx context.Context, id string, reqEd
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetInternalPing(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInternalPingRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GetInternalWebsitesDomain(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInternalWebsitesDomainRequest(c.Server, domain)
 	if err != nil {
@@ -1582,6 +1613,30 @@ func (c *Client) PostPinsRequestidWithBody(ctx context.Context, requestid string
 
 func (c *Client) PostPinsRequestid(ctx context.Context, requestid string, body PostPinsRequestidJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostPinsRequestidRequest(c.Server, requestid, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRoutingV1IpnsName(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRoutingV1IpnsNameRequest(c.Server, name)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRoutingV1ProvidersCid(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRoutingV1ProvidersCidRequest(c.Server, cid)
 	if err != nil {
 		return nil, err
 	}
@@ -3311,6 +3366,33 @@ func NewPostApiWebsitesIdValidateRequest(server string, id string) (*http.Reques
 	return req, nil
 }
 
+// NewGetInternalPingRequest generates requests for GetInternalPing
+func NewGetInternalPingRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/ping")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetInternalWebsitesDomainRequest generates requests for GetInternalWebsitesDomain
 func NewGetInternalWebsitesDomainRequest(server string, domain string) (*http.Request, error) {
 	var err error
@@ -3844,6 +3926,74 @@ func NewPostPinsRequestidRequestWithBody(server string, requestid string, conten
 	return req, nil
 }
 
+// NewGetRoutingV1IpnsNameRequest generates requests for GetRoutingV1IpnsName
+func NewGetRoutingV1IpnsNameRequest(server string, name string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "name", name, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/routing/v1/ipns/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetRoutingV1ProvidersCidRequest generates requests for GetRoutingV1ProvidersCid
+func NewGetRoutingV1ProvidersCidRequest(server string, cid string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "cid", cid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/routing/v1/providers/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -4038,6 +4188,9 @@ type ClientWithResponsesInterface interface {
 	// PostApiWebsitesIdValidateWithResponse request
 	PostApiWebsitesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdValidateResponse, error)
 
+	// GetInternalPingWithResponse request
+	GetInternalPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInternalPingResponse, error)
+
 	// GetInternalWebsitesDomainWithResponse request
 	GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*GetInternalWebsitesDomainResponse, error)
 
@@ -4076,6 +4229,12 @@ type ClientWithResponsesInterface interface {
 	PostPinsRequestidWithBodyWithResponse(ctx context.Context, requestid string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostPinsRequestidResponse, error)
 
 	PostPinsRequestidWithResponse(ctx context.Context, requestid string, body PostPinsRequestidJSONRequestBody, reqEditors ...RequestEditorFn) (*PostPinsRequestidResponse, error)
+
+	// GetRoutingV1IpnsNameWithResponse request
+	GetRoutingV1IpnsNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetRoutingV1IpnsNameResponse, error)
+
+	// GetRoutingV1ProvidersCidWithResponse request
+	GetRoutingV1ProvidersCidWithResponse(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*GetRoutingV1ProvidersCidResponse, error)
 }
 
 type PostApiBlockMetaBatchResponse struct {
@@ -4813,6 +4972,7 @@ func (r GetApiIpnsResolveNameResponse) StatusCode() int {
 type PostApiUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
+	JSON200      *PostUploadResponse
 	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
@@ -5221,6 +5381,33 @@ func (r PostApiWebsitesIdValidateResponse) StatusCode() int {
 	return 0
 }
 
+type GetInternalPingResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PingResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInternalPingResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInternalPingResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetInternalWebsitesDomainResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5515,6 +5702,58 @@ func (r PostPinsRequestidResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostPinsRequestidResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRoutingV1IpnsNameResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRoutingV1IpnsNameResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRoutingV1IpnsNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRoutingV1ProvidersCidResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRoutingV1ProvidersCidResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRoutingV1ProvidersCidResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -5996,6 +6235,15 @@ func (c *ClientWithResponses) PostApiWebsitesIdValidateWithResponse(ctx context.
 	return ParsePostApiWebsitesIdValidateResponse(rsp)
 }
 
+// GetInternalPingWithResponse request returning *GetInternalPingResponse
+func (c *ClientWithResponses) GetInternalPingWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInternalPingResponse, error) {
+	rsp, err := c.GetInternalPing(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInternalPingResponse(rsp)
+}
+
 // GetInternalWebsitesDomainWithResponse request returning *GetInternalWebsitesDomainResponse
 func (c *ClientWithResponses) GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*GetInternalWebsitesDomainResponse, error) {
 	rsp, err := c.GetInternalWebsitesDomain(ctx, domain, reqEditors...)
@@ -6117,6 +6365,24 @@ func (c *ClientWithResponses) PostPinsRequestidWithResponse(ctx context.Context,
 		return nil, err
 	}
 	return ParsePostPinsRequestidResponse(rsp)
+}
+
+// GetRoutingV1IpnsNameWithResponse request returning *GetRoutingV1IpnsNameResponse
+func (c *ClientWithResponses) GetRoutingV1IpnsNameWithResponse(ctx context.Context, name string, reqEditors ...RequestEditorFn) (*GetRoutingV1IpnsNameResponse, error) {
+	rsp, err := c.GetRoutingV1IpnsName(ctx, name, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRoutingV1IpnsNameResponse(rsp)
+}
+
+// GetRoutingV1ProvidersCidWithResponse request returning *GetRoutingV1ProvidersCidResponse
+func (c *ClientWithResponses) GetRoutingV1ProvidersCidWithResponse(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*GetRoutingV1ProvidersCidResponse, error) {
+	rsp, err := c.GetRoutingV1ProvidersCid(ctx, cid, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRoutingV1ProvidersCidResponse(rsp)
 }
 
 // ParsePostApiBlockMetaBatchResponse parses an HTTP response from a PostApiBlockMetaBatchWithResponse call
@@ -7801,6 +8067,13 @@ func ParsePostApiUploadResponse(rsp *http.Response) (*PostApiUploadResponse, err
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PostUploadResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8616,6 +8889,67 @@ func ParsePostApiWebsitesIdValidateResponse(rsp *http.Response) (*PostApiWebsite
 	return response, nil
 }
 
+// ParseGetInternalPingResponse parses an HTTP response from a GetInternalPingWithResponse call
+func ParseGetInternalPingResponse(rsp *http.Response) (*GetInternalPingResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInternalPingResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PingResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGetInternalWebsitesDomainResponse parses an HTTP response from a GetInternalWebsitesDomainWithResponse call
 func ParseGetInternalWebsitesDomainResponse(rsp *http.Response) (*GetInternalWebsitesDomainResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9268,6 +9602,114 @@ func ParsePostPinsRequestidResponse(rsp *http.Response) (*PostPinsRequestidRespo
 		}
 		response.JSON202 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRoutingV1IpnsNameResponse parses an HTTP response from a GetRoutingV1IpnsNameWithResponse call
+func ParseGetRoutingV1IpnsNameResponse(rsp *http.Response) (*GetRoutingV1IpnsNameResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRoutingV1IpnsNameResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRoutingV1ProvidersCidResponse parses an HTTP response from a GetRoutingV1ProvidersCidWithResponse call
+func ParseGetRoutingV1ProvidersCidResponse(rsp *http.Response) (*GetRoutingV1ProvidersCidResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRoutingV1ProvidersCidResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
