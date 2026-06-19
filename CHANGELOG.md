@@ -1,3 +1,10 @@
+## 0.1.50 (2026-06-19)
+
+### Fixes
+
+- handle 410 Gone on website Get
+- handle 410 Gone in WaitForWebsiteStatus poll callback
+
 ## 0.1.49 (2026-06-05)
 
 ### Features
