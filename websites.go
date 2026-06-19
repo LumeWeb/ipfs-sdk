@@ -240,6 +240,9 @@ func (s *websitesService) Get(ctx context.Context, id string) (*WebsiteResponse,
 		}
 
 		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetWebsite, []int{http.StatusOK}); err != nil {
+			if resp.JSON410 != nil {
+				result = resp.JSON410
+			}
 			return err
 		}
 
@@ -251,7 +254,7 @@ func (s *websitesService) Get(ctx context.Context, id string) (*WebsiteResponse,
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 
 	return result, nil
@@ -523,9 +526,12 @@ func (s *websitesService) WaitForWebsiteStatus(ctx context.Context, id string, e
 	_, err := httputil.WaitForPolledState(ctx, func() (string, error) {
 		resp, err := s.Get(ctx, id)
 		if err != nil {
+			if resp != nil {
+				return resp.Status, nil
+			}
 			return "", err
 		}
-		
+
 		return resp.Status, nil
 	}, settledStates, opts...)
 

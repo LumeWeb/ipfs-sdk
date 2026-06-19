@@ -772,6 +772,9 @@ type ClientInterface interface {
 	// GetPins request
 	GetPins(ctx context.Context, params *GetPinsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// OptionsPins request
+	OptionsPins(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostPinsWithBody request with any body
 	PostPinsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -782,6 +785,9 @@ type ClientInterface interface {
 
 	// GetPinsRequestid request
 	GetPinsRequestid(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// OptionsPinsRequestid request
+	OptionsPinsRequestid(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostPinsRequestidWithBody request with any body
 	PostPinsRequestidWithBody(ctx context.Context, requestid string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1551,6 +1557,18 @@ func (c *Client) GetPins(ctx context.Context, params *GetPinsParams, reqEditors 
 	return c.Client.Do(req)
 }
 
+func (c *Client) OptionsPins(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOptionsPinsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) PostPinsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostPinsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -1589,6 +1607,18 @@ func (c *Client) DeletePinsRequestid(ctx context.Context, requestid string, reqE
 
 func (c *Client) GetPinsRequestid(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetPinsRequestidRequest(c.Server, requestid)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) OptionsPinsRequestid(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewOptionsPinsRequestidRequest(c.Server, requestid)
 	if err != nil {
 		return nil, err
 	}
@@ -3771,6 +3801,33 @@ func NewGetPinsRequest(server string, params *GetPinsParams) (*http.Request, err
 	return req, nil
 }
 
+// NewOptionsPinsRequest generates requests for OptionsPins
+func NewOptionsPinsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/pins")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("OPTIONS", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostPinsRequest calls the generic PostPins builder with application/json body
 func NewPostPinsRequest(server string, body PostPinsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -3872,6 +3929,40 @@ func NewGetPinsRequestidRequest(server string, requestid string) (*http.Request,
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewOptionsPinsRequestidRequest generates requests for OptionsPinsRequestid
+func NewOptionsPinsRequestidRequest(server string, requestid string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "requestid", requestid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/pins/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("OPTIONS", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -4214,6 +4305,9 @@ type ClientWithResponsesInterface interface {
 	// GetPinsWithResponse request
 	GetPinsWithResponse(ctx context.Context, params *GetPinsParams, reqEditors ...RequestEditorFn) (*GetPinsResponse, error)
 
+	// OptionsPinsWithResponse request
+	OptionsPinsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OptionsPinsResponse, error)
+
 	// PostPinsWithBodyWithResponse request with any body
 	PostPinsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostPinsResponse, error)
 
@@ -4224,6 +4318,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetPinsRequestidWithResponse request
 	GetPinsRequestidWithResponse(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*GetPinsRequestidResponse, error)
+
+	// OptionsPinsRequestidWithResponse request
+	OptionsPinsRequestidWithResponse(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*OptionsPinsRequestidResponse, error)
 
 	// PostPinsRequestidWithBodyWithResponse request with any body
 	PostPinsRequestidWithBodyWithResponse(ctx context.Context, requestid string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostPinsRequestidResponse, error)
@@ -5200,6 +5297,7 @@ type PostApiWebsitesResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON410      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5308,6 +5406,7 @@ type GetApiWebsitesIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON410      *WebsiteResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5416,6 +5515,7 @@ type GetInternalWebsitesDomainResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON410      *GatewayWebsiteResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5471,6 +5571,7 @@ type GetInternalWebsitesDomainStatusResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON410      *GatewayWebsiteStatusResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5598,6 +5699,33 @@ func (r GetPinsResponse) StatusCode() int {
 	return 0
 }
 
+type OptionsPinsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrorResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r OptionsPinsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OptionsPinsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostPinsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5674,6 +5802,33 @@ func (r GetPinsRequestidResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetPinsRequestidResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type OptionsPinsRequestidResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ErrorResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r OptionsPinsRequestidResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r OptionsPinsRequestidResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -6315,6 +6470,15 @@ func (c *ClientWithResponses) GetPinsWithResponse(ctx context.Context, params *G
 	return ParseGetPinsResponse(rsp)
 }
 
+// OptionsPinsWithResponse request returning *OptionsPinsResponse
+func (c *ClientWithResponses) OptionsPinsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*OptionsPinsResponse, error) {
+	rsp, err := c.OptionsPins(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOptionsPinsResponse(rsp)
+}
+
 // PostPinsWithBodyWithResponse request with arbitrary body returning *PostPinsResponse
 func (c *ClientWithResponses) PostPinsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostPinsResponse, error) {
 	rsp, err := c.PostPinsWithBody(ctx, contentType, body, reqEditors...)
@@ -6348,6 +6512,15 @@ func (c *ClientWithResponses) GetPinsRequestidWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseGetPinsRequestidResponse(rsp)
+}
+
+// OptionsPinsRequestidWithResponse request returning *OptionsPinsRequestidResponse
+func (c *ClientWithResponses) OptionsPinsRequestidWithResponse(ctx context.Context, requestid string, reqEditors ...RequestEditorFn) (*OptionsPinsRequestidResponse, error) {
+	rsp, err := c.OptionsPinsRequestid(ctx, requestid, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseOptionsPinsRequestidResponse(rsp)
 }
 
 // PostPinsRequestidWithBodyWithResponse request with arbitrary body returning *PostPinsRequestidResponse
@@ -8511,6 +8684,13 @@ func ParsePostApiWebsitesResponse(rsp *http.Response) (*PostApiWebsitesResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8754,6 +8934,13 @@ func ParseGetApiWebsitesIdResponse(rsp *http.Response) (*GetApiWebsitesIdRespons
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest WebsiteResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8999,6 +9186,13 @@ func ParseGetInternalWebsitesDomainResponse(rsp *http.Response) (*GetInternalWeb
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest GatewayWebsiteResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9127,6 +9321,13 @@ func ParseGetInternalWebsitesDomainStatusResponse(rsp *http.Response) (*GetInter
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
+		var dest GatewayWebsiteStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9384,6 +9585,67 @@ func ParseGetPinsResponse(rsp *http.Response) (*GetPinsResponse, error) {
 	return response, nil
 }
 
+// ParseOptionsPinsResponse parses an HTTP response from a OptionsPinsWithResponse call
+func ParseOptionsPinsResponse(rsp *http.Response) (*OptionsPinsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OptionsPinsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostPinsResponse parses an HTTP response from a PostPinsWithResponse call
 func ParsePostPinsResponse(rsp *http.Response) (*PostPinsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -9529,6 +9791,67 @@ func ParseGetPinsRequestidResponse(rsp *http.Response) (*GetPinsRequestidRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest PinStatusResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseOptionsPinsRequestidResponse parses an HTTP response from a OptionsPinsRequestidWithResponse call
+func ParseOptionsPinsRequestidResponse(rsp *http.Response) (*OptionsPinsRequestidResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &OptionsPinsRequestidResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
