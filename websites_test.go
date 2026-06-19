@@ -954,7 +954,129 @@ func TestSentinels_ErrNotFound(t *testing.T) {
 	})
 }
 
+func TestWebsitesService_Get_410_ReturnsBrokenWebsiteAndErrGone(t *testing.T) {
+	t.Run("returns broken website data and ErrGone on 410 response", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		brokenWebsite := &client.WebsiteResponse{
+			Id:         123,
+			Domain:     "broken.example.com",
+			Status:     "broken",
+			TargetHash: "QmBroken",
+			TargetType: "ipfs",
+		}
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "123").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"id":123,"domain":"broken.example.com","status":"broken"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+				JSON410:      brokenWebsite,
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.Get(context.Background(), "123")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrGone), "error should wrap ErrGone")
+		assert.NotNil(t, result, "should return broken website data from JSON410")
+		assert.Equal(t, 123, result.Id)
+		assert.Equal(t, "broken", result.Status)
+	})
+
+	t.Run("410 does not retry", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		callCount := 0
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "456").
+			RunAndReturn(func(ctx context.Context, id string, reqEditors ...client.RequestEditorFn) (*client.GetApiWebsitesIdResponse, error) {
+				callCount++
+				return &client.GetApiWebsitesIdResponse{
+					Body:         []byte(`{"error":"website is broken"}`),
+					HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+				}, nil
+			}).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.Get(context.Background(), "456")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrGone), "error should wrap ErrGone")
+		assert.Equal(t, 1, callCount, "410 should not trigger retry")
+	})
+}
+
+func TestWebsitesService_Get_Success(t *testing.T) {
+	t.Run("returns website data on 200 response", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		expectedWebsite := &client.WebsiteResponse{
+			Id:         123,
+			Domain:     "example.com",
+			Status:     "active",
+			TargetHash: "QmActive",
+			TargetType: "ipfs",
+		}
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "123").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"id":123,"domain":"example.com","status":"active"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedWebsite,
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.Get(context.Background(), "123")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedWebsite.Id, result.Id)
+		assert.Equal(t, "active", result.Status)
+	})
+}
+
+func TestWebsitesService_Get_NotFound(t *testing.T) {
+	t.Run("returns ErrNotFound on 404 and nil result", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "999").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"error":"website not found"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+				JSON404:      &client.ErrorResponse{Error: "website not found"},
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.Get(context.Background(), "999")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrNotFound), "error should wrap ErrNotFound")
+		assert.Nil(t, result)
+	})
+}
+
 func TestSentinels_ErrGone(t *testing.T) {
+	t.Run("Get 410 wraps ErrGone", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "123").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"error":"website is broken"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+			}, nil).Once()
+
+		service := NewWebsitesService(mockClient)
+		_, err := service.Get(context.Background(), "123")
+
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrGone), "error should wrap ErrGone")
+	})
+
 	t.Run("GetGatewayWebsite 410 wraps ErrGone", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
 		mockClient.EXPECT().

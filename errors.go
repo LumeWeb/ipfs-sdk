@@ -270,6 +270,7 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpGetWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusNotFound:     notFoundErr("website not found"),
+		http.StatusGone:         goneErr("website is broken"),
 	},
 	OpCreateWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
