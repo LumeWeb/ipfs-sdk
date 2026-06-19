@@ -832,6 +832,68 @@ func TestWebsitesService_WaitForWebsiteStatus_ErrorOnResponse(t *testing.T) {
 	})
 }
 
+func TestWebsitesService_WaitForWebsiteStatus_BrokenVia410(t *testing.T) {
+	t.Run("detects broken status from 410 Gone response", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "123").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"id":123,"status":"broken"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+				JSON410: &client.WebsiteResponse{
+					Id:     123,
+					Status: "broken",
+				},
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		err := service.WaitForWebsiteStatus(context.Background(), "123", "broken")
+
+		require.NoError(t, err)
+	})
+
+	t.Run("detects deleted status from 410 Gone response", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "456").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"id":456,"status":"deleted"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+				JSON410: &client.WebsiteResponse{
+					Id:     456,
+					Status: "deleted",
+				},
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		err := service.WaitForWebsiteStatus(context.Background(), "456", "deleted")
+
+		require.NoError(t, err)
+	})
+
+	t.Run("410 with nil result still propagates error", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdWithResponse(mock.Anything, "789").
+			Return(&client.GetApiWebsitesIdResponse{
+				Body:         []byte(`{"error":"gone"}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusGone},
+			}, nil)
+
+		service := NewWebsitesService(mockClient)
+		err := service.WaitForWebsiteStatus(context.Background(), "789", "active",
+			httputil.WithPollInterval(10*time.Millisecond),
+			httputil.WithPollTimeout(100*time.Millisecond))
+
+		require.Error(t, err)
+	})
+}
+
 func TestWebsitesService_WaitForDNSValidation(t *testing.T) {
 	t.Run("succeeds when DNS becomes valid", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)

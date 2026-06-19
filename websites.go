@@ -526,9 +526,12 @@ func (s *websitesService) WaitForWebsiteStatus(ctx context.Context, id string, e
 	_, err := httputil.WaitForPolledState(ctx, func() (string, error) {
 		resp, err := s.Get(ctx, id)
 		if err != nil {
+			if resp != nil {
+				return resp.Status, nil
+			}
 			return "", err
 		}
-		
+
 		return resp.Status, nil
 	}, settledStates, opts...)
 
