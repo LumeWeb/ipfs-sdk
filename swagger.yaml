@@ -526,6 +526,12 @@ components:
         error:
           type: string
         status:
+          enum:
+          - pending
+          - processing
+          - completed
+          - failed
+          - duplicate
           type: string
       required:
       - status

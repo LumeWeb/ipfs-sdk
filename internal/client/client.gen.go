@@ -18,6 +18,33 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for UploadResultResponseStatus.
+const (
+	Completed  UploadResultResponseStatus = "completed"
+	Duplicate  UploadResultResponseStatus = "duplicate"
+	Failed     UploadResultResponseStatus = "failed"
+	Pending    UploadResultResponseStatus = "pending"
+	Processing UploadResultResponseStatus = "processing"
+)
+
+// Valid indicates whether the value is a known member of the UploadResultResponseStatus enum.
+func (e UploadResultResponseStatus) Valid() bool {
+	switch e {
+	case Completed:
+		return true
+	case Duplicate:
+		return true
+	case Failed:
+		return true
+	case Pending:
+		return true
+	case Processing:
+		return true
+	default:
+		return false
+	}
+}
+
 // BlockMetaResponse defines model for BlockMetaResponse.
 type BlockMetaResponse struct {
 	BlockSize  int      `json:"block_size"`
@@ -263,10 +290,13 @@ type SSLStatusUpdateRequest struct {
 
 // UploadResultResponse defines model for UploadResultResponse.
 type UploadResultResponse struct {
-	Cid    *string `json:"cid,omitempty"`
-	Error  *string `json:"error,omitempty"`
-	Status string  `json:"status"`
+	Cid    *string                    `json:"cid,omitempty"`
+	Error  *string                    `json:"error,omitempty"`
+	Status UploadResultResponseStatus `json:"status"`
 }
+
+// UploadResultResponseStatus defines model for UploadResultResponse.Status.
+type UploadResultResponseStatus string
 
 // ValidationResponse defines model for ValidationResponse.
 type ValidationResponse struct {
