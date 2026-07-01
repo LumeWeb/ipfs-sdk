@@ -1,3 +1,9 @@
+## 0.1.51 (2026-07-01)
+
+### Fixes
+
+- update swagger specs and regenerate client
+
 ## 0.1.50 (2026-06-19)
 
 ### Fixes
