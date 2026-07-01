@@ -1,13 +1,11 @@
-template: testify
-template-data:
-  unroll-variadic: true
+unroll-variadic: true
 filename: "{{.InterfaceName}}.go"
 include-auto-generated: true
 packages:
   go.lumeweb.com/ipfs-sdk:
     config:
       dir: ./mocks
-      pkgname: mocks
+      outpkg: mocks
     interfaces:
       BlockMetaClient: {}
       DNSClientWithResponsesInterface: {}
@@ -16,30 +14,30 @@ packages:
       DNSService:
         config:
           dir: ./mocks/services
-          pkgname: servicemocks
+          outpkg: servicemocks
       IPNSService:
         config:
           dir: ./mocks/services
-          pkgname: servicemocks
+          outpkg: servicemocks
       PinningService:
         config:
           dir: ./mocks/services
-          pkgname: servicemocks
+          outpkg: servicemocks
       WebsitesService:
         config:
           dir: ./mocks/services
-          pkgname: servicemocks
+          outpkg: servicemocks
   go.lumeweb.com/ipfs-sdk/internal/download:
     config:
       dir: ./mocks
-      pkgname: mocks
+      outpkg: mocks
     interfaces:
       Backend: {}
       Blockstore: {}
   go.lumeweb.com/ipfs-sdk/fs:
     config:
       dir: ./mocks
-      pkgname: mocks
+      outpkg: mocks
     interfaces:
       File: {}
       FileInfo: {}
@@ -50,6 +48,6 @@ packages:
   go.lumeweb.com/ipfs-sdk/internal/testing:
     config:
       dir: ./internal/testing/mocks
-      pkgname: testingmocks
+      outpkg: testingmocks
     interfaces:
       Blockstore: {}
