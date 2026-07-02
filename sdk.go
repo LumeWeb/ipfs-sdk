@@ -260,41 +260,34 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		return nil
 	})
 
-	internalGen, err = internalclient.NewClientWithResponses(normalizedURL, combinedRequestEditor)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create internal client: %w", err)
+	c.genClientOpts = combinedRequestEditor
+
+	// Rebuild internalGen with the current httpClient (includes host override transport if configured)
+	if err := c.rebuildInternalGen(); err != nil {
+		return nil, err
 	}
 
-	// If host override is configured, use custom HTTP client with host override round tripper
+	// If host override is configured, wrap the transport on the shared httpClient
+	// so pinning, upload, and download services also route through the override
 	if c.hostOverride != nil {
-		// Create custom transport with host override
-		customTransport := &hostOverrideRoundTripper{
-			transport: http.DefaultTransport,
+		if httpClient.Transport == nil {
+			httpClient.Transport = http.DefaultTransport
+		}
+		httpClient.Transport = &hostOverrideRoundTripper{
+			transport: httpClient.Transport,
 			host:      c.hostOverride.Host,
 			target:    c.hostOverride.Target,
 		}
-		httpClient.Transport = customTransport
-
-		// Create internal generated client with custom HTTP client
-		internalGen, err = internalclient.NewClientWithResponses(normalizedURL, combinedRequestEditor, internalclient.WithHTTPClient(httpClient))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create internal client with host override: %w", err)
-		}
-		c.internalGen = internalGen
 	}
 
-	// Initialize services
+	// Initialize pinning service
 	// PinningService now supports host override when custom HTTP client is provided
 	if c.hostOverride != nil {
 		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(httpClient))
 	} else {
 		c.pinning = NewPinningService(normalizedURL, bearerToken)
 	}
-	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
-	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
-	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
-	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
-	
+
 	upload, err := NewUploadService(normalizedURL, bearerToken, WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create upload service: %w", err)
@@ -307,7 +300,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		downloadOpts = append(downloadOpts, WithDownloadRateLimiter(c.downloadRateLimiter))
 	}
 	downloadOpts = append(downloadOpts, c.downloadOptions...)
-	downloadOpts = append(downloadOpts, WithInternalGen(internalGen))
+	downloadOpts = append(downloadOpts, WithInternalGen(c.internalGen))
 	
 	download, err := NewDownloadService(normalizedURL, bearerToken, downloadOpts...)
 	if err != nil {
@@ -353,10 +346,57 @@ func (c *Client) Ping() PingService {
 	return c.ping
 }
 
+// rebuildInternalGen recreates the internal generated client using the current
+// httpClient, genClientOpts, baseURL, and hostOverride. It then re-wires all
+// services that depend on internalGen (dns, ipns, websites, ping).
+func (c *Client) rebuildInternalGen() error {
+	opts := []internalclient.ClientOption{c.genClientOpts}
+
+	if c.httpClient != nil {
+		client := *c.httpClient
+
+		// If host override is configured, wrap the transport.
+		// Unwrap any existing hostOverrideRoundTripper first to avoid
+		// double-wrapping on repeated rebuilds (e.g. after SetBaseURL).
+		if c.hostOverride != nil {
+			if client.Transport == nil {
+				client.Transport = http.DefaultTransport
+			}
+			if rt, ok := client.Transport.(*hostOverrideRoundTripper); ok {
+				client.Transport = rt.transport
+			}
+			client.Transport = &hostOverrideRoundTripper{
+				transport: client.Transport,
+				host:      c.hostOverride.Host,
+				target:    c.hostOverride.Target,
+			}
+		}
+
+		opts = append(opts, internalclient.WithHTTPClient(&client))
+	}
+
+	internalGen, err := internalclient.NewClientWithResponses(c.baseURL, opts...)
+	if err != nil {
+		return fmt.Errorf("failed to create internal client: %w", err)
+	}
+	c.internalGen = internalGen
+
+	// Re-wire all services that depend on internalGen
+	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
+	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
+	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
+	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
+
+	return nil
+}
+
 // SetHTTPClient sets a custom HTTP client for all API requests.
 // This is useful for testing or customizing HTTP behavior.
-func (c *Client) SetHTTPClient(client *http.Client) {
+// It rebuilds the internal generated client and all dependent services
+// so that the new HTTP client (including timeouts and transports) takes effect.
+func (c *Client) SetHTTPClient(client *http.Client) error {
 	c.httpClient = client
+	return c.rebuildInternalGen()
 }
 
 // BaseURL returns the base URL for the API endpoint.
@@ -368,12 +408,7 @@ func (c *Client) BaseURL() string {
 // This recreates the internal client with the new URL.
 func (c *Client) SetBaseURL(url string) error {
 	c.baseURL = url
-	var err error
-	c.internalGen, err = internalclient.NewClientWithResponses(url, c.genClientOpts)
-	if err != nil {
-		return fmt.Errorf("failed to create internal client with new URL: %w", err)
-	}
-	return nil
+	return c.rebuildInternalGen()
 }
 
 // BearerToken returns the current bearer token.
@@ -394,10 +429,5 @@ func (c *Client) SetBearerToken(token string) error {
 		}
 		return nil
 	})
-	var err error
-	c.internalGen, err = internalclient.NewClientWithResponses(c.baseURL, c.genClientOpts)
-	if err != nil {
-		return fmt.Errorf("failed to create internal client with new token: %w", err)
-	}
-	return nil
+	return c.rebuildInternalGen()
 }
