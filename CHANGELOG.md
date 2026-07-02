@@ -1,3 +1,9 @@
+## 0.1.52 (2026-07-02)
+
+### Fixes
+
+- propagate SetHTTPClient to internal generated client
+
 ## 0.1.51 (2026-07-01)
 
 ### Fixes
