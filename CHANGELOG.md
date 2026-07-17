@@ -1,3 +1,9 @@
+## 0.1.53 (2026-07-17)
+
+### Fixes
+
+- update swagger spec to use ErrorWrapper for IPFS error responses
+
 ## 0.1.52 (2026-07-02)
 
 ### Fixes
