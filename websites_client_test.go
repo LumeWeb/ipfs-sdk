@@ -58,7 +58,7 @@ func TestWebsitesClient_List_Unauthorized(t *testing.T) {
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusUnauthorized).
-				WithBody(internalclient.ErrorResponse{Error: "unauthorized"}).
+				WithBody(internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "unauthorized"}}).
 				Write(t, w)
 		},
 	})
@@ -249,7 +249,7 @@ func TestWebsitesClient_ValidateDNS_NotFound(t *testing.T) {
 
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusNotFound).
-				WithBody(internalclient.ErrorResponse{Error: "website not found"}).
+				WithBody(internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "website not found"}}).
 				Write(t, w)
 		},
 	})
@@ -319,7 +319,7 @@ func TestWebsitesClient_UpdateSSLStatusInternal_Unauthorized(t *testing.T) {
 
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusUnauthorized).
-				WithBody(internalclient.ErrorWrapper{Error: internalclient.ErrorDetails{Reason: "unauthorized"}}).
+				WithBody(internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "unauthorized"}}).
 				Write(t, w)
 		},
 	})
@@ -345,7 +345,7 @@ func TestWebsitesClient_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
 
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusBadRequest).
-				WithBody(internalclient.ErrorWrapper{Error: internalclient.ErrorDetails{Reason: "invalid SSL status data"}}).
+				WithBody(internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "invalid SSL status data"}}).
 				Write(t, w)
 		},
 	})
@@ -371,7 +371,7 @@ func TestWebsitesClient_UpdateSSLStatusInternal_NotFound(t *testing.T) {
 
 			testutil.NewJSONResponse().
 				WithStatus(http.StatusNotFound).
-				WithBody(internalclient.ErrorWrapper{Error: internalclient.ErrorDetails{Reason: "website not found"}}).
+				WithBody(internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "website not found"}}).
 				Write(t, w)
 		},
 	})

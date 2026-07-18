@@ -42,7 +42,7 @@ func TestWebsitesService_List_RetryOn500(t *testing.T) {
 				return &client.GetApiWebsitesResponse{
 					Body:         []byte("{}"),
 					HTTPResponse: &http.Response{StatusCode: http.StatusInternalServerError},
-					JSON500:      &client.ErrorResponse{Error: "Internal server error"},
+					JSON500:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "Internal server error"}},
 				}, nil
 			}).
 			Once()
@@ -84,7 +84,7 @@ func TestWebsitesService_List_NoRetryOn400(t *testing.T) {
 			Return(&client.GetApiWebsitesResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
-				JSON400:      &client.ErrorResponse{Error: "Bad request"},
+				JSON400:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "Bad request"}},
 			}, nil).
 			Once()
 
@@ -142,7 +142,7 @@ func TestWebsitesService_NoRetryOn401(t *testing.T) {
 			Return(&client.GetApiWebsitesResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
-				JSON401:      &client.ErrorResponse{Error: "Unauthorized"},
+				JSON401:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "Unauthorized"}},
 			}, nil).
 			Once()
 
@@ -501,7 +501,7 @@ func TestWebsitesService_ValidateDNS_NotFound(t *testing.T) {
 			Return(&client.PostApiWebsitesIdValidateResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
-				JSON404:      &client.ErrorResponse{Error: "website not found"},
+				JSON404:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "website not found"}},
 			}, nil).
 			Once()
 
@@ -523,7 +523,7 @@ func TestWebsitesService_ValidateDNS_Unauthorized(t *testing.T) {
 			Return(&client.PostApiWebsitesIdValidateResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
-				JSON401:      &client.ErrorResponse{Error: "unauthorized"},
+				JSON401:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "unauthorized"}},
 			}, nil).
 			Once()
 
@@ -574,7 +574,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
 			Return(&client.PostInternalWebsitesDomainSslStatusResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
-				JSON400:      &client.ErrorWrapper{Error: client.ErrorDetails{Reason: "invalid SSL status data"}},
+				JSON400:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "invalid SSL status data"}},
 			}, nil).
 			Once()
 
@@ -597,7 +597,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_BadRequest(t *testing.T) {
 			Return(&client.PostInternalWebsitesDomainSslStatusResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
-				JSON404:      &client.ErrorWrapper{Error: client.ErrorDetails{Reason: "website not found"}},
+				JSON404:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "website not found"}},
 			}, nil).
 			Once()
 
@@ -622,7 +622,7 @@ func TestWebsitesService_UpdateSSLStatusInternal_Unauthorized(t *testing.T) {
 			Return(&client.PostInternalWebsitesDomainSslStatusResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
-				JSON401:      &client.ErrorWrapper{Error: client.ErrorDetails{Reason: "unauthorized"}},
+				JSON401:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "unauthorized"}},
 			}, nil).
 			Once()
 
@@ -1109,7 +1109,7 @@ func TestWebsitesService_Get_NotFound(t *testing.T) {
 			Return(&client.GetApiWebsitesIdResponse{
 				Body:         []byte(`{"error":"website not found"}`),
 				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
-				JSON404:      &client.ErrorWrapper{Error: client.ErrorDetails{Reason: "website not found"}},
+				JSON404:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "website not found"}},
 			}, nil).
 			Once()
 

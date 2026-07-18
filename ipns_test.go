@@ -70,7 +70,7 @@ func TestIPNSService_ListKeys_RetryOn500(t *testing.T) {
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusInternalServerError},
-				JSON500:      &client.ErrorResponse{Error: "Internal server error"},
+				JSON500:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "Internal server error"}},
 			}, nil).
 			Once()
 
@@ -100,7 +100,7 @@ func TestIPNSService_ListKeys_NoRetryOn400(t *testing.T) {
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
-				JSON400:      &client.ErrorResponse{Error: "Bad request"},
+				JSON400:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "Bad request"}},
 			}, nil).
 			Once()
 
@@ -440,7 +440,7 @@ func TestIPNSService_Republish_NoRetryOn400(t *testing.T) {
 			Return(&client.PostApiIpnsKeysIdRepublishResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
-				JSON400:      &client.ErrorResponse{Error: "Bad request"},
+				JSON400:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "Bad request"}},
 			}, nil).
 			Once()
 

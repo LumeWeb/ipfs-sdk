@@ -67,7 +67,7 @@ components:
     Component:
       additionalProperties: false
       type: object
-    ErrorDetails:
+    ErrorDetail:
       additionalProperties: false
       properties:
         details:
@@ -81,15 +81,7 @@ components:
       additionalProperties: false
       properties:
         error:
-          type: string
-      required:
-      - error
-      type: object
-    ErrorWrapper:
-      additionalProperties: false
-      properties:
-        error:
-          $ref: '#/components/schemas/ErrorDetails'
+          $ref: '#/components/schemas/ErrorDetail'
       required:
       - error
       type: object
@@ -3253,7 +3245,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid request body or validation error
         "401":
           content:
@@ -3277,13 +3269,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Website target content is broken
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Create website
       tags:
@@ -3314,7 +3306,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid domain format or malformed request
         "401":
           content:
@@ -3332,13 +3324,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Website not found or does not exist
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Get SSL status
       tags:
@@ -3425,7 +3417,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid website ID format
         "401":
           content:
@@ -3443,7 +3435,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Website not found
         "410":
           content:
@@ -3455,7 +3447,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Get website
       tags:
@@ -3696,7 +3688,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid domain format
         "401":
           content:
@@ -3714,7 +3706,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Website not found
         "410":
           content:
@@ -3726,7 +3718,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Get website configuration for gateway
       tags:
@@ -3764,13 +3756,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid domain format or malformed request body
         "401":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Missing or invalid X-Gateway-Secret header in request
         "403":
           content:
@@ -3782,19 +3774,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Website domain not found
         "422":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid status value or timestamp format in request
         "500":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Update SSL status
       tags:
@@ -3825,7 +3817,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Invalid domain format
         "401":
           content:
@@ -3843,7 +3835,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Website not found
         "410":
           content:
@@ -3855,7 +3847,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorWrapper'
+                $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Get website status for gateway
       tags:
