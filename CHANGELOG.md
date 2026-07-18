@@ -1,3 +1,9 @@
+## 0.1.54 (2026-07-18)
+
+### Features
+
+- regenerate IPFS SDK from deployed swagger
+
 ## 0.1.53 (2026-07-17)
 
 ### Fixes
