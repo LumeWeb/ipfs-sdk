@@ -78,20 +78,15 @@ type BulkRecordsResponse struct {
 // Component defines model for Component.
 type Component = map[string]interface{}
 
-// ErrorDetails defines model for ErrorDetails.
-type ErrorDetails struct {
+// ErrorDetail defines model for ErrorDetail.
+type ErrorDetail struct {
 	Details *string `json:"details,omitempty"`
 	Reason  string  `json:"reason"`
 }
 
 // ErrorResponse defines model for ErrorResponse.
 type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
-// ErrorWrapper defines model for ErrorWrapper.
-type ErrorWrapper struct {
-	Error ErrorDetails `json:"error"`
+	Error ErrorDetail `json:"error"`
 }
 
 // FileManagerItem defines model for FileManagerItem.
@@ -5334,12 +5329,12 @@ type PostApiWebsitesResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *ErrorResponse
 	JSON201      *WebsiteResponse
-	JSON400      *ErrorWrapper
+	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
-	JSON410      *ErrorWrapper
-	JSON500      *ErrorWrapper
+	JSON410      *ErrorResponse
+	JSON500      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -5389,11 +5384,11 @@ type GetApiWebsitesDomainSslStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *WebsiteResponse
-	JSON400      *ErrorWrapper
+	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
-	JSON404      *ErrorWrapper
-	JSON500      *ErrorWrapper
+	JSON404      *ErrorResponse
+	JSON500      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -5443,12 +5438,12 @@ type GetApiWebsitesIdResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *WebsiteResponse
-	JSON400      *ErrorWrapper
+	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
-	JSON404      *ErrorWrapper
+	JSON404      *ErrorResponse
 	JSON410      *WebsiteResponse
-	JSON500      *ErrorWrapper
+	JSON500      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -5552,12 +5547,12 @@ type GetInternalWebsitesDomainResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *GatewayWebsiteResponse
-	JSON400      *ErrorWrapper
+	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
-	JSON404      *ErrorWrapper
+	JSON404      *ErrorResponse
 	JSON410      *GatewayWebsiteResponse
-	JSON500      *ErrorWrapper
+	JSON500      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -5580,12 +5575,12 @@ type PostInternalWebsitesDomainSslStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *WebsiteResponse
-	JSON400      *ErrorWrapper
-	JSON401      *ErrorWrapper
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
-	JSON404      *ErrorWrapper
-	JSON422      *ErrorWrapper
-	JSON500      *ErrorWrapper
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -5608,12 +5603,12 @@ type GetInternalWebsitesDomainStatusResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *GatewayWebsiteStatusResponse
-	JSON400      *ErrorWrapper
+	JSON400      *ErrorResponse
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
-	JSON404      *ErrorWrapper
+	JSON404      *ErrorResponse
 	JSON410      *GatewayWebsiteStatusResponse
-	JSON500      *ErrorWrapper
+	JSON500      *ErrorResponse
 }
 
 // Status returns HTTPResponse.Status
@@ -8698,7 +8693,7 @@ func ParsePostApiWebsitesResponse(rsp *http.Response) (*PostApiWebsitesResponse,
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -8726,14 +8721,14 @@ func ParsePostApiWebsitesResponse(rsp *http.Response) (*PostApiWebsitesResponse,
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 410:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -8827,7 +8822,7 @@ func ParseGetApiWebsitesDomainSslStatusResponse(rsp *http.Response) (*GetApiWebs
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -8848,14 +8843,14 @@ func ParseGetApiWebsitesDomainSslStatusResponse(rsp *http.Response) (*GetApiWebs
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -8949,7 +8944,7 @@ func ParseGetApiWebsitesIdResponse(rsp *http.Response) (*GetApiWebsitesIdRespons
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -8970,7 +8965,7 @@ func ParseGetApiWebsitesIdResponse(rsp *http.Response) (*GetApiWebsitesIdRespons
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -8984,7 +8979,7 @@ func ParseGetApiWebsitesIdResponse(rsp *http.Response) (*GetApiWebsitesIdRespons
 		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9200,7 +9195,7 @@ func ParseGetInternalWebsitesDomainResponse(rsp *http.Response) (*GetInternalWeb
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9221,7 +9216,7 @@ func ParseGetInternalWebsitesDomainResponse(rsp *http.Response) (*GetInternalWeb
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9235,7 +9230,7 @@ func ParseGetInternalWebsitesDomainResponse(rsp *http.Response) (*GetInternalWeb
 		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9268,14 +9263,14 @@ func ParsePostInternalWebsitesDomainSslStatusResponse(rsp *http.Response) (*Post
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9289,21 +9284,21 @@ func ParsePostInternalWebsitesDomainSslStatusResponse(rsp *http.Response) (*Post
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9336,7 +9331,7 @@ func ParseGetInternalWebsitesDomainStatusResponse(rsp *http.Response) (*GetInter
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9357,7 +9352,7 @@ func ParseGetInternalWebsitesDomainStatusResponse(rsp *http.Response) (*GetInter
 		response.JSON403 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -9371,7 +9366,7 @@ func ParseGetInternalWebsitesDomainStatusResponse(rsp *http.Response) (*GetInter
 		response.JSON410 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorWrapper
+		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
