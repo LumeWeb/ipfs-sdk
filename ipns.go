@@ -204,7 +204,7 @@ func (s *ipnsService) CreateKey(ctx context.Context, name string, opts ...Create
 		}
 
 		var apiErr error
-		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateIPNSKey)
+		result, apiErr = handleCreateResponse(resp.Body, nil, resp.JSON201, OpCreateIPNSKey)
 		return apiErr
 	})
 	if err != nil {
