@@ -239,6 +239,11 @@ components:
       properties:
         domain:
           type: string
+        namespace:
+          enum:
+          - icann
+          - hns
+          type: string
         status:
           type: string
         target_hash:

@@ -18,6 +18,24 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for GatewayWebsiteResponseNamespace.
+const (
+	Hns   GatewayWebsiteResponseNamespace = "hns"
+	Icann GatewayWebsiteResponseNamespace = "icann"
+)
+
+// Valid indicates whether the value is a known member of the GatewayWebsiteResponseNamespace enum.
+func (e GatewayWebsiteResponseNamespace) Valid() bool {
+	switch e {
+	case Hns:
+		return true
+	case Icann:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UploadResultResponseStatus.
 const (
 	Completed  UploadResultResponseStatus = "completed"
@@ -159,11 +177,15 @@ type FileManagerItemResponse struct {
 
 // GatewayWebsiteResponse defines model for GatewayWebsiteResponse.
 type GatewayWebsiteResponse struct {
-	Domain     string `json:"domain"`
-	Status     string `json:"status"`
-	TargetHash string `json:"target_hash"`
-	TargetType string `json:"target_type"`
+	Domain     string                           `json:"domain"`
+	Namespace  *GatewayWebsiteResponseNamespace `json:"namespace,omitempty"`
+	Status     string                           `json:"status"`
+	TargetHash string                           `json:"target_hash"`
+	TargetType string                           `json:"target_type"`
 }
+
+// GatewayWebsiteResponseNamespace defines model for GatewayWebsiteResponse.Namespace.
+type GatewayWebsiteResponseNamespace string
 
 // GatewayWebsiteStatusResponse defines model for GatewayWebsiteStatusResponse.
 type GatewayWebsiteStatusResponse struct {
