@@ -1,3 +1,9 @@
+## 0.1.57 (2026-07-30)
+
+### Features
+
+- update swagger spec with namespace field on zone response
+
 ## 0.1.56 (2026-07-30)
 
 ### Features
