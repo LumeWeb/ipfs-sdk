@@ -71,6 +71,8 @@ type DNSClientWithResponsesInterface interface {
 	DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
 	PostApiDnsZonesIdRecordsBulkWithResponse(ctx context.Context, id string, body dnsreq.BulkRecordRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkResponse, error)
 	PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx context.Context, id string, body dnsreq.BulkDeleteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkDeleteResponse, error)
+	PostInternalDnsCertWithResponse(ctx context.Context, body internalclient.CertPushRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsCertResponse, error)
+	PostInternalDnsTlsaWithResponse(ctx context.Context, body internalclient.TLSAUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsTlsaResponse, error)
 }
 
 // internalClientToDNSAdapter adapts internalclient.ClientWithResponses to DNSClientWithResponsesInterface
@@ -128,6 +130,14 @@ func (a *internalClientToDNSAdapter) PostApiDnsZonesIdRecordsBulkWithResponse(ct
 
 func (a *internalClientToDNSAdapter) PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx context.Context, id string, body dnsreq.BulkDeleteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkDeleteResponse, error) {
 	return a.client.PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx, id, body, reqEditors...)
+}
+
+func (a *internalClientToDNSAdapter) PostInternalDnsCertWithResponse(ctx context.Context, body internalclient.CertPushRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsCertResponse, error) {
+	return a.client.PostInternalDnsCertWithResponse(ctx, body, reqEditors...)
+}
+
+func (a *internalClientToDNSAdapter) PostInternalDnsTlsaWithResponse(ctx context.Context, body internalclient.TLSAUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsTlsaResponse, error) {
+	return a.client.PostInternalDnsTlsaWithResponse(ctx, body, reqEditors...)
 }
 
 // ConvertClientToDNS converts a ClientWithResponses to DNSClientWithResponsesInterface

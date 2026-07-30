@@ -636,6 +636,209 @@ func TestDNSService_ValidateZone(t *testing.T) {
 	})
 }
 
+func TestDNSService_PushCert(t *testing.T) {
+	t.Run("returns cert push response on success", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		expectedResp := &internalclient.CertPushResponse{
+			Ok:        true,
+			OwnerName: "example.com.",
+			Tlsa:      "3 1 1 abc123",
+		}
+
+		req := CertPushRequest{
+			CertPem:   "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsCertWithResponse(mock.Anything, req).
+			Return(&internalclient.PostInternalDnsCertResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResp,
+			}, nil).
+			Once()
+
+		result, err := service.PushCert(context.Background(), req)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.True(t, result.Ok)
+		assert.Equal(t, "example.com.", result.OwnerName)
+		assert.Equal(t, "3 1 1 abc123", result.Tlsa)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		req := CertPushRequest{
+			CertPem:   "invalid",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsCertWithResponse(mock.Anything, req).
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.PushCert(context.Background(), req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		req := CertPushRequest{
+			CertPem:   "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsCertWithResponse(mock.Anything, req).
+			Return(&internalclient.PostInternalDnsCertResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.PushCert(context.Background(), req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error on bad request", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		req := CertPushRequest{
+			CertPem:   "bad-cert",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsCertWithResponse(mock.Anything, req).
+			Return(&internalclient.PostInternalDnsCertResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
+				JSON400:      &internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "invalid certificate data"}},
+			}, nil).
+			Once()
+
+		result, err := service.PushCert(context.Background(), req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestDNSService_UpdateTLSA(t *testing.T) {
+	t.Run("returns TLSA update response on success", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		expectedResp := &internalclient.CertPushResponse{
+			Ok:        true,
+			OwnerName: "example.com.",
+			Tlsa:      "3 1 1 abc123",
+		}
+
+		req := TLSAUpdateRequest{
+			CertPem:   "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+			Tlsa:      "3 1 1 abc123",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsTlsaWithResponse(mock.Anything, req).
+			Return(&internalclient.PostInternalDnsTlsaResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResp,
+			}, nil).
+			Once()
+
+		result, err := service.UpdateTLSA(context.Background(), req)
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.True(t, result.Ok)
+		assert.Equal(t, "3 1 1 abc123", result.Tlsa)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		req := TLSAUpdateRequest{
+			CertPem:   "invalid",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+			Tlsa:      "3 1 1 abc123",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsTlsaWithResponse(mock.Anything, req).
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.UpdateTLSA(context.Background(), req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		req := TLSAUpdateRequest{
+			CertPem:   "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+			Tlsa:      "3 1 1 abc123",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsTlsaWithResponse(mock.Anything, req).
+			Return(&internalclient.PostInternalDnsTlsaResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.UpdateTLSA(context.Background(), req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error on bad request", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		req := TLSAUpdateRequest{
+			CertPem:   "bad-cert",
+			Domain:    "example.com",
+			Namespace: "_443._tcp",
+			Tlsa:      "invalid-tlsa",
+		}
+
+		mockClient.EXPECT().
+			PostInternalDnsTlsaWithResponse(mock.Anything, req).
+			Return(&internalclient.PostInternalDnsTlsaResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
+				JSON400:      &internalclient.ErrorResponse{Error: internalclient.ErrorDetail{Reason: "invalid TLSA data"}},
+			}, nil).
+			Once()
+
+		result, err := service.UpdateTLSA(context.Background(), req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 // mockReadCloser creates a ReadCloser from byte slice
 type mockReadCloser []byte
 
