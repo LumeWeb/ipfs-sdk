@@ -21,6 +21,11 @@ type RecordResult = dnsreq.RecordResult
 type BulkRecordRequest = dnsreq.BulkRecordRequest
 type BulkDeleteRequest = dnsreq.BulkDeleteRequest
 
+// DNS cert/TLSA types from generated client
+type CertPushRequest = internalclient.CertPushRequest
+type CertPushResponse = internalclient.CertPushResponse
+type TLSAUpdateRequest = internalclient.TLSAUpdateRequest
+
 // DNSConfig holds configuration for DNS service operations
 type DNSConfig struct {
 	Retry  RetryConfig
@@ -77,6 +82,10 @@ type DNSService interface {
 	BulkDeleteRecords(ctx context.Context, zoneID string, identifiers []RecordIdentifier) ([]RecordResult, error)
 
 	// Polling/wait methods
+
+	// Certificate/TLSA management (internal endpoints for Caddy)
+	PushCert(ctx context.Context, req CertPushRequest) (*CertPushResponse, error)
+	UpdateTLSA(ctx context.Context, req TLSAUpdateRequest) (*CertPushResponse, error)
 }
 
 // dnsService implements DNSService using the generated internal client
@@ -463,3 +472,60 @@ func (s *dnsService) BulkDeleteRecords(ctx context.Context, zoneID string, ident
 	return result, nil
 }
 
+// PushCert pushes a certificate to the DNS service and receives a computed TLSA record.
+// This is an internal endpoint typically called by Caddy.
+func (s *dnsService) PushCert(ctx context.Context, req CertPushRequest) (*CertPushResponse, error) {
+	var result *CertPushResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostInternalDnsCertWithResponse(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpPushCert, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpPushCert) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UpdateTLSA pushes a computed TLSA record to the DNS service.
+// This is an internal endpoint typically called by Caddy.
+func (s *dnsService) UpdateTLSA(ctx context.Context, req TLSAUpdateRequest) (*CertPushResponse, error) {
+	var result *CertPushResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostInternalDnsTlsaWithResponse(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpUpdateTLSA, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpUpdateTLSA) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

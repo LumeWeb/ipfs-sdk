@@ -27,6 +27,8 @@ const (
 	OpBulkDeleteRecords
 	OpGetZoneStatus
 	OpValidateZone
+	OpPushCert
+	OpUpdateTLSA
 
 	// IPNS operations
 	OpListIPNSKeys
@@ -76,6 +78,8 @@ var operationString = map[int]string{
 	OpBulkDeleteRecords: "bulk delete DNS records",
 	OpGetZoneStatus:     "get DNS zone status",
 	OpValidateZone:      "validate DNS zone",
+	OpPushCert:          "push DNS certificate",
+	OpUpdateTLSA:        "update DNS TLSA record",
 
 	// IPNS operations
 	OpListIPNSKeys:  "list IPNS keys",
@@ -231,6 +235,16 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	},
 	OpValidateZone: {
 		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("zone not found"),
+	},
+	OpPushCert: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusBadRequest:   plainErr("invalid certificate data"),
+		http.StatusNotFound:     notFoundErr("zone not found"),
+	},
+	OpUpdateTLSA: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusBadRequest:   plainErr("invalid TLSA data"),
 		http.StatusNotFound:     notFoundErr("zone not found"),
 	},
 

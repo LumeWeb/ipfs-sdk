@@ -917,6 +917,154 @@ func (_c *MockDNSClientWithResponsesInterface_PostApiDnsZonesWithResponse_Call) 
 	return _c
 }
 
+// PostInternalDnsCertWithResponse provides a mock function with given fields: ctx, body, reqEditors
+func (_m *MockDNSClientWithResponsesInterface) PostInternalDnsCertWithResponse(ctx context.Context, body client.CertPushRequest, reqEditors ...client.RequestEditorFn) (*client.PostInternalDnsCertResponse, error) {
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, body)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostInternalDnsCertWithResponse")
+	}
+
+	var r0 *client.PostInternalDnsCertResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.CertPushRequest, ...client.RequestEditorFn) (*client.PostInternalDnsCertResponse, error)); ok {
+		return rf(ctx, body, reqEditors...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.CertPushRequest, ...client.RequestEditorFn) *client.PostInternalDnsCertResponse); ok {
+		r0 = rf(ctx, body, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.PostInternalDnsCertResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.CertPushRequest, ...client.RequestEditorFn) error); ok {
+		r1 = rf(ctx, body, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostInternalDnsCertWithResponse'
+type MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call struct {
+	*mock.Call
+}
+
+// PostInternalDnsCertWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - body client.CertPushRequest
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockDNSClientWithResponsesInterface_Expecter) PostInternalDnsCertWithResponse(ctx interface{}, body interface{}, reqEditors ...interface{}) *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call {
+	return &MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call{Call: _e.mock.On("PostInternalDnsCertWithResponse",
+		append([]interface{}{ctx, body}, reqEditors...)...)}
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call) Run(run func(ctx context.Context, body client.CertPushRequest, reqEditors ...client.RequestEditorFn)) *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		run(args[0].(context.Context), args[1].(client.CertPushRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call) Return(_a0 *client.PostInternalDnsCertResponse, _a1 error) *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call) RunAndReturn(run func(context.Context, client.CertPushRequest, ...client.RequestEditorFn) (*client.PostInternalDnsCertResponse, error)) *MockDNSClientWithResponsesInterface_PostInternalDnsCertWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PostInternalDnsTlsaWithResponse provides a mock function with given fields: ctx, body, reqEditors
+func (_m *MockDNSClientWithResponsesInterface) PostInternalDnsTlsaWithResponse(ctx context.Context, body client.TLSAUpdateRequest, reqEditors ...client.RequestEditorFn) (*client.PostInternalDnsTlsaResponse, error) {
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, body)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostInternalDnsTlsaWithResponse")
+	}
+
+	var r0 *client.PostInternalDnsTlsaResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.TLSAUpdateRequest, ...client.RequestEditorFn) (*client.PostInternalDnsTlsaResponse, error)); ok {
+		return rf(ctx, body, reqEditors...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.TLSAUpdateRequest, ...client.RequestEditorFn) *client.PostInternalDnsTlsaResponse); ok {
+		r0 = rf(ctx, body, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.PostInternalDnsTlsaResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.TLSAUpdateRequest, ...client.RequestEditorFn) error); ok {
+		r1 = rf(ctx, body, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostInternalDnsTlsaWithResponse'
+type MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call struct {
+	*mock.Call
+}
+
+// PostInternalDnsTlsaWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - body client.TLSAUpdateRequest
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockDNSClientWithResponsesInterface_Expecter) PostInternalDnsTlsaWithResponse(ctx interface{}, body interface{}, reqEditors ...interface{}) *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call {
+	return &MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call{Call: _e.mock.On("PostInternalDnsTlsaWithResponse",
+		append([]interface{}{ctx, body}, reqEditors...)...)}
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call) Run(run func(ctx context.Context, body client.TLSAUpdateRequest, reqEditors ...client.RequestEditorFn)) *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		run(args[0].(context.Context), args[1].(client.TLSAUpdateRequest), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call) Return(_a0 *client.PostInternalDnsTlsaResponse, _a1 error) *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call) RunAndReturn(run func(context.Context, client.TLSAUpdateRequest, ...client.RequestEditorFn) (*client.PostInternalDnsTlsaResponse, error)) *MockDNSClientWithResponsesInterface_PostInternalDnsTlsaWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PutApiDnsZonesIdRecordsNameTypeWithResponse provides a mock function with given fields: ctx, id, name, pType, body, reqEditors
 func (_m *MockDNSClientWithResponsesInterface) PutApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, body client.RecordRequest, reqEditors ...client.RequestEditorFn) (*client.PutApiDnsZonesIdRecordsNameTypeResponse, error) {
 	_va := make([]interface{}, len(reqEditors))

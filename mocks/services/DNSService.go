@@ -655,6 +655,65 @@ func (_c *MockDNSService_ListZones_Call) RunAndReturn(run func(context.Context) 
 	return _c
 }
 
+// PushCert provides a mock function with given fields: ctx, req
+func (_m *MockDNSService) PushCert(ctx context.Context, req client.CertPushRequest) (*client.CertPushResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PushCert")
+	}
+
+	var r0 *client.CertPushResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.CertPushRequest) (*client.CertPushResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.CertPushRequest) *client.CertPushResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.CertPushResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.CertPushRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDNSService_PushCert_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PushCert'
+type MockDNSService_PushCert_Call struct {
+	*mock.Call
+}
+
+// PushCert is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req client.CertPushRequest
+func (_e *MockDNSService_Expecter) PushCert(ctx interface{}, req interface{}) *MockDNSService_PushCert_Call {
+	return &MockDNSService_PushCert_Call{Call: _e.mock.On("PushCert", ctx, req)}
+}
+
+func (_c *MockDNSService_PushCert_Call) Run(run func(ctx context.Context, req client.CertPushRequest)) *MockDNSService_PushCert_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(client.CertPushRequest))
+	})
+	return _c
+}
+
+func (_c *MockDNSService_PushCert_Call) Return(_a0 *client.CertPushResponse, _a1 error) *MockDNSService_PushCert_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDNSService_PushCert_Call) RunAndReturn(run func(context.Context, client.CertPushRequest) (*client.CertPushResponse, error)) *MockDNSService_PushCert_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateRecord provides a mock function with given fields: ctx, zoneID, name, recordType, record
 func (_m *MockDNSService) UpdateRecord(ctx context.Context, zoneID string, name string, recordType string, record client.RecordRequest) (*client.RecordResponse, error) {
 	ret := _m.Called(ctx, zoneID, name, recordType, record)
@@ -713,6 +772,65 @@ func (_c *MockDNSService_UpdateRecord_Call) Return(_a0 *client.RecordResponse, _
 }
 
 func (_c *MockDNSService_UpdateRecord_Call) RunAndReturn(run func(context.Context, string, string, string, client.RecordRequest) (*client.RecordResponse, error)) *MockDNSService_UpdateRecord_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateTLSA provides a mock function with given fields: ctx, req
+func (_m *MockDNSService) UpdateTLSA(ctx context.Context, req client.TLSAUpdateRequest) (*client.CertPushResponse, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateTLSA")
+	}
+
+	var r0 *client.CertPushResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, client.TLSAUpdateRequest) (*client.CertPushResponse, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, client.TLSAUpdateRequest) *client.CertPushResponse); ok {
+		r0 = rf(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.CertPushResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, client.TLSAUpdateRequest) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDNSService_UpdateTLSA_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateTLSA'
+type MockDNSService_UpdateTLSA_Call struct {
+	*mock.Call
+}
+
+// UpdateTLSA is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req client.TLSAUpdateRequest
+func (_e *MockDNSService_Expecter) UpdateTLSA(ctx interface{}, req interface{}) *MockDNSService_UpdateTLSA_Call {
+	return &MockDNSService_UpdateTLSA_Call{Call: _e.mock.On("UpdateTLSA", ctx, req)}
+}
+
+func (_c *MockDNSService_UpdateTLSA_Call) Run(run func(ctx context.Context, req client.TLSAUpdateRequest)) *MockDNSService_UpdateTLSA_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(client.TLSAUpdateRequest))
+	})
+	return _c
+}
+
+func (_c *MockDNSService_UpdateTLSA_Call) Return(_a0 *client.CertPushResponse, _a1 error) *MockDNSService_UpdateTLSA_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDNSService_UpdateTLSA_Call) RunAndReturn(run func(context.Context, client.TLSAUpdateRequest) (*client.CertPushResponse, error)) *MockDNSService_UpdateTLSA_Call {
 	_c.Call.Return(run)
 	return _c
 }
