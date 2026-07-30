@@ -29,6 +29,7 @@ type Client struct {
 	upload   *UploadService
 	download *DownloadService
 	ping     PingService
+	dag      DAGService
 
 	httpClient    *http.Client
 	baseURL       string
@@ -346,6 +347,11 @@ func (c *Client) Ping() PingService {
 	return c.ping
 }
 
+// DAG returns the DAG service for resolving block graphs.
+func (c *Client) DAG() DAGService {
+	return c.dag
+}
+
 // rebuildInternalGen recreates the internal generated client using the current
 // httpClient, genClientOpts, baseURL, and hostOverride. It then re-wires all
 // services that depend on internalGen (dns, ipns, websites, ping).
@@ -386,6 +392,7 @@ func (c *Client) rebuildInternalGen() error {
 	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
 	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
+	c.dag = NewDAGService(ConvertClientToDAG(internalGen), WithDAGRetry(c.retry))
 
 	return nil
 }

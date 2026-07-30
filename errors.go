@@ -60,6 +60,9 @@ const (
 
 	// Ping operations
 	OpPing
+
+	// DAG operations
+	OpResolveDAG
 )
 
 // operationString maps operation IDs to human-readable names.
@@ -111,6 +114,9 @@ var operationString = map[int]string{
 
 	// Ping operations
 	OpPing: "ping",
+
+	// DAG operations
+	OpResolveDAG: "resolve DAG",
 }
 
 // Named error types for error comparison.
@@ -333,6 +339,12 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpPing: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusForbidden:    plainErr("gateway secret required"),
+	},
+
+	// DAG operations
+	OpResolveDAG: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("CID not found"),
 	},
 }
 
