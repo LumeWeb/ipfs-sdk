@@ -1,3 +1,9 @@
+## 0.1.58 (2026-07-30)
+
+### Features
+
+- add DAGService with ResolveDAG endpoint wrapper
+
 ## 0.1.57 (2026-07-30)
 
 ### Features
