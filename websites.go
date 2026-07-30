@@ -284,7 +284,7 @@ func (s *websitesService) CreateWithOptions(ctx context.Context, req WebsiteRequ
 		}
 
 		var apiErr error
-		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateWebsite)
+		result, apiErr = handleCreateResponse(resp.Body, nil, resp.JSON201, OpCreateWebsite)
 		return apiErr
 	})
 	if err != nil {

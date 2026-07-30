@@ -178,7 +178,7 @@ func (s *dnsService) CreateZone(ctx context.Context, domain string, nameservers 
 		}
 
 		var apiErr error
-		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateZone)
+		result, apiErr = handleCreateResponse(resp.Body, nil, resp.JSON201, OpCreateZone)
 		return apiErr
 	})
 	if err != nil {
@@ -313,7 +313,7 @@ func (s *dnsService) CreateRecord(ctx context.Context, zoneID string, record Rec
 		}
 
 		var apiErr error
-		result, apiErr = handleCreateResponse(resp.Body, resp.JSON200, resp.JSON201, OpCreateRecord)
+		result, apiErr = handleCreateResponse(resp.Body, nil, resp.JSON201, OpCreateRecord)
 		return apiErr
 	})
 	if err != nil {

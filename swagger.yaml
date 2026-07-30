@@ -64,8 +64,107 @@ components:
       required:
       - records
       type: object
+    CertPushRequest:
+      additionalProperties: false
+      properties:
+        cert_pem:
+          type: string
+        domain:
+          type: string
+        namespace:
+          type: string
+      required:
+      - domain
+      - namespace
+      - cert_pem
+      type: object
+    CertPushResponse:
+      additionalProperties: false
+      properties:
+        ok:
+          type: boolean
+        owner_name:
+          type: string
+        tlsa:
+          type: string
+      required:
+      - ok
+      - tlsa
+      - owner_name
+      type: object
     Component:
       additionalProperties: false
+      type: object
+    DAGBlockNodeResponse:
+      additionalProperties: false
+      properties:
+        children:
+          items:
+            type: string
+          type: array
+        cid:
+          type: string
+        size:
+          type: integer
+      required:
+      - cid
+      - size
+      - children
+      type: object
+    DAGResponse:
+      additionalProperties: false
+      properties:
+        nodes:
+          items:
+            $ref: '#/components/schemas/DAGBlockNodeResponse'
+          type: array
+        root_cid:
+          type: string
+      required:
+      - root_cid
+      - nodes
+      type: object
+    DomainListResponse:
+      additionalProperties: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/DomainResponse'
+          type: array
+        total:
+          type: integer
+      required:
+      - data
+      - total
+      type: object
+    DomainRequest:
+      additionalProperties: false
+      properties:
+        config:
+          type: object
+        domain:
+          type: string
+        namespace:
+          type: string
+      required:
+      - domain
+      - namespace
+      type: object
+    DomainResponse:
+      additionalProperties: false
+      properties:
+        domain:
+          type: string
+        id:
+          type: integer
+        namespace:
+          type: string
+        zone_name:
+          type: string
+      required:
+      - id
+      - domain
+      - namespace
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -528,6 +627,23 @@ components:
       required:
       - status
       type: object
+    TLSAUpdateRequest:
+      additionalProperties: false
+      properties:
+        cert_pem:
+          type: string
+        domain:
+          type: string
+        namespace:
+          type: string
+        tlsa:
+          type: string
+      required:
+      - domain
+      - namespace
+      - tlsa
+      - cert_pem
+      type: object
     UploadResultResponse:
       additionalProperties: false
       properties:
@@ -978,6 +1094,64 @@ paths:
       summary: Get multiple block details
       tags:
       - Content
+  /api/dag/{cid}:
+    get:
+      description: |-
+        Resolves the complete block graph (DAG) for a root CID in a single query.
+
+        Returns all blocks reachable from the root CID, including their sizes and ordered child relationships. Uses a recursive SQL query internally for efficient batch resolution instead of per-block round-trips.
+
+        Only blocks with ready status are included. Blocks appearing in multiple paths are deduplicated.
+
+        See also: GET /block/meta/:cid (single block metadata)
+      parameters:
+      - description: 'Root content identifier (CID) of the DAG to resolve. Example:
+          bafybeieffnocaq7t4w4daagvydl32igft5oziyyaebqr6vx6rb3fwh2ab4'
+        in: path
+        name: cid
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DAGResponse'
+          description: DAG resolved successfully
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Resolve block DAG
+      tags:
+      - Content
   /api/dns/zones:
     get:
       description: |-
@@ -1042,12 +1216,6 @@ paths:
         description: Zone request
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "201":
           content:
             application/json:
@@ -1104,12 +1272,6 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "204":
           description: Zone deleted
         "400":
@@ -1341,12 +1503,6 @@ paths:
         description: Record request
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "201":
           content:
             application/json:
@@ -1415,12 +1571,6 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "204":
           description: Record deleted
         "400":
@@ -2091,12 +2241,6 @@ paths:
         description: IPNS key request
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "201":
           content:
             application/json:
@@ -2152,12 +2296,6 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "204":
           description: IPNS key deleted
         "400":
@@ -3190,7 +3328,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
+          description: Authentication required
         "403":
           content:
             application/json:
@@ -3208,7 +3346,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Internal server error
+          description: Internal server error occurred
       summary: List websites
       tags:
       - Websites
@@ -3229,12 +3367,6 @@ paths:
         description: Website request
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "201":
           content:
             application/json:
@@ -3351,12 +3483,6 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "204":
           description: Website deleted
         "400":
@@ -3513,6 +3639,224 @@ paths:
       summary: Update website
       tags:
       - Websites
+  /api/websites/{id}/domains:
+    get:
+      description: Lists all domains bound to a website.
+      parameters:
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainListResponse'
+          description: List of domains
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: List website domains
+      tags:
+      - Websites
+      - Domains
+    post:
+      description: Binds a domain to a website under a specific namespace.
+      parameters:
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DomainRequest'
+        description: Domain request
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainResponse'
+          description: Domain created
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Add domain to website
+      tags:
+      - Websites
+      - Domains
+  /api/websites/{id}/domains/{domain_id}:
+    delete:
+      description: Removes a domain binding from a website.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          type: string
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Domain deleted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Remove domain from website
+      tags:
+      - Websites
+      - Domains
+  /api/websites/{id}/domains/{domain_id}/verify:
+    post:
+      description: Triggers verification of domain delegation.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          type: string
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainResponse'
+          description: Verification result
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Verify domain delegation
+      tags:
+      - Websites
+      - Domains
   /api/websites/{id}/validate:
     post:
       description: |-
@@ -3618,6 +3962,109 @@ paths:
       summary: Get website hosting configuration
       tags:
       - Websites
+  /internal/dns/cert:
+    post:
+      description: Internal endpoint for Caddy to push a cert and receive computed
+        TLSA.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CertPushRequest'
+        description: Cert push request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertPushResponse'
+          description: TLSA computed
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Push certificate and receive TLSA
+      tags:
+      - Gateway
+      - DNS
+  /internal/dns/tlsa:
+    post:
+      description: Internal endpoint for Caddy to push computed TLSA records.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TLSAUpdateRequest'
+        description: TLSA update request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertPushResponse'
+          description: TLSA updated
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Update TLSA record
+      tags:
+      - Gateway
+      - DNS
   /internal/ping:
     get:
       description: Returns service liveness status. Requires X-Gateway-Secret header
@@ -3850,6 +4297,48 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error occurred
       summary: Get website status for gateway
+      tags:
+      - Gateway
+  /internal/websites/events:
+    get:
+      description: |-
+        Server-Sent Events endpoint for gateway-to-portal communication.
+        Streams website lifecycle events (published, removed) in real time.
+        Requires X-Gateway-Secret header for authentication.
+      responses:
+        "200":
+          description: SSE event stream
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Stream website events via SSE
       tags:
       - Gateway
   /ipfs/{cid}:
@@ -4183,12 +4672,6 @@ paths:
         description: Pin object
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "202":
           content:
             application/json:
@@ -4244,12 +4727,6 @@ paths:
         schema:
           type: string
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "202":
           description: Successful response
         "400":
@@ -4415,12 +4892,6 @@ paths:
         description: Pin object
         required: true
       responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Success
         "202":
           content:
             application/json:
