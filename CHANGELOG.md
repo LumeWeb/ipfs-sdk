@@ -1,3 +1,9 @@
+## 0.1.56 (2026-07-30)
+
+### Features
+
+- add DNS cert/TLSA endpoint wrappers to DNSService
+
 ## 0.1.55 (2026-07-30)
 
 ### Features
