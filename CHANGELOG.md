@@ -1,3 +1,9 @@
+## 0.1.59 (2026-07-31)
+
+### Features
+
+- add website domain binding methods to WebsitesService (ListDomains, BindDomain, UnbindDomain, VerifyDomain)
+
 ## 0.1.58 (2026-07-30)
 
 ### Features
