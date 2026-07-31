@@ -21,6 +21,11 @@ type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
 type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
 type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 
+// Domain types for website domain binding
+type DomainRequest = internalclient.DomainRequest
+type DomainResponse = internalclient.DomainResponse
+type DomainListResponse = internalclient.DomainListResponse
+
 type WebsiteValidationReason string
 
 const (
@@ -89,6 +94,11 @@ type WebsitesClientWithResponsesInterface interface {
 	GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainResponse, error)
 	GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainStatusResponse, error)
 	GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesConfigResponse, error)
+	// Domain binding
+	GetApiWebsitesIdDomainsWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdDomainsResponse, error)
+	PostApiWebsitesIdDomainsWithResponse(ctx context.Context, id string, body internalclient.DomainRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsResponse, error)
+	DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWebsitesIdDomainsDomainIdResponse, error)
+	PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdVerifyResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -141,6 +151,22 @@ func (a *internalClientToWebsitesAdapter) GetApiWebsitesConfigWithResponse(ctx c
 	return a.client.GetApiWebsitesConfigWithResponse(ctx, reqEditors...)
 }
 
+func (a *internalClientToWebsitesAdapter) GetApiWebsitesIdDomainsWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdDomainsResponse, error) {
+	return a.client.GetApiWebsitesIdDomainsWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsWithResponse(ctx context.Context, id string, body internalclient.DomainRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsResponse, error) {
+	return a.client.PostApiWebsitesIdDomainsWithResponse(ctx, id, body, reqEditors...)
+}
+
+func (a *internalClientToWebsitesAdapter) DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWebsitesIdDomainsDomainIdResponse, error) {
+	return a.client.DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx, id, domainId, reqEditors...)
+}
+
+func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdVerifyResponse, error) {
+	return a.client.PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx, id, domainId, reqEditors...)
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -181,6 +207,16 @@ type WebsitesService interface {
 	WaitForDNSValidation(ctx context.Context, id string, opts ...PollOption) error
 	// GetConfig returns website hosting configuration including the gateway domain
 	GetConfig(ctx context.Context) (*WebsiteConfigResponse, error)
+
+	// Domain binding
+	// ListDomains lists all domains bound to a website
+	ListDomains(ctx context.Context, websiteID string) ([]DomainResponse, error)
+	// BindDomain binds a domain to a website under a specific namespace (icann or hns)
+	BindDomain(ctx context.Context, websiteID string, req DomainRequest) (*DomainResponse, error)
+	// UnbindDomain removes a domain binding from a website
+	UnbindDomain(ctx context.Context, websiteID string, domainID string) error
+	// VerifyDomain triggers verification of domain delegation
+	VerifyDomain(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error)
 }
 
 type websitesService struct {
@@ -593,6 +629,107 @@ func (s *websitesService) GetConfig(ctx context.Context) (*WebsiteConfigResponse
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	return result, nil
+}
+
+// ListDomains lists all domains bound to a website
+func (s *websitesService) ListDomains(ctx context.Context, websiteID string) ([]DomainResponse, error) {
+	var result []DomainResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiWebsitesIdDomainsWithResponse(ctx, websiteID)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpListWebsiteDomains, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			result = []DomainResponse{}
+			return nil
+		}
+
+		result = resp.JSON200.Data
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// BindDomain binds a domain to a website under a specific namespace
+func (s *websitesService) BindDomain(ctx context.Context, websiteID string, req DomainRequest) (*DomainResponse, error) {
+	var result *DomainResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiWebsitesIdDomainsWithResponse(ctx, websiteID, req)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpBindWebsiteDomain, []int{http.StatusCreated}); err != nil {
+			return err
+		}
+
+		if resp.JSON201 == nil {
+			return ErrBadRequest(opsString(OpBindWebsiteDomain) + " no response data for website " + websiteID)
+		}
+
+		result = resp.JSON201
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+// UnbindDomain removes a domain binding from a website
+func (s *websitesService) UnbindDomain(ctx context.Context, websiteID string, domainID string) error {
+	return httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx, websiteID, domainID)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpUnbindWebsiteDomain, []int{http.StatusNoContent}); err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// VerifyDomain triggers verification of domain delegation
+func (s *websitesService) VerifyDomain(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error) {
+	var result *DomainResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx, websiteID, domainID)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpVerifyWebsiteDomain, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpVerifyWebsiteDomain) + " no response data for domain " + domainID)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
 	}
 
 	return result, nil

@@ -52,6 +52,12 @@ const (
 	OpGetGatewayWebsiteStatus
 	OpGetWebsiteConfig
 
+	// Website domain binding operations
+	OpListWebsiteDomains
+	OpBindWebsiteDomain
+	OpUnbindWebsiteDomain
+	OpVerifyWebsiteDomain
+
 	// Pinning operations
 	OpListPins
 	OpAddPin
@@ -105,6 +111,12 @@ var operationString = map[int]string{
 	OpGetGatewayWebsite:        "get gateway website",
 	OpGetGatewayWebsiteStatus:  "get gateway website status",
 	OpGetWebsiteConfig:          "get website config",
+
+	// Website domain binding operations
+	OpListWebsiteDomains:   "list website domains",
+	OpBindWebsiteDomain:    "bind website domain",
+	OpUnbindWebsiteDomain:  "unbind website domain",
+	OpVerifyWebsiteDomain: "verify website domain",
 
 	// Pinning operations
 	OpListPins:  "list pins",
@@ -323,6 +335,27 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpGetWebsiteConfig: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusNotFound:     notFoundErr("website config not found"),
+	},
+
+	// Website domain binding operations
+	OpListWebsiteDomains: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("website not found"),
+	},
+	OpBindWebsiteDomain: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusBadRequest:   plainErr("invalid domain data"),
+		http.StatusNotFound:     notFoundErr("website not found"),
+		http.StatusConflict:     plainErr("domain already bound"),
+	},
+	OpUnbindWebsiteDomain: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("domain or website not found"),
+	},
+	OpVerifyWebsiteDomain: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("domain or website not found"),
+		http.StatusBadRequest:   plainErr("verification failed"),
 	},
 	OpGetGatewayWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),

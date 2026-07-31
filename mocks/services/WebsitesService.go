@@ -25,6 +25,66 @@ func (_m *MockWebsitesService) EXPECT() *MockWebsitesService_Expecter {
 	return &MockWebsitesService_Expecter{mock: &_m.Mock}
 }
 
+// BindDomain provides a mock function with given fields: ctx, websiteID, req
+func (_m *MockWebsitesService) BindDomain(ctx context.Context, websiteID string, req client.DomainRequest) (*client.DomainResponse, error) {
+	ret := _m.Called(ctx, websiteID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BindDomain")
+	}
+
+	var r0 *client.DomainResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, client.DomainRequest) (*client.DomainResponse, error)); ok {
+		return rf(ctx, websiteID, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, client.DomainRequest) *client.DomainResponse); ok {
+		r0 = rf(ctx, websiteID, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.DomainResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, client.DomainRequest) error); ok {
+		r1 = rf(ctx, websiteID, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockWebsitesService_BindDomain_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BindDomain'
+type MockWebsitesService_BindDomain_Call struct {
+	*mock.Call
+}
+
+// BindDomain is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+//   - req client.DomainRequest
+func (_e *MockWebsitesService_Expecter) BindDomain(ctx interface{}, websiteID interface{}, req interface{}) *MockWebsitesService_BindDomain_Call {
+	return &MockWebsitesService_BindDomain_Call{Call: _e.mock.On("BindDomain", ctx, websiteID, req)}
+}
+
+func (_c *MockWebsitesService_BindDomain_Call) Run(run func(ctx context.Context, websiteID string, req client.DomainRequest)) *MockWebsitesService_BindDomain_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(client.DomainRequest))
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_BindDomain_Call) Return(_a0 *client.DomainResponse, _a1 error) *MockWebsitesService_BindDomain_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockWebsitesService_BindDomain_Call) RunAndReturn(run func(context.Context, string, client.DomainRequest) (*client.DomainResponse, error)) *MockWebsitesService_BindDomain_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function with given fields: ctx, domain, targetHash, targetType
 func (_m *MockWebsitesService) Create(ctx context.Context, domain string, targetHash string, targetType string) (*client.WebsiteResponse, error) {
 	ret := _m.Called(ctx, domain, targetHash, targetType)
@@ -544,6 +604,113 @@ func (_c *MockWebsitesService_List_Call) RunAndReturn(run func(context.Context) 
 	return _c
 }
 
+// ListDomains provides a mock function with given fields: ctx, websiteID
+func (_m *MockWebsitesService) ListDomains(ctx context.Context, websiteID string) ([]client.DomainResponse, error) {
+	ret := _m.Called(ctx, websiteID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListDomains")
+	}
+
+	var r0 []client.DomainResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]client.DomainResponse, error)); ok {
+		return rf(ctx, websiteID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []client.DomainResponse); ok {
+		r0 = rf(ctx, websiteID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]client.DomainResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, websiteID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockWebsitesService_ListDomains_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListDomains'
+type MockWebsitesService_ListDomains_Call struct {
+	*mock.Call
+}
+
+// ListDomains is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+func (_e *MockWebsitesService_Expecter) ListDomains(ctx interface{}, websiteID interface{}) *MockWebsitesService_ListDomains_Call {
+	return &MockWebsitesService_ListDomains_Call{Call: _e.mock.On("ListDomains", ctx, websiteID)}
+}
+
+func (_c *MockWebsitesService_ListDomains_Call) Run(run func(ctx context.Context, websiteID string)) *MockWebsitesService_ListDomains_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_ListDomains_Call) Return(_a0 []client.DomainResponse, _a1 error) *MockWebsitesService_ListDomains_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockWebsitesService_ListDomains_Call) RunAndReturn(run func(context.Context, string) ([]client.DomainResponse, error)) *MockWebsitesService_ListDomains_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnbindDomain provides a mock function with given fields: ctx, websiteID, domainID
+func (_m *MockWebsitesService) UnbindDomain(ctx context.Context, websiteID string, domainID string) error {
+	ret := _m.Called(ctx, websiteID, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnbindDomain")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, websiteID, domainID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockWebsitesService_UnbindDomain_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnbindDomain'
+type MockWebsitesService_UnbindDomain_Call struct {
+	*mock.Call
+}
+
+// UnbindDomain is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+//   - domainID string
+func (_e *MockWebsitesService_Expecter) UnbindDomain(ctx interface{}, websiteID interface{}, domainID interface{}) *MockWebsitesService_UnbindDomain_Call {
+	return &MockWebsitesService_UnbindDomain_Call{Call: _e.mock.On("UnbindDomain", ctx, websiteID, domainID)}
+}
+
+func (_c *MockWebsitesService_UnbindDomain_Call) Run(run func(ctx context.Context, websiteID string, domainID string)) *MockWebsitesService_UnbindDomain_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_UnbindDomain_Call) Return(_a0 error) *MockWebsitesService_UnbindDomain_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockWebsitesService_UnbindDomain_Call) RunAndReturn(run func(context.Context, string, string) error) *MockWebsitesService_UnbindDomain_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: ctx, id, domain, targetHash, targetType
 func (_m *MockWebsitesService) Update(ctx context.Context, id string, domain string, targetHash string, targetType string) (*client.WebsiteResponse, error) {
 	ret := _m.Called(ctx, id, domain, targetHash, targetType)
@@ -769,6 +936,66 @@ func (_c *MockWebsitesService_ValidateDNS_Call) Return(_a0 *client.WebsiteValida
 }
 
 func (_c *MockWebsitesService_ValidateDNS_Call) RunAndReturn(run func(context.Context, string) (*client.WebsiteValidateResponse, error)) *MockWebsitesService_ValidateDNS_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// VerifyDomain provides a mock function with given fields: ctx, websiteID, domainID
+func (_m *MockWebsitesService) VerifyDomain(ctx context.Context, websiteID string, domainID string) (*client.DomainResponse, error) {
+	ret := _m.Called(ctx, websiteID, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for VerifyDomain")
+	}
+
+	var r0 *client.DomainResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*client.DomainResponse, error)); ok {
+		return rf(ctx, websiteID, domainID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *client.DomainResponse); ok {
+		r0 = rf(ctx, websiteID, domainID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.DomainResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, websiteID, domainID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockWebsitesService_VerifyDomain_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'VerifyDomain'
+type MockWebsitesService_VerifyDomain_Call struct {
+	*mock.Call
+}
+
+// VerifyDomain is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+//   - domainID string
+func (_e *MockWebsitesService_Expecter) VerifyDomain(ctx interface{}, websiteID interface{}, domainID interface{}) *MockWebsitesService_VerifyDomain_Call {
+	return &MockWebsitesService_VerifyDomain_Call{Call: _e.mock.On("VerifyDomain", ctx, websiteID, domainID)}
+}
+
+func (_c *MockWebsitesService_VerifyDomain_Call) Run(run func(ctx context.Context, websiteID string, domainID string)) *MockWebsitesService_VerifyDomain_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_VerifyDomain_Call) Return(_a0 *client.DomainResponse, _a1 error) *MockWebsitesService_VerifyDomain_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockWebsitesService_VerifyDomain_Call) RunAndReturn(run func(context.Context, string, string) (*client.DomainResponse, error)) *MockWebsitesService_VerifyDomain_Call {
 	_c.Call.Return(run)
 	return _c
 }
