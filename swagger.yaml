@@ -95,6 +95,49 @@ components:
     Component:
       additionalProperties: false
       type: object
+    CIDExportResponse:
+      additionalProperties: false
+      properties:
+        cid:
+          type: string
+        created_at:
+          type: string
+        shared_object:
+          allOf:
+          - $ref: '#/components/schemas/SharedObject'
+          nullable: true
+        size_bytes:
+          type: integer
+          format: uint64
+        updated_at:
+          type: string
+      required:
+      - cid
+      - size_bytes
+      - created_at
+      - updated_at
+      type: object
+    DAGBlock:
+      additionalProperties: false
+      properties:
+        cid:
+          type: string
+        links:
+          items:
+            $ref: '#/components/schemas/DAGLink'
+          type: array
+        sia_object:
+          allOf:
+          - $ref: '#/components/schemas/CIDExportResponse'
+          nullable: true
+        size:
+          type: integer
+          format: uint64
+      required:
+      - cid
+      - size
+      - links
+      type: object
     DAGBlockNodeResponse:
       additionalProperties: false
       properties:
@@ -110,6 +153,38 @@ components:
       - cid
       - size
       - children
+      type: object
+    DAGExportResponse:
+      additionalProperties: false
+      properties:
+        blocks:
+          items:
+            $ref: '#/components/schemas/DAGBlock'
+          type: array
+        root_cid:
+          type: string
+        total_blocks:
+          type: integer
+          format: uint64
+        total_size_bytes:
+          type: integer
+          format: uint64
+      required:
+      - root_cid
+      - total_blocks
+      - total_size_bytes
+      - blocks
+      type: object
+    DAGLink:
+      additionalProperties: false
+      properties:
+        cid:
+          type: string
+        index:
+          type: integer
+      required:
+      - cid
+      - index
       type: object
     DAGResponse:
       additionalProperties: false
@@ -507,6 +582,29 @@ components:
       - pin
       - delegates
       type: object
+    PinnedSector:
+      additionalProperties: false
+      properties:
+        host_key:
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+          maxItems: 32
+          minItems: 32
+          type: array
+        root:
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+          maxItems: 32
+          minItems: 32
+          type: array
+      required:
+      - root
+      - host_key
+      type: object
     PingResponse:
       additionalProperties: false
       properties:
@@ -603,6 +701,60 @@ components:
       - name
       - type
       - status
+      type: object
+    SharedObject:
+      additionalProperties: false
+      properties:
+        data_key:
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+          maxItems: 32
+          minItems: 32
+          type: array
+        slabs:
+          items:
+            $ref: '#/components/schemas/SlabSlice'
+          type: array
+      required:
+      - slabs
+      - data_key
+      type: object
+    SlabSlice:
+      additionalProperties: false
+      properties:
+        encryption_key:
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+          maxItems: 32
+          minItems: 32
+          type: array
+        length:
+          type: integer
+          format: uint32
+        min_shards:
+          type: integer
+          format: uint64
+        offset:
+          type: integer
+          format: uint32
+        sectors:
+          items:
+            $ref: '#/components/schemas/PinnedSector'
+          type: array
+        version:
+          type: integer
+          format: uint8
+      required:
+      - version
+      - encryption_key
+      - min_shards
+      - sectors
+      - offset
+      - length
       type: object
     SSLStatusInfo:
       additionalProperties: false
@@ -1155,6 +1307,114 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error
       summary: Resolve block DAG
+      tags:
+      - Content
+  /api/export/cid/{cid}/dag:
+    get:
+      description: |-
+        Exports a complete DAG for a root CID, including all blocks, their sizes, links, and associated Sia objects.
+
+        Returns the full block graph with block-level details organized by block order rather than tree depth.
+      parameters:
+      - description: 'Root content identifier (CID) of the DAG to export. Example:
+          bafybeieffnocaq7t4w4daagvydl32igft5oziyyaebqr6vx6rb3fwh2ab4'
+        in: path
+        name: cid
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DAGExportResponse'
+          description: DAG export successful
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Export denied
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: CID not found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Object not ready
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: DAG not supported
+      summary: Export DAG
+      tags:
+      - Content
+  /api/export/cid/{cid}/sia-object:
+    get:
+      description: |-
+        Exports the Sia object for a CID, including the shared object structure with slab and sector details.
+
+        Returns the CID-level Sia metadata including all slab slices and their constituent pinned sectors.
+      parameters:
+      - description: 'Content identifier (CID) to export Sia object for. Example:
+          bafybeieffnocaq7t4w4daagvydl32igft5oziyyaebqr6vx6rb3fwh2ab4'
+        in: path
+        name: cid
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CIDExportResponse'
+          description: Sia object export successful
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Export denied
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: CID not found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Object not ready
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: DAG not supported
+      summary: Export Sia object
       tags:
       - Content
   /api/dns/zones:

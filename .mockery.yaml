@@ -12,6 +12,7 @@ packages:
       IPNSClientWithResponsesInterface: {}
       WebsitesClientWithResponsesInterface: {}
       DAGClientWithResponsesInterface: {}
+      MetaClientWithResponsesInterface: {}
       DNSService:
         config:
           dir: ./mocks/services
@@ -29,6 +30,10 @@ packages:
           dir: ./mocks/services
           outpkg: servicemocks
       DAGService:
+        config:
+          dir: ./mocks/services
+          outpkg: servicemocks
+      MetaService:
         config:
           dir: ./mocks/services
           outpkg: servicemocks

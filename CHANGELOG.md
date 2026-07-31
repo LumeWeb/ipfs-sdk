@@ -1,3 +1,9 @@
+## 0.1.60 (2026-07-31)
+
+### Features
+
+- add MetaService with ExportSiaObject and ExportDAG endpoints for CID metadata export
+
 ## 0.1.59 (2026-07-31)
 
 ### Features
