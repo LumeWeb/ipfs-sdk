@@ -1206,3 +1206,268 @@ func TestSentinels_ErrUnauthorized(t *testing.T) {
 		assert.True(t, errors.Is(err, ErrUnauthorized), "error should wrap ErrUnauthorized")
 	})
 }
+
+func testWebsitesDomainService(t *testing.T) (WebsitesService, *mocks.MockWebsitesClientWithResponsesInterface) {
+	mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+	retries := 1
+	service := NewWebsitesService(mockClient, WithWebsitesRetry(RetryConfig{Attempts: uint(retries)}))
+	return service, mockClient
+}
+
+func TestWebsitesService_ListDomains(t *testing.T) {
+	t.Run("returns domain list on success", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedDomains := []client.DomainResponse{
+			{
+				Id:        1,
+				Domain:    "example.com",
+				Namespace: "icann",
+				ZoneName:  strPtr("example.com."),
+			},
+			{
+				Id:        2,
+				Domain:    "example.hns",
+				Namespace: "hns",
+			},
+		}
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsWithResponse(mock.Anything, "1").
+			Return(&client.GetApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200: &client.DomainListResponse{
+					Data:  expectedDomains,
+					Total: 2,
+				},
+			}, nil).
+			Once()
+
+		result, err := service.ListDomains(context.Background(), "1")
+
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+		assert.Equal(t, 1, result[0].Id)
+		assert.Equal(t, "example.com", result[0].Domain)
+		assert.Equal(t, "icann", result[0].Namespace)
+		assert.NotNil(t, result[0].ZoneName)
+		assert.Equal(t, "example.com.", *result[0].ZoneName)
+		assert.Equal(t, 2, result[1].Id)
+		assert.Equal(t, "example.hns", result[1].Domain)
+		assert.Equal(t, "hns", result[1].Namespace)
+	})
+
+	t.Run("returns empty list when no domains bound", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsWithResponse(mock.Anything, "1").
+			Return(&client.GetApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200: &client.DomainListResponse{
+					Data:  []client.DomainResponse{},
+					Total: 0,
+				},
+			}, nil).
+			Once()
+
+		result, err := service.ListDomains(context.Background(), "1")
+
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("returns empty list when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsWithResponse(mock.Anything, "1").
+			Return(&client.GetApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.ListDomains(context.Background(), "1")
+
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsWithResponse(mock.Anything, "1").
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.ListDomains(context.Background(), "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestWebsitesService_BindDomain(t *testing.T) {
+	t.Run("binds domain successfully", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedResponse := &client.DomainResponse{
+			Id:        1,
+			Domain:    "example.com",
+			Namespace: "icann",
+		}
+
+		domainReq := client.DomainRequest{
+			Domain:    "example.com",
+			Namespace: "icann",
+		}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsWithResponse(mock.Anything, "1", mock.AnythingOfType("client.DomainRequest")).
+			Return(&client.PostApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusCreated},
+				JSON201:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.BindDomain(context.Background(), "1", DomainRequest(domainReq))
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedResponse.Id, result.Id)
+		assert.Equal(t, "example.com", result.Domain)
+		assert.Equal(t, "icann", result.Namespace)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		domainReq := client.DomainRequest{
+			Domain:    "example.com",
+			Namespace: "icann",
+		}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsWithResponse(mock.Anything, "1", mock.AnythingOfType("client.DomainRequest")).
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.BindDomain(context.Background(), "1", DomainRequest(domainReq))
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON201 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		domainReq := client.DomainRequest{
+			Domain:    "example.com",
+			Namespace: "icann",
+		}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsWithResponse(mock.Anything, "1", mock.AnythingOfType("client.DomainRequest")).
+			Return(&client.PostApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusCreated},
+				JSON201:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.BindDomain(context.Background(), "1", DomainRequest(domainReq))
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestWebsitesService_UnbindDomain(t *testing.T) {
+	t.Run("unbinds domain successfully", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			DeleteApiWebsitesIdDomainsDomainIdWithResponse(mock.Anything, "1", "1").
+			Return(&client.DeleteApiWebsitesIdDomainsDomainIdResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNoContent},
+			}, nil).
+			Once()
+
+		err := service.UnbindDomain(context.Background(), "1", "1")
+
+		require.NoError(t, err)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			DeleteApiWebsitesIdDomainsDomainIdWithResponse(mock.Anything, "1", "1").
+			Return(nil, assert.AnError).
+			Once()
+
+		err := service.UnbindDomain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+	})
+}
+
+func TestWebsitesService_VerifyDomain(t *testing.T) {
+	t.Run("verifies domain successfully", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedResponse := &client.DomainResponse{
+			Id:        1,
+			Domain:    "example.com",
+			Namespace: "icann",
+		}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdVerifyResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.VerifyDomain(context.Background(), "1", "1")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedResponse.Id, result.Id)
+		assert.Equal(t, "example.com", result.Domain)
+		assert.Equal(t, "icann", result.Namespace)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(mock.Anything, "1", "1").
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.VerifyDomain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdVerifyResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.VerifyDomain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
