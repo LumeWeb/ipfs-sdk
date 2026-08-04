@@ -1,3 +1,9 @@
+## 0.1.65 (2026-08-04)
+
+### Features
+
+- expose domain status in DomainResponse
+
 ## 0.1.64 (2026-08-04)
 
 ### Fixes
