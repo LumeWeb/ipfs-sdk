@@ -1,3 +1,10 @@
+## 0.1.64 (2026-08-04)
+
+### Fixes
+
+- tag dnsname nested module in knope
+- single package so root module keeps unprefixed tags
+
 ## 0.1.63 (2026-08-04)
 
 ### Features
