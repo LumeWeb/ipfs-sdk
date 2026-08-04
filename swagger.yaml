@@ -159,6 +159,8 @@ components:
           type: integer
         namespace:
           type: string
+        status:
+          type: string
         zone_name:
           type: string
       required:

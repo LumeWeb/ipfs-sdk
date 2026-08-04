@@ -141,6 +141,7 @@ type DomainResponse struct {
 	Domain    string  `json:"domain"`
 	Id        int     `json:"id"`
 	Namespace string  `json:"namespace"`
+	Status    *string `json:"status,omitempty"`
 	ZoneName  *string `json:"zone_name,omitempty"`
 }
 
