@@ -1,10 +1,6 @@
-[packages.ipfs-sdk]
-versioned_files = ["go.mod"]
+[package]
+versioned_files = ["go.mod", "dnsname/go.mod"]
 changelog = "CHANGELOG.md"
-
-[packages.dnsname]
-versioned_files = ["dnsname/go.mod"]
-changelog = "dnsname/CHANGELOG.md"
 
 [github]
 owner = "LumeWeb"
