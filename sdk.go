@@ -30,7 +30,6 @@ type Client struct {
 	download *DownloadService
 	ping     PingService
 	dag      DAGService
-	meta     MetaService
 
 	httpClient    *http.Client
 	baseURL       string
@@ -353,11 +352,6 @@ func (c *Client) DAG() DAGService {
 	return c.dag
 }
 
-// Meta returns the meta service for exporting CID metadata (Sia objects, DAGs).
-func (c *Client) Meta() MetaService {
-	return c.meta
-}
-
 // rebuildInternalGen recreates the internal generated client using the current
 // httpClient, genClientOpts, baseURL, and hostOverride. It then re-wires all
 // services that depend on internalGen (dns, ipns, websites, ping).
@@ -399,7 +393,6 @@ func (c *Client) rebuildInternalGen() error {
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
 	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
 	c.dag = NewDAGService(ConvertClientToDAG(internalGen), WithDAGRetry(c.retry))
-	c.meta = NewMetaService(ConvertClientToMeta(internalGen), WithMetaRetry(c.retry))
 
 	return nil
 }

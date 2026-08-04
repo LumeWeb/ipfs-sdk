@@ -69,10 +69,6 @@ const (
 
 	// DAG operations
 	OpResolveDAG
-
-	// Meta export operations
-	OpExportSiaObject
-	OpExportDAG
 )
 
 // operationString maps operation IDs to human-readable names.
@@ -133,10 +129,6 @@ var operationString = map[int]string{
 
 	// DAG operations
 	OpResolveDAG: "resolve DAG",
-
-	// Meta export operations
-	OpExportSiaObject: "export Sia object",
-	OpExportDAG:       "export DAG",
 }
 
 // Named error types for error comparison.
@@ -386,22 +378,6 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpResolveDAG: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusNotFound:     notFoundErr("CID not found"),
-	},
-
-	// Meta export operations
-	OpExportSiaObject: {
-		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     notFoundErr("CID not found"),
-		http.StatusConflict:     plainErr("object not ready"),
-		http.StatusGone:         goneErr("DAG not supported"),
-		http.StatusForbidden:    plainErr("export denied"),
-	},
-	OpExportDAG: {
-		http.StatusUnauthorized: authErr("authentication required"),
-		http.StatusNotFound:     notFoundErr("CID not found"),
-		http.StatusConflict:     plainErr("object not ready"),
-		http.StatusGone:         goneErr("DAG not supported"),
-		http.StatusForbidden:    plainErr("export denied"),
 	},
 }
 
