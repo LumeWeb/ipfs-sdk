@@ -93,15 +93,6 @@ type BulkRecordsResponse struct {
 	Records []RecordResponse `json:"records"`
 }
 
-// CIDExportResponse defines model for CIDExportResponse.
-type CIDExportResponse struct {
-	Cid          string        `json:"cid"`
-	CreatedAt    string        `json:"created_at"`
-	SharedObject *SharedObject `json:"shared_object,omitempty"`
-	SizeBytes    uint64        `json:"size_bytes"`
-	UpdatedAt    string        `json:"updated_at"`
-}
-
 // CertPushRequest defines model for CertPushRequest.
 type CertPushRequest struct {
 	CertPem   string `json:"cert_pem"`
@@ -119,33 +110,11 @@ type CertPushResponse struct {
 // Component defines model for Component.
 type Component = map[string]interface{}
 
-// DAGBlock defines model for DAGBlock.
-type DAGBlock struct {
-	Cid       string             `json:"cid"`
-	Links     []DAGLink          `json:"links"`
-	SiaObject *CIDExportResponse `json:"sia_object,omitempty"`
-	Size      uint64             `json:"size"`
-}
-
 // DAGBlockNodeResponse defines model for DAGBlockNodeResponse.
 type DAGBlockNodeResponse struct {
 	Children []string `json:"children"`
 	Cid      string   `json:"cid"`
 	Size     int      `json:"size"`
-}
-
-// DAGExportResponse defines model for DAGExportResponse.
-type DAGExportResponse struct {
-	Blocks         []DAGBlock `json:"blocks"`
-	RootCid        string     `json:"root_cid"`
-	TotalBlocks    uint64     `json:"total_blocks"`
-	TotalSizeBytes uint64     `json:"total_size_bytes"`
-}
-
-// DAGLink defines model for DAGLink.
-type DAGLink struct {
-	Cid   string `json:"cid"`
-	Index int    `json:"index"`
 }
 
 // DAGResponse defines model for DAGResponse.
@@ -336,12 +305,6 @@ type PingResponse struct {
 	Status string `json:"status"`
 }
 
-// PinnedSector defines model for PinnedSector.
-type PinnedSector struct {
-	HostKey []int `json:"host_key"`
-	Root    []int `json:"root"`
-}
-
 // PostUploadResponse defines model for PostUploadResponse.
 type PostUploadResponse struct {
 	CID string `json:"CID"`
@@ -399,22 +362,6 @@ type SSLStatusUpdateRequest struct {
 	Error     *string `json:"error,omitempty"`
 	Status    string  `json:"status"`
 	Timestamp *string `json:"timestamp,omitempty"`
-}
-
-// SharedObject defines model for SharedObject.
-type SharedObject struct {
-	DataKey []int       `json:"data_key"`
-	Slabs   []SlabSlice `json:"slabs"`
-}
-
-// SlabSlice defines model for SlabSlice.
-type SlabSlice struct {
-	EncryptionKey []int          `json:"encryption_key"`
-	Length        uint32         `json:"length"`
-	MinShards     uint64         `json:"min_shards"`
-	Offset        uint32         `json:"offset"`
-	Sectors       []PinnedSector `json:"sectors"`
-	Version       uint8          `json:"version"`
 }
 
 // TLSAUpdateRequest defines model for TLSAUpdateRequest.
@@ -835,12 +782,6 @@ type ClientInterface interface {
 
 	// PostApiDnsZonesIdValidate request
 	PostApiDnsZonesIdValidate(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetApiExportCidCidDag request
-	GetApiExportCidCidDag(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetApiExportCidCidSiaObject request
-	GetApiExportCidCidSiaObject(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiFiles request
 	GetApiFiles(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1291,30 +1232,6 @@ func (c *Client) GetApiDnsZonesIdStatus(ctx context.Context, id string, reqEdito
 
 func (c *Client) PostApiDnsZonesIdValidate(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostApiDnsZonesIdValidateRequest(c.Server, id)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetApiExportCidCidDag(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApiExportCidCidDagRequest(c.Server, cid)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetApiExportCidCidSiaObject(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApiExportCidCidSiaObjectRequest(c.Server, cid)
 	if err != nil {
 		return nil, err
 	}
@@ -2728,74 +2645,6 @@ func NewPostApiDnsZonesIdValidateRequest(server string, id string) (*http.Reques
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetApiExportCidCidDagRequest generates requests for GetApiExportCidCidDag
-func NewGetApiExportCidCidDagRequest(server string, cid string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "cid", cid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/export/cid/%s/dag", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetApiExportCidCidSiaObjectRequest generates requests for GetApiExportCidCidSiaObject
-func NewGetApiExportCidCidSiaObjectRequest(server string, cid string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "cid", cid, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/export/cid/%s/sia-object", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -4933,12 +4782,6 @@ type ClientWithResponsesInterface interface {
 	// PostApiDnsZonesIdValidateWithResponse request
 	PostApiDnsZonesIdValidateWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*PostApiDnsZonesIdValidateResponse, error)
 
-	// GetApiExportCidCidDagWithResponse request
-	GetApiExportCidCidDagWithResponse(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*GetApiExportCidCidDagResponse, error)
-
-	// GetApiExportCidCidSiaObjectWithResponse request
-	GetApiExportCidCidSiaObjectWithResponse(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*GetApiExportCidCidSiaObjectResponse, error)
-
 	// GetApiFilesWithResponse request
 	GetApiFilesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiFilesResponse, error)
 
@@ -5118,6 +4961,7 @@ type PostApiBlockMetaBatchResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5145,6 +4989,7 @@ type GetApiBlockMetaCidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5172,6 +5017,7 @@ type GetApiDagCidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5199,6 +5045,7 @@ type GetApiDnsZonesResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5226,6 +5073,7 @@ type PostApiDnsZonesResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5252,6 +5100,7 @@ type DeleteApiDnsZonesIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5279,6 +5128,7 @@ type GetApiDnsZonesIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5306,6 +5156,7 @@ type PutApiDnsZonesIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5333,6 +5184,7 @@ type GetApiDnsZonesIdRecordsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5360,6 +5212,7 @@ type PostApiDnsZonesIdRecordsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5387,6 +5240,7 @@ type PostApiDnsZonesIdRecordsBulkResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5414,6 +5268,7 @@ type PostApiDnsZonesIdRecordsBulkDeleteResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5440,6 +5295,7 @@ type DeleteApiDnsZonesIdRecordsNameTypeResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5467,6 +5323,7 @@ type GetApiDnsZonesIdRecordsNameTypeResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5494,6 +5351,7 @@ type PutApiDnsZonesIdRecordsNameTypeResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5521,6 +5379,7 @@ type GetApiDnsZonesIdStatusResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5548,6 +5407,7 @@ type PostApiDnsZonesIdValidateResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5567,60 +5427,6 @@ func (r PostApiDnsZonesIdValidateResponse) StatusCode() int {
 	return 0
 }
 
-type GetApiExportCidCidDagResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DAGExportResponse
-	JSON403      *ErrorResponse
-	JSON404      *ErrorResponse
-	JSON409      *ErrorResponse
-	JSON500      *ErrorResponse
-	JSON501      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetApiExportCidCidDagResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetApiExportCidCidDagResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetApiExportCidCidSiaObjectResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *CIDExportResponse
-	JSON403      *ErrorResponse
-	JSON404      *ErrorResponse
-	JSON409      *ErrorResponse
-	JSON500      *ErrorResponse
-	JSON501      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetApiExportCidCidSiaObjectResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetApiExportCidCidSiaObjectResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetApiFilesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -5629,6 +5435,7 @@ type GetApiFilesResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5656,6 +5463,7 @@ type GetApiFilesBreadcrumbsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5683,6 +5491,7 @@ type GetApiFilesDirectoryResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5710,6 +5519,7 @@ type GetApiInfoResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5737,6 +5547,7 @@ type GetApiIpnsKeysResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5764,6 +5575,7 @@ type PostApiIpnsKeysResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5790,6 +5602,7 @@ type DeleteApiIpnsKeysIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5817,6 +5630,7 @@ type GetApiIpnsKeysIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5844,6 +5658,7 @@ type PostApiIpnsKeysIdRepublishResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5871,6 +5686,7 @@ type PostApiIpnsPublishResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5898,6 +5714,7 @@ type GetApiIpnsResolveNameResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5925,6 +5742,7 @@ type PostApiUploadResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -5952,6 +5770,7 @@ type GetApiUploadResultIdentifierResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6120,6 +5939,7 @@ type GetApiWebsitesResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6148,6 +5968,7 @@ type PostApiWebsitesResponse struct {
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
 	JSON410      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6175,6 +5996,7 @@ type GetApiWebsitesConfigResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6202,6 +6024,7 @@ type GetApiWebsitesDomainSslStatusResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6228,6 +6051,7 @@ type DeleteApiWebsitesIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6256,6 +6080,7 @@ type GetApiWebsitesIdResponse struct {
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
 	JSON410      *WebsiteResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6283,6 +6108,7 @@ type PutApiWebsitesIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6310,6 +6136,7 @@ type GetApiWebsitesIdDomainsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6337,6 +6164,7 @@ type PostApiWebsitesIdDomainsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6363,6 +6191,7 @@ type DeleteApiWebsitesIdDomainsDomainIdResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6390,6 +6219,7 @@ type PostApiWebsitesIdDomainsDomainIdVerifyResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6417,6 +6247,7 @@ type PostApiWebsitesIdValidateResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6444,6 +6275,7 @@ type PostInternalDnsCertResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6471,6 +6303,7 @@ type PostInternalDnsTlsaResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6498,6 +6331,7 @@ type GetInternalPingResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6524,6 +6358,7 @@ type GetInternalWebsitesEventsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6552,6 +6387,7 @@ type GetInternalWebsitesDomainResponse struct {
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
 	JSON410      *GatewayWebsiteResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6608,6 +6444,7 @@ type GetInternalWebsitesDomainStatusResponse struct {
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
 	JSON410      *GatewayWebsiteStatusResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6635,6 +6472,7 @@ type GetIpfsCidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6662,6 +6500,7 @@ type HeadIpfsCidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6689,6 +6528,7 @@ type OptionsIpfsCidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6716,6 +6556,7 @@ type GetPinsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6743,6 +6584,7 @@ type OptionsPinsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6770,6 +6612,7 @@ type PostPinsResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6796,6 +6639,7 @@ type DeletePinsRequestidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6823,6 +6667,7 @@ type GetPinsRequestidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6850,6 +6695,7 @@ type OptionsPinsRequestidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6877,6 +6723,7 @@ type PostPinsRequestidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6903,6 +6750,7 @@ type GetRoutingV1IpnsNameResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -6929,6 +6777,7 @@ type GetRoutingV1ProvidersCidResponse struct {
 	JSON401      *ErrorResponse
 	JSON403      *ErrorResponse
 	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
 	JSON500      *ErrorResponse
 }
 
@@ -7155,24 +7004,6 @@ func (c *ClientWithResponses) PostApiDnsZonesIdValidateWithResponse(ctx context.
 		return nil, err
 	}
 	return ParsePostApiDnsZonesIdValidateResponse(rsp)
-}
-
-// GetApiExportCidCidDagWithResponse request returning *GetApiExportCidCidDagResponse
-func (c *ClientWithResponses) GetApiExportCidCidDagWithResponse(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*GetApiExportCidCidDagResponse, error) {
-	rsp, err := c.GetApiExportCidCidDag(ctx, cid, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetApiExportCidCidDagResponse(rsp)
-}
-
-// GetApiExportCidCidSiaObjectWithResponse request returning *GetApiExportCidCidSiaObjectResponse
-func (c *ClientWithResponses) GetApiExportCidCidSiaObjectWithResponse(ctx context.Context, cid string, reqEditors ...RequestEditorFn) (*GetApiExportCidCidSiaObjectResponse, error) {
-	rsp, err := c.GetApiExportCidCidSiaObject(ctx, cid, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetApiExportCidCidSiaObjectResponse(rsp)
 }
 
 // GetApiFilesWithResponse request returning *GetApiFilesResponse
@@ -7754,6 +7585,13 @@ func ParsePostApiBlockMetaBatchResponse(rsp *http.Response) (*PostApiBlockMetaBa
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -7814,6 +7652,13 @@ func ParseGetApiBlockMetaCidResponse(rsp *http.Response) (*GetApiBlockMetaCidRes
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -7876,6 +7721,13 @@ func ParseGetApiDagCidResponse(rsp *http.Response) (*GetApiDagCidResponse, error
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -7936,6 +7788,13 @@ func ParseGetApiDnsZonesResponse(rsp *http.Response) (*GetApiDnsZonesResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -7998,6 +7857,13 @@ func ParsePostApiDnsZonesResponse(rsp *http.Response) (*PostApiDnsZonesResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8051,6 +7917,13 @@ func ParseDeleteApiDnsZonesIdResponse(rsp *http.Response) (*DeleteApiDnsZonesIdR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8113,6 +7986,13 @@ func ParseGetApiDnsZonesIdResponse(rsp *http.Response) (*GetApiDnsZonesIdRespons
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8173,6 +8053,13 @@ func ParsePutApiDnsZonesIdResponse(rsp *http.Response) (*PutApiDnsZonesIdRespons
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8235,6 +8122,13 @@ func ParseGetApiDnsZonesIdRecordsResponse(rsp *http.Response) (*GetApiDnsZonesId
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8295,6 +8189,13 @@ func ParsePostApiDnsZonesIdRecordsResponse(rsp *http.Response) (*PostApiDnsZones
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8357,6 +8258,13 @@ func ParsePostApiDnsZonesIdRecordsBulkResponse(rsp *http.Response) (*PostApiDnsZ
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8418,6 +8326,13 @@ func ParsePostApiDnsZonesIdRecordsBulkDeleteResponse(rsp *http.Response) (*PostA
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8471,6 +8386,13 @@ func ParseDeleteApiDnsZonesIdRecordsNameTypeResponse(rsp *http.Response) (*Delet
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8533,6 +8455,13 @@ func ParseGetApiDnsZonesIdRecordsNameTypeResponse(rsp *http.Response) (*GetApiDn
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8593,6 +8522,13 @@ func ParsePutApiDnsZonesIdRecordsNameTypeResponse(rsp *http.Response) (*PutApiDn
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8655,6 +8591,13 @@ func ParseGetApiDnsZonesIdStatusResponse(rsp *http.Response) (*GetApiDnsZonesIdS
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -8716,59 +8659,12 @@ func ParsePostApiDnsZonesIdValidateResponse(rsp *http.Response) (*PostApiDnsZone
 		}
 		response.JSON404 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetApiExportCidCidDagResponse parses an HTTP response from a GetApiExportCidCidDagWithResponse call
-func ParseGetApiExportCidCidDagResponse(rsp *http.Response) (*GetApiExportCidCidDagResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetApiExportCidCidDagResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DAGExportResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8776,74 +8672,6 @@ func ParseGetApiExportCidCidDagResponse(rsp *http.Response) (*GetApiExportCidCid
 			return nil, err
 		}
 		response.JSON500 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 501:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON501 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetApiExportCidCidSiaObjectResponse parses an HTTP response from a GetApiExportCidCidSiaObjectWithResponse call
-func ParseGetApiExportCidCidSiaObjectResponse(rsp *http.Response) (*GetApiExportCidCidSiaObjectResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetApiExportCidCidSiaObjectResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest CIDExportResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 409:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON409 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 501:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON501 = &dest
 
 	}
 
@@ -8898,6 +8726,13 @@ func ParseGetApiFilesResponse(rsp *http.Response) (*GetApiFilesResponse, error) 
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -8960,6 +8795,13 @@ func ParseGetApiFilesBreadcrumbsResponse(rsp *http.Response) (*GetApiFilesBreadc
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9020,6 +8862,13 @@ func ParseGetApiFilesDirectoryResponse(rsp *http.Response) (*GetApiFilesDirector
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9082,6 +8931,13 @@ func ParseGetApiInfoResponse(rsp *http.Response) (*GetApiInfoResponse, error) {
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9142,6 +8998,13 @@ func ParseGetApiIpnsKeysResponse(rsp *http.Response) (*GetApiIpnsKeysResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9204,6 +9067,13 @@ func ParsePostApiIpnsKeysResponse(rsp *http.Response) (*PostApiIpnsKeysResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9257,6 +9127,13 @@ func ParseDeleteApiIpnsKeysIdResponse(rsp *http.Response) (*DeleteApiIpnsKeysIdR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9319,6 +9196,13 @@ func ParseGetApiIpnsKeysIdResponse(rsp *http.Response) (*GetApiIpnsKeysIdRespons
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9379,6 +9263,13 @@ func ParsePostApiIpnsKeysIdRepublishResponse(rsp *http.Response) (*PostApiIpnsKe
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9441,6 +9332,13 @@ func ParsePostApiIpnsPublishResponse(rsp *http.Response) (*PostApiIpnsPublishRes
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9501,6 +9399,13 @@ func ParseGetApiIpnsResolveNameResponse(rsp *http.Response) (*GetApiIpnsResolveN
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9563,6 +9468,13 @@ func ParsePostApiUploadResponse(rsp *http.Response) (*PostApiUploadResponse, err
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9623,6 +9535,13 @@ func ParseGetApiUploadResultIdentifierResponse(rsp *http.Response) (*GetApiUploa
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -9904,6 +9823,13 @@ func ParseGetApiWebsitesResponse(rsp *http.Response) (*GetApiWebsitesResponse, e
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -9972,6 +9898,13 @@ func ParsePostApiWebsitesResponse(rsp *http.Response) (*PostApiWebsitesResponse,
 		}
 		response.JSON410 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10032,6 +9965,13 @@ func ParseGetApiWebsitesConfigResponse(rsp *http.Response) (*GetApiWebsitesConfi
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10094,6 +10034,13 @@ func ParseGetApiWebsitesDomainSslStatusResponse(rsp *http.Response) (*GetApiWebs
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10147,6 +10094,13 @@ func ParseDeleteApiWebsitesIdResponse(rsp *http.Response) (*DeleteApiWebsitesIdR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10216,6 +10170,13 @@ func ParseGetApiWebsitesIdResponse(rsp *http.Response) (*GetApiWebsitesIdRespons
 		}
 		response.JSON410 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10276,6 +10237,13 @@ func ParsePutApiWebsitesIdResponse(rsp *http.Response) (*PutApiWebsitesIdRespons
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10338,6 +10306,13 @@ func ParseGetApiWebsitesIdDomainsResponse(rsp *http.Response) (*GetApiWebsitesId
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10399,6 +10374,13 @@ func ParsePostApiWebsitesIdDomainsResponse(rsp *http.Response) (*PostApiWebsites
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10452,6 +10434,13 @@ func ParseDeleteApiWebsitesIdDomainsDomainIdResponse(rsp *http.Response) (*Delet
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10514,6 +10503,13 @@ func ParsePostApiWebsitesIdDomainsDomainIdVerifyResponse(rsp *http.Response) (*P
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10574,6 +10570,13 @@ func ParsePostApiWebsitesIdValidateResponse(rsp *http.Response) (*PostApiWebsite
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10636,6 +10639,13 @@ func ParsePostInternalDnsCertResponse(rsp *http.Response) (*PostInternalDnsCertR
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10696,6 +10706,13 @@ func ParsePostInternalDnsTlsaResponse(rsp *http.Response) (*PostInternalDnsTlsaR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10758,6 +10775,13 @@ func ParseGetInternalPingResponse(rsp *http.Response) (*GetInternalPingResponse,
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -10811,6 +10835,13 @@ func ParseGetInternalWebsitesEventsResponse(rsp *http.Response) (*GetInternalWeb
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -10879,6 +10910,13 @@ func ParseGetInternalWebsitesDomainResponse(rsp *http.Response) (*GetInternalWeb
 			return nil, err
 		}
 		response.JSON410 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -11016,6 +11054,13 @@ func ParseGetInternalWebsitesDomainStatusResponse(rsp *http.Response) (*GetInter
 		}
 		response.JSON410 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11076,6 +11121,13 @@ func ParseGetIpfsCidResponse(rsp *http.Response) (*GetIpfsCidResponse, error) {
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -11138,6 +11190,13 @@ func ParseHeadIpfsCidResponse(rsp *http.Response) (*HeadIpfsCidResponse, error) 
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11198,6 +11257,13 @@ func ParseOptionsIpfsCidResponse(rsp *http.Response) (*OptionsIpfsCidResponse, e
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -11260,6 +11326,13 @@ func ParseGetPinsResponse(rsp *http.Response) (*GetPinsResponse, error) {
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11320,6 +11393,13 @@ func ParseOptionsPinsResponse(rsp *http.Response) (*OptionsPinsResponse, error) 
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -11382,6 +11462,13 @@ func ParsePostPinsResponse(rsp *http.Response) (*PostPinsResponse, error) {
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11435,6 +11522,13 @@ func ParseDeletePinsRequestidResponse(rsp *http.Response) (*DeletePinsRequestidR
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -11497,6 +11591,13 @@ func ParseGetPinsRequestidResponse(rsp *http.Response) (*GetPinsRequestidRespons
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11557,6 +11658,13 @@ func ParseOptionsPinsRequestidResponse(rsp *http.Response) (*OptionsPinsRequesti
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
@@ -11619,6 +11727,13 @@ func ParsePostPinsRequestidResponse(rsp *http.Response) (*PostPinsRequestidRespo
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11673,6 +11788,13 @@ func ParseGetRoutingV1IpnsNameResponse(rsp *http.Response) (*GetRoutingV1IpnsNam
 		}
 		response.JSON404 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -11726,6 +11848,13 @@ func ParseGetRoutingV1ProvidersCidResponse(rsp *http.Response) (*GetRoutingV1Pro
 			return nil, err
 		}
 		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest ErrorResponse
