@@ -28,6 +28,23 @@ type DomainListResponse = internalclient.DomainListResponse
 type DNSDelegation = internalclient.DNSDelegation
 type DNSDelegationRecord = internalclient.DNSDelegationRecord
 
+// DomainNamespace identifies the DNS namespace a website domain is bound under.
+type DomainNamespace string
+
+const (
+	DomainNamespaceICANN DomainNamespace = "icann"
+	DomainNamespaceHNS   DomainNamespace = "hns"
+)
+
+// DomainNamespaceOf returns the typed namespace for a domain response, or the
+// empty DomainNamespace when the response is nil or its namespace is unset.
+func DomainNamespaceOf(r *DomainResponse) DomainNamespace {
+	if r == nil {
+		return ""
+	}
+	return DomainNamespace(r.Namespace)
+}
+
 type WebsiteValidationReason string
 
 const (
