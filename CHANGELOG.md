@@ -1,3 +1,9 @@
+## 0.1.66 (2026-08-05)
+
+### Features
+
+- add GetDomainDNSRequirements returning delegation records
+
 ## 0.1.65 (2026-08-04)
 
 ### Features
