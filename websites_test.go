@@ -1552,3 +1552,15 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 		assert.Nil(t, result)
 	})
 }
+
+func TestDomainNamespaceOf(t *testing.T) {
+	t.Run("maps known namespaces", func(t *testing.T) {
+		assert.Equal(t, DomainNamespaceICANN, DomainNamespaceOf(&DomainResponse{Namespace: "icann"}))
+		assert.Equal(t, DomainNamespaceHNS, DomainNamespaceOf(&DomainResponse{Namespace: "hns"}))
+	})
+
+	t.Run("casts unknown namespaces and empty for nil", func(t *testing.T) {
+		assert.Equal(t, DomainNamespace("ens"), DomainNamespaceOf(&DomainResponse{Namespace: "ens"}))
+		assert.Equal(t, DomainNamespace(""), DomainNamespaceOf(nil))
+	})
+}
