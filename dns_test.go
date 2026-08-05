@@ -902,6 +902,23 @@ func TestDNSService_GetCert(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
+	t.Run("returns ErrForbidden on 403", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			Return(&internalclient.GetInternalDnsCertDomainResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusForbidden},
+			}, nil).
+			Once()
+
+		result, err := service.GetCert(context.Background(), "example", "hns")
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrForbidden)
+		assert.Nil(t, result)
+	})
+
 	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
 		service, mockClient := testDNSService(t)
 
