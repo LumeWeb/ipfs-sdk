@@ -99,6 +99,7 @@ type WebsitesClientWithResponsesInterface interface {
 	PostApiWebsitesIdDomainsWithResponse(ctx context.Context, id string, body internalclient.DomainRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsResponse, error)
 	DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWebsitesIdDomainsDomainIdResponse, error)
 	PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdVerifyResponse, error)
+	GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -167,6 +168,10 @@ func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsDomainIdVerify
 	return a.client.PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx, id, domainId, reqEditors...)
 }
 
+func (a *internalClientToWebsitesAdapter) GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse, error) {
+	return a.client.GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx, id, domainId, reqEditors...)
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -217,6 +222,9 @@ type WebsitesService interface {
 	UnbindDomain(ctx context.Context, websiteID string, domainID string) error
 	// VerifyDomain triggers verification of domain delegation
 	VerifyDomain(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error)
+	// GetDomainDNSRequirements returns the DNS records (DS/NS/GLUE/TLSA parent +
+	// authoritative) a user must publish to complete delegation for a bound domain.
+	GetDomainDNSRequirements(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error)
 }
 
 type websitesService struct {
@@ -299,9 +307,9 @@ func (s *websitesService) Get(ctx context.Context, id string) (*WebsiteResponse,
 // Create creates a new website
 func (s *websitesService) Create(ctx context.Context, domain string, targetHash string, targetType string) (*WebsiteResponse, error) {
 	return s.CreateWithOptions(ctx, WebsiteRequest{
-		Domain:      domain,
-		TargetHash:  targetHash,
-		TargetType:  targetType,
+		Domain:     domain,
+		TargetHash: targetHash,
+		TargetType: targetType,
 	})
 }
 
@@ -525,12 +533,12 @@ func (s *websitesService) WaitForSSLStatusReady(ctx context.Context, domain stri
 		if err != nil {
 			return "", err
 		}
-		
+
 		// Check if SSL status exists
 		if resp.Ssl == nil {
 			return "", nil
 		}
-		
+
 		return resp.Ssl.Status, nil
 	}, settledStates, opts...)
 
@@ -735,3 +743,31 @@ func (s *websitesService) VerifyDomain(ctx context.Context, websiteID string, do
 	return result, nil
 }
 
+// GetDomainDNSRequirements returns the DNS records (DS/NS/GLUE/TLSA parent +
+// authoritative) a user must publish to complete delegation for a bound domain.
+func (s *websitesService) GetDomainDNSRequirements(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error) {
+	var result *DomainResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx, websiteID, domainID)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpDNSRequirementsWebsiteDomain, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpDNSRequirementsWebsiteDomain) + " no response data for domain " + domainID)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}

@@ -124,6 +124,42 @@ components:
       - root_cid
       - nodes
       type: object
+    DNSDelegation:
+      additionalProperties: false
+      properties:
+        authoritative_records:
+          items:
+            $ref: '#/components/schemas/DNSDelegationRecord'
+          type: array
+        ds:
+          type: string
+        instructions:
+          type: string
+        mode:
+          type: string
+        nameservers:
+          items:
+            type: string
+          type: array
+        parent_records:
+          items:
+            $ref: '#/components/schemas/DNSDelegationRecord'
+          type: array
+      type: object
+    DNSDelegationRecord:
+      additionalProperties: false
+      properties:
+        address:
+          type: string
+        ns:
+          type: string
+        type:
+          type: string
+        value:
+          type: string
+      required:
+      - type
+      type: object
     DomainListResponse:
       additionalProperties: false
       properties:
@@ -153,7 +189,11 @@ components:
     DomainResponse:
       additionalProperties: false
       properties:
+        delegation:
+          $ref: '#/components/schemas/DNSDelegation'
         domain:
+          type: string
+        gateway_host:
           type: string
         id:
           type: integer
@@ -4038,6 +4078,72 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error
       summary: Remove domain from website
+      tags:
+      - Websites
+      - Domains
+  /api/websites/{id}/domains/{domain_id}/dns-requirements:
+    get:
+      description: Returns the DNS records a user must publish to complete domain
+        delegation for a bound domain. For HNS this includes the DS/NS/GLUE parent
+        records (publish in the HNS wallet) and authoritative NS/TLSA records; for
+        ICANN it returns the nameservers.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          type: string
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainResponse'
+          description: Domain DNS requirements
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Get domain DNS delegation requirements
       tags:
       - Websites
       - Domains
