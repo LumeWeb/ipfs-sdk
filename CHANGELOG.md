@@ -1,3 +1,9 @@
+## 0.1.68 (2026-08-05)
+
+### Features
+
+- add DomainNamespace enum for website domain namespaces
+
 ## 0.1.67 (2026-08-05)
 
 ### Fixes
