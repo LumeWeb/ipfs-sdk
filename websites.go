@@ -25,6 +25,8 @@ type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 type DomainRequest = internalclient.DomainRequest
 type DomainResponse = internalclient.DomainResponse
 type DomainListResponse = internalclient.DomainListResponse
+type DNSDelegation = internalclient.DNSDelegation
+type DNSDelegationRecord = internalclient.DNSDelegationRecord
 
 type WebsiteValidationReason string
 
