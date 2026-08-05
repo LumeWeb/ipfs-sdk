@@ -1,3 +1,9 @@
+## 0.1.67 (2026-08-05)
+
+### Fixes
+
+- export DNSDelegation and DNSDelegationRecord types
+
 ## 0.1.66 (2026-08-05)
 
 ### Features
