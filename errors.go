@@ -29,6 +29,7 @@ const (
 	OpValidateZone
 	OpPushCert
 	OpUpdateTLSA
+	OpGetCert
 
 	// IPNS operations
 	OpListIPNSKeys
@@ -90,6 +91,7 @@ var operationString = map[int]string{
 	OpValidateZone:      "validate DNS zone",
 	OpPushCert:          "push DNS certificate",
 	OpUpdateTLSA:        "update DNS TLSA record",
+	OpGetCert:           "get DNS certificate",
 
 	// IPNS operations
 	OpListIPNSKeys:  "list IPNS keys",
@@ -266,6 +268,10 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid TLSA data"),
 		http.StatusNotFound:     notFoundErr("zone not found"),
+	},
+	OpGetCert: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("certificate not found"),
 	},
 
 	// IPNS operations

@@ -839,6 +839,87 @@ func TestDNSService_UpdateTLSA(t *testing.T) {
 	})
 }
 
+func TestDNSService_GetCert(t *testing.T) {
+	t.Run("returns stored DANE cert and key on success", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		expectedResp := &internalclient.CertGetResponse{
+			Ok:            true,
+			Domain:        "example",
+			Namespace:     "hns",
+			CertPem:       "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
+			PrivateKeyPem: "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----",
+			Tlsa:          "3 1 1 abc123",
+			OwnerName:     "_443._tcp.example.",
+		}
+
+		mockClient.EXPECT().
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			Return(&internalclient.GetInternalDnsCertDomainResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResp,
+			}, nil).
+			Once()
+
+		result, err := service.GetCert(context.Background(), "example", "hns")
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.True(t, result.Ok)
+		assert.Equal(t, expectedResp.PrivateKeyPem, result.PrivateKeyPem)
+		assert.Equal(t, expectedResp.CertPem, result.CertPem)
+		assert.Equal(t, expectedResp.Tlsa, result.Tlsa)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{}).
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.GetCert(context.Background(), "example", "")
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns ErrNotFound on 404", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			Return(&internalclient.GetInternalDnsCertDomainResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+			}, nil).
+			Once()
+
+		result, err := service.GetCert(context.Background(), "example", "hns")
+
+		assert.Error(t, err)
+		assert.ErrorIs(t, err, ErrNotFound)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			Return(&internalclient.GetInternalDnsCertDomainResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.GetCert(context.Background(), "example", "hns")
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 // mockReadCloser creates a ReadCloser from byte slice
 type mockReadCloser []byte
 
