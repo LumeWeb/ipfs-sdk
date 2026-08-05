@@ -1,3 +1,13 @@
+## 0.1.69 (2026-08-05)
+
+### Features
+
+- add GetCert to fetch persisted DANE cert and key
+
+### Fixes
+
+- map 403 Forbidden on GetCert to ErrForbidden
+
 ## 0.1.68 (2026-08-05)
 
 ### Features
