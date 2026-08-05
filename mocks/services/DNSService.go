@@ -359,6 +359,66 @@ func (_c *MockDNSService_DeleteZone_Call) RunAndReturn(run func(context.Context,
 	return _c
 }
 
+// GetCert provides a mock function with given fields: ctx, domain, namespace
+func (_m *MockDNSService) GetCert(ctx context.Context, domain string, namespace string) (*client.CertGetResponse, error) {
+	ret := _m.Called(ctx, domain, namespace)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCert")
+	}
+
+	var r0 *client.CertGetResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*client.CertGetResponse, error)); ok {
+		return rf(ctx, domain, namespace)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *client.CertGetResponse); ok {
+		r0 = rf(ctx, domain, namespace)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.CertGetResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, domain, namespace)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDNSService_GetCert_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCert'
+type MockDNSService_GetCert_Call struct {
+	*mock.Call
+}
+
+// GetCert is a helper method to define mock.On call
+//   - ctx context.Context
+//   - domain string
+//   - namespace string
+func (_e *MockDNSService_Expecter) GetCert(ctx interface{}, domain interface{}, namespace interface{}) *MockDNSService_GetCert_Call {
+	return &MockDNSService_GetCert_Call{Call: _e.mock.On("GetCert", ctx, domain, namespace)}
+}
+
+func (_c *MockDNSService_GetCert_Call) Run(run func(ctx context.Context, domain string, namespace string)) *MockDNSService_GetCert_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockDNSService_GetCert_Call) Return(_a0 *client.CertGetResponse, _a1 error) *MockDNSService_GetCert_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDNSService_GetCert_Call) RunAndReturn(run func(context.Context, string, string) (*client.CertGetResponse, error)) *MockDNSService_GetCert_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRecord provides a mock function with given fields: ctx, zoneID, name, recordType
 func (_m *MockDNSService) GetRecord(ctx context.Context, zoneID string, name string, recordType string) (*client.RecordResponse, error) {
 	ret := _m.Called(ctx, zoneID, name, recordType)

@@ -544,6 +544,81 @@ func (_c *MockDNSClientWithResponsesInterface_GetApiDnsZonesWithResponse_Call) R
 	return _c
 }
 
+// GetInternalDnsCertDomainWithResponse provides a mock function with given fields: ctx, domain, params, reqEditors
+func (_m *MockDNSClientWithResponsesInterface) GetInternalDnsCertDomainWithResponse(ctx context.Context, domain string, params *client.GetInternalDnsCertDomainParams, reqEditors ...client.RequestEditorFn) (*client.GetInternalDnsCertDomainResponse, error) {
+	_va := make([]interface{}, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, domain, params)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInternalDnsCertDomainWithResponse")
+	}
+
+	var r0 *client.GetInternalDnsCertDomainResponse
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, *client.GetInternalDnsCertDomainParams, ...client.RequestEditorFn) (*client.GetInternalDnsCertDomainResponse, error)); ok {
+		return rf(ctx, domain, params, reqEditors...)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, *client.GetInternalDnsCertDomainParams, ...client.RequestEditorFn) *client.GetInternalDnsCertDomainResponse); ok {
+		r0 = rf(ctx, domain, params, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.GetInternalDnsCertDomainResponse)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, *client.GetInternalDnsCertDomainParams, ...client.RequestEditorFn) error); ok {
+		r1 = rf(ctx, domain, params, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInternalDnsCertDomainWithResponse'
+type MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call struct {
+	*mock.Call
+}
+
+// GetInternalDnsCertDomainWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - domain string
+//   - params *client.GetInternalDnsCertDomainParams
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockDNSClientWithResponsesInterface_Expecter) GetInternalDnsCertDomainWithResponse(ctx interface{}, domain interface{}, params interface{}, reqEditors ...interface{}) *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call {
+	return &MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call{Call: _e.mock.On("GetInternalDnsCertDomainWithResponse",
+		append([]interface{}{ctx, domain, params}, reqEditors...)...)}
+}
+
+func (_c *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call) Run(run func(ctx context.Context, domain string, params *client.GetInternalDnsCertDomainParams, reqEditors ...client.RequestEditorFn)) *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		run(args[0].(context.Context), args[1].(string), args[2].(*client.GetInternalDnsCertDomainParams), variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call) Return(_a0 *client.GetInternalDnsCertDomainResponse, _a1 error) *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call) RunAndReturn(run func(context.Context, string, *client.GetInternalDnsCertDomainParams, ...client.RequestEditorFn) (*client.GetInternalDnsCertDomainResponse, error)) *MockDNSClientWithResponsesInterface_GetInternalDnsCertDomainWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PostApiDnsZonesIdRecordsBulkDeleteWithResponse provides a mock function with given fields: ctx, id, body, reqEditors
 func (_m *MockDNSClientWithResponsesInterface) PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx context.Context, id string, body client.BulkDeleteRequest, reqEditors ...client.RequestEditorFn) (*client.PostApiDnsZonesIdRecordsBulkDeleteResponse, error) {
 	_va := make([]interface{}, len(reqEditors))

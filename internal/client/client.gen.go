@@ -93,11 +93,23 @@ type BulkRecordsResponse struct {
 	Records []RecordResponse `json:"records"`
 }
 
+// CertGetResponse defines model for CertGetResponse.
+type CertGetResponse struct {
+	CertPem       string `json:"cert_pem"`
+	Domain        string `json:"domain"`
+	Namespace     string `json:"namespace"`
+	Ok            bool   `json:"ok"`
+	OwnerName     string `json:"owner_name"`
+	PrivateKeyPem string `json:"private_key_pem"`
+	Tlsa          string `json:"tlsa"`
+}
+
 // CertPushRequest defines model for CertPushRequest.
 type CertPushRequest struct {
-	CertPem   string `json:"cert_pem"`
-	Domain    string `json:"domain"`
-	Namespace string `json:"namespace"`
+	CertPem       string `json:"cert_pem"`
+	Domain        string `json:"domain"`
+	Namespace     string `json:"namespace"`
+	PrivateKeyPem string `json:"private_key_pem"`
 }
 
 // CertPushResponse defines model for CertPushResponse.
@@ -585,6 +597,12 @@ type PatchApiUploadTusIdParams struct {
 	UploadOffset map[string]interface{} `json:"Upload-Offset"`
 }
 
+// GetInternalDnsCertDomainParams defines parameters for GetInternalDnsCertDomain.
+type GetInternalDnsCertDomainParams struct {
+	// Namespace Namespace: hns or icann
+	Namespace *string `form:"namespace,omitempty" json:"namespace,omitempty"`
+}
+
 // GetPinsParams defines parameters for GetPins.
 type GetPinsParams struct {
 	// After Filter for pins created after this ISO 8601 timestamp. Example: 2024-01-01T00:00:00Z
@@ -914,6 +932,9 @@ type ClientInterface interface {
 	PostInternalDnsCertWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostInternalDnsCert(ctx context.Context, body PostInternalDnsCertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetInternalDnsCertDomain request
+	GetInternalDnsCertDomain(ctx context.Context, domain string, params *GetInternalDnsCertDomainParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostInternalDnsTlsaWithBody request with any body
 	PostInternalDnsTlsaWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1724,6 +1745,18 @@ func (c *Client) PostInternalDnsCertWithBody(ctx context.Context, contentType st
 
 func (c *Client) PostInternalDnsCert(ctx context.Context, body PostInternalDnsCertJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostInternalDnsCertRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetInternalDnsCertDomain(ctx context.Context, domain string, params *GetInternalDnsCertDomainParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetInternalDnsCertDomainRequest(c.Server, domain, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3995,6 +4028,62 @@ func NewPostInternalDnsCertRequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
+// NewGetInternalDnsCertDomainRequest generates requests for GetInternalDnsCertDomain
+func NewGetInternalDnsCertDomainRequest(server string, domain string, params *GetInternalDnsCertDomainParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "domain", domain, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/dns/cert/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Namespace != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "namespace", *params.Namespace, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostInternalDnsTlsaRequest calls the generic PostInternalDnsTlsa builder with application/json body
 func NewPostInternalDnsTlsaRequest(server string, body PostInternalDnsTlsaJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -4969,6 +5058,9 @@ type ClientWithResponsesInterface interface {
 	PostInternalDnsCertWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInternalDnsCertResponse, error)
 
 	PostInternalDnsCertWithResponse(ctx context.Context, body PostInternalDnsCertJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInternalDnsCertResponse, error)
+
+	// GetInternalDnsCertDomainWithResponse request
+	GetInternalDnsCertDomainWithResponse(ctx context.Context, domain string, params *GetInternalDnsCertDomainParams, reqEditors ...RequestEditorFn) (*GetInternalDnsCertDomainResponse, error)
 
 	// PostInternalDnsTlsaWithBodyWithResponse request with any body
 	PostInternalDnsTlsaWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInternalDnsTlsaResponse, error)
@@ -6403,6 +6495,34 @@ func (r PostInternalDnsCertResponse) StatusCode() int {
 	return 0
 }
 
+type GetInternalDnsCertDomainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *CertGetResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetInternalDnsCertDomainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetInternalDnsCertDomainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostInternalDnsTlsaResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7457,6 +7577,15 @@ func (c *ClientWithResponses) PostInternalDnsCertWithResponse(ctx context.Contex
 		return nil, err
 	}
 	return ParsePostInternalDnsCertResponse(rsp)
+}
+
+// GetInternalDnsCertDomainWithResponse request returning *GetInternalDnsCertDomainResponse
+func (c *ClientWithResponses) GetInternalDnsCertDomainWithResponse(ctx context.Context, domain string, params *GetInternalDnsCertDomainParams, reqEditors ...RequestEditorFn) (*GetInternalDnsCertDomainResponse, error) {
+	rsp, err := c.GetInternalDnsCertDomain(ctx, domain, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetInternalDnsCertDomainResponse(rsp)
 }
 
 // PostInternalDnsTlsaWithBodyWithResponse request with arbitrary body returning *PostInternalDnsTlsaResponse
@@ -10791,6 +10920,74 @@ func ParsePostInternalDnsCertResponse(rsp *http.Response) (*PostInternalDnsCertR
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest CertPushResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetInternalDnsCertDomainResponse parses an HTTP response from a GetInternalDnsCertDomainWithResponse call
+func ParseGetInternalDnsCertDomainResponse(rsp *http.Response) (*GetInternalDnsCertDomainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetInternalDnsCertDomainResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest CertGetResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

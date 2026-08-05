@@ -24,6 +24,7 @@ type BulkDeleteRequest = dnsreq.BulkDeleteRequest
 // DNS cert/TLSA types from generated client
 type CertPushRequest = internalclient.CertPushRequest
 type CertPushResponse = internalclient.CertPushResponse
+type CertGetResponse = internalclient.CertGetResponse
 type TLSAUpdateRequest = internalclient.TLSAUpdateRequest
 
 // DNSConfig holds configuration for DNS service operations
@@ -86,6 +87,10 @@ type DNSService interface {
 	// Certificate/TLSA management (internal endpoints for Caddy)
 	PushCert(ctx context.Context, req CertPushRequest) (*CertPushResponse, error)
 	UpdateTLSA(ctx context.Context, req TLSAUpdateRequest) (*CertPushResponse, error)
+
+	// GetCert fetches an existing DANE certificate + key for a domain. Returns a
+	// not-found error when the portal has no stored identity yet.
+	GetCert(ctx context.Context, domain string, namespace string) (*CertGetResponse, error)
 }
 
 // dnsService implements DNSService using the generated internal client
@@ -489,6 +494,42 @@ func (s *dnsService) PushCert(ctx context.Context, req CertPushRequest) (*CertPu
 
 		if resp.JSON200 == nil {
 			return ErrBadRequest(opsString(OpPushCert) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetCert fetches an existing DANE certificate and key for a domain.
+// This is an internal endpoint typically called by Caddy so it can re-issue a
+// certificate around a persisted key (stable SPKI). Returns ErrNotFound when
+// the portal has no stored identity for the domain yet.
+func (s *dnsService) GetCert(ctx context.Context, domain string, namespace string) (*CertGetResponse, error) {
+	var result *CertGetResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		params := internalclient.GetInternalDnsCertDomainParams{}
+		if namespace != "" {
+			params.Namespace = &namespace
+		}
+
+		resp, err := s.client.GetInternalDnsCertDomainWithResponse(ctx, domain, &params)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpGetCert, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpGetCert) + " no response data")
 		}
 
 		result = resp.JSON200

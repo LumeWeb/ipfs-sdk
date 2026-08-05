@@ -73,6 +73,7 @@ type DNSClientWithResponsesInterface interface {
 	PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx context.Context, id string, body dnsreq.BulkDeleteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkDeleteResponse, error)
 	PostInternalDnsCertWithResponse(ctx context.Context, body internalclient.CertPushRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsCertResponse, error)
 	PostInternalDnsTlsaWithResponse(ctx context.Context, body internalclient.TLSAUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsTlsaResponse, error)
+	GetInternalDnsCertDomainWithResponse(ctx context.Context, domain string, params *internalclient.GetInternalDnsCertDomainParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalDnsCertDomainResponse, error)
 }
 
 // internalClientToDNSAdapter adapts internalclient.ClientWithResponses to DNSClientWithResponsesInterface
@@ -138,6 +139,10 @@ func (a *internalClientToDNSAdapter) PostInternalDnsCertWithResponse(ctx context
 
 func (a *internalClientToDNSAdapter) PostInternalDnsTlsaWithResponse(ctx context.Context, body internalclient.TLSAUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsTlsaResponse, error) {
 	return a.client.PostInternalDnsTlsaWithResponse(ctx, body, reqEditors...)
+}
+
+func (a *internalClientToDNSAdapter) GetInternalDnsCertDomainWithResponse(ctx context.Context, domain string, params *internalclient.GetInternalDnsCertDomainParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalDnsCertDomainResponse, error) {
+	return a.client.GetInternalDnsCertDomainWithResponse(ctx, domain, params, reqEditors...)
 }
 
 // ConvertClientToDNS converts a ClientWithResponses to DNSClientWithResponsesInterface

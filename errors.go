@@ -29,6 +29,7 @@ const (
 	OpValidateZone
 	OpPushCert
 	OpUpdateTLSA
+	OpGetCert
 
 	// IPNS operations
 	OpListIPNSKeys
@@ -90,6 +91,7 @@ var operationString = map[int]string{
 	OpValidateZone:      "validate DNS zone",
 	OpPushCert:          "push DNS certificate",
 	OpUpdateTLSA:        "update DNS TLSA record",
+	OpGetCert:           "get DNS certificate",
 
 	// IPNS operations
 	OpListIPNSKeys:  "list IPNS keys",
@@ -141,6 +143,10 @@ var (
 	// ErrNotFound is returned when a requested resource is not found.
 	ErrNotFound = errors.New("not found")
 
+	// ErrForbidden is returned when the caller is authenticated but not
+	// authorized for the requested resource (e.g. another domain's private key).
+	ErrForbidden = errors.New("forbidden")
+
 	// ErrGone is returned when a resource exists but is in a deleted or broken state.
 	ErrGone = errors.New("gone")
 
@@ -174,6 +180,11 @@ func authErr(msg string) errorFactory {
 // notFoundErr creates an error factory that wraps with ErrNotFound.
 func notFoundErr(msg string) errorFactory {
 	return errorFactory{wrapErr: true, sentinel: ErrNotFound, message: msg}
+}
+
+// forbiddenErr creates an error factory that wraps with ErrForbidden.
+func forbiddenErr(msg string) errorFactory {
+	return errorFactory{wrapErr: true, sentinel: ErrForbidden, message: msg}
 }
 
 // goneErr creates an error factory that wraps with ErrGone.
@@ -266,6 +277,11 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid TLSA data"),
 		http.StatusNotFound:     notFoundErr("zone not found"),
+	},
+	OpGetCert: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusForbidden:    forbiddenErr("not authorized for this domain"),
+		http.StatusNotFound:     notFoundErr("certificate not found"),
 	},
 
 	// IPNS operations

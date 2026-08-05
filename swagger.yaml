@@ -64,6 +64,32 @@ components:
       required:
       - records
       type: object
+    CertGetResponse:
+      additionalProperties: false
+      properties:
+        cert_pem:
+          type: string
+        domain:
+          type: string
+        namespace:
+          type: string
+        ok:
+          type: boolean
+        owner_name:
+          type: string
+        private_key_pem:
+          type: string
+        tlsa:
+          type: string
+      required:
+      - ok
+      - domain
+      - namespace
+      - private_key_pem
+      - cert_pem
+      - tlsa
+      - owner_name
+      type: object
     CertPushRequest:
       additionalProperties: false
       properties:
@@ -73,10 +99,13 @@ components:
           type: string
         namespace:
           type: string
+        private_key_pem:
+          type: string
       required:
       - domain
       - namespace
       - cert_pem
+      - private_key_pem
       type: object
     CertPushResponse:
       additionalProperties: false
@@ -4382,6 +4411,69 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error
       summary: Push certificate and receive TLSA
+      tags:
+      - Gateway
+      - DNS
+  /internal/dns/cert/{domain}:
+    get:
+      description: Internal endpoint for Caddy to fetch the stored DANE key/cert.
+        Returns 404 if none exists yet.
+      parameters:
+      - description: Domain to fetch
+        in: path
+        name: domain
+        required: true
+        schema:
+          type: string
+      - description: 'Namespace: hns or icann'
+        in: query
+        name: namespace
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CertGetResponse'
+          description: Existing DANE key and cert
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Fetch existing DANE certificate and key
       tags:
       - Gateway
       - DNS
