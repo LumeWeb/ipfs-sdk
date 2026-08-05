@@ -57,6 +57,7 @@ const (
 	OpBindWebsiteDomain
 	OpUnbindWebsiteDomain
 	OpVerifyWebsiteDomain
+	OpDNSRequirementsWebsiteDomain
 
 	// Pinning operations
 	OpListPins
@@ -100,23 +101,24 @@ var operationString = map[int]string{
 	OpResolveIPNS:   "resolve IPNS name",
 
 	// Websites operations
-	OpListWebsites:    "list websites",
-	OpGetWebsite:      "get website",
-	OpCreateWebsite:   "create website",
-	OpUpdateWebsite:   "update website",
-	OpDeleteWebsite:   "delete website",
-	OpValidateWebsite:          "validate website",
-	OpGetSSLStatus:             "get SSL status",
-	OpUpdateSSLStatusInternal:  "update SSL status internal",
-	OpGetGatewayWebsite:        "get gateway website",
-	OpGetGatewayWebsiteStatus:  "get gateway website status",
-	OpGetWebsiteConfig:          "get website config",
+	OpListWebsites:            "list websites",
+	OpGetWebsite:              "get website",
+	OpCreateWebsite:           "create website",
+	OpUpdateWebsite:           "update website",
+	OpDeleteWebsite:           "delete website",
+	OpValidateWebsite:         "validate website",
+	OpGetSSLStatus:            "get SSL status",
+	OpUpdateSSLStatusInternal: "update SSL status internal",
+	OpGetGatewayWebsite:       "get gateway website",
+	OpGetGatewayWebsiteStatus: "get gateway website status",
+	OpGetWebsiteConfig:        "get website config",
 
 	// Website domain binding operations
-	OpListWebsiteDomains:   "list website domains",
-	OpBindWebsiteDomain:    "bind website domain",
-	OpUnbindWebsiteDomain:  "unbind website domain",
-	OpVerifyWebsiteDomain: "verify website domain",
+	OpListWebsiteDomains:           "list website domains",
+	OpBindWebsiteDomain:            "bind website domain",
+	OpUnbindWebsiteDomain:          "unbind website domain",
+	OpVerifyWebsiteDomain:          "verify website domain",
+	OpDNSRequirementsWebsiteDomain: "get domain DNS requirements",
 
 	// Pinning operations
 	OpListPins:  "list pins",
@@ -356,6 +358,10 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusNotFound:     notFoundErr("domain or website not found"),
 		http.StatusBadRequest:   plainErr("verification failed"),
+	},
+	OpDNSRequirementsWebsiteDomain: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("domain or website not found"),
 	},
 	OpGetGatewayWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),

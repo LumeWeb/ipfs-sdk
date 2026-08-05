@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.lumeweb.com/ipfs-sdk/internal/client"
-	"go.lumeweb.com/ipfs-sdk/mocks"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+	"go.lumeweb.com/ipfs-sdk/mocks"
 )
 
 func TestNewWebsitesService(t *testing.T) {
@@ -1466,6 +1466,87 @@ func TestWebsitesService_VerifyDomain(t *testing.T) {
 			Once()
 
 		result, err := service.VerifyDomain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
+	t.Run("returns delegation records", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		ds := "lumeweb. 3600 IN DS 12345 13 2 <digest>"
+		expectedResponse := &client.DomainResponse{
+			Id:          1,
+			Domain:      "lumeweb",
+			Namespace:   "hns",
+			Status:      strPtr("records_generated"),
+			ZoneName:    strPtr("lumeweb."),
+			GatewayHost: strPtr("gateway.lumeweb.com"),
+			Delegation: &client.DNSDelegation{
+				Mode:         strPtr("delegated"),
+				Instructions: strPtr("Publish parent_records in your HNS wallet."),
+				Ds:           strPtr(ds),
+				ParentRecords: &[]client.DNSDelegationRecord{
+					{Type: "NS", Value: strPtr("ns1.lumeweb,ns2.lumeweb")},
+					{Type: "DS", Value: strPtr(ds)},
+				},
+				AuthoritativeRecords: &[]client.DNSDelegationRecord{
+					{Type: "NS", Value: strPtr("ns1.lumeweb\nns2.lumeweb")},
+					{Type: "TLSA", Value: strPtr("_443._tcp.lumeweb. 3 1 1 <sha256>")},
+				},
+			},
+		}
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(mock.Anything, "1", "1").
+			Return(&client.GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.GetDomainDNSRequirements(context.Background(), "1", "1")
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.NotNil(t, result.Delegation)
+		assert.Equal(t, "hns", result.Namespace)
+		assert.Equal(t, strPtr("gateway.lumeweb.com"), result.GatewayHost)
+		assert.Equal(t, strPtr("delegated"), result.Delegation.Mode)
+		assert.Equal(t, strPtr(ds), result.Delegation.Ds)
+		require.NotNil(t, result.Delegation.ParentRecords)
+		assert.Len(t, *result.Delegation.ParentRecords, 2)
+		assert.Equal(t, "TLSA", (*result.Delegation.AuthoritativeRecords)[1].Type)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(mock.Anything, "1", "1").
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.GetDomainDNSRequirements(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(mock.Anything, "1", "1").
+			Return(&client.GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.GetDomainDNSRequirements(context.Background(), "1", "1")
 
 		require.Error(t, err)
 		assert.Nil(t, result)
