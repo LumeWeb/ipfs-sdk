@@ -139,7 +139,6 @@ type DAGResponse struct {
 type DNSDelegation struct {
 	AuthoritativeRecords *[]DNSDelegationRecord `json:"authoritative_records,omitempty"`
 	Ds                   *string                `json:"ds,omitempty"`
-	Instructions         *string                `json:"instructions,omitempty"`
 	Mode                 *string                `json:"mode,omitempty"`
 	Nameservers          *[]string              `json:"nameservers,omitempty"`
 	ParentRecords        *[]DNSDelegationRecord `json:"parent_records,omitempty"`
@@ -173,6 +172,7 @@ type DomainResponse struct {
 	GatewayHost *string        `json:"gateway_host,omitempty"`
 	Id          int            `json:"id"`
 	Namespace   string         `json:"namespace"`
+	Ssl         *SSLStatusInfo `json:"ssl,omitempty"`
 	Status      *string        `json:"status,omitempty"`
 	ZoneName    *string        `json:"zone_name,omitempty"`
 }

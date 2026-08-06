@@ -162,8 +162,6 @@ components:
           type: array
         ds:
           type: string
-        instructions:
-          type: string
         mode:
           type: string
         nameservers:
@@ -228,6 +226,8 @@ components:
           type: integer
         namespace:
           type: string
+        ssl:
+          $ref: '#/components/schemas/SSLStatusInfo'
         status:
           type: string
         zone_name:
