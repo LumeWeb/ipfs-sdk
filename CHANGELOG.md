@@ -1,3 +1,9 @@
+## 0.1.70 (2026-08-06)
+
+### Fixes
+
+- sync swagger from deployed ipfs service
+
 ## 0.1.69 (2026-08-05)
 
 ### Features
