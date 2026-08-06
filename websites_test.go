@@ -1486,7 +1486,6 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 			GatewayHost: strPtr("gateway.lumeweb.com"),
 			Delegation: &client.DNSDelegation{
 				Mode:         strPtr("delegated"),
-				Instructions: strPtr("Publish parent_records in your HNS wallet."),
 				Ds:           strPtr(ds),
 				ParentRecords: &[]client.DNSDelegationRecord{
 					{Type: "NS", Value: strPtr("ns1.lumeweb,ns2.lumeweb")},
