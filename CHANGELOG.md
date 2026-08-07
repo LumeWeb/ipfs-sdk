@@ -1,3 +1,9 @@
+## 0.1.71 (2026-08-07)
+
+### Features
+
+- add RepublishDANE for DANE TLSA force-republish
+
 ## 0.1.70 (2026-08-06)
 
 ### Fixes
