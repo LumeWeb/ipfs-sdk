@@ -23,6 +23,7 @@ type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 
 // Domain types for website domain binding
 type DomainRequest = internalclient.DomainRequest
+type DomainUpdateRequest = internalclient.DomainUpdateRequest
 type DomainResponse = internalclient.DomainResponse
 type DomainListResponse = internalclient.DomainListResponse
 type DomainDANERepublishResponse = internalclient.DomainDANERepublishResponse
@@ -123,6 +124,9 @@ type WebsitesClientWithResponsesInterface interface {
 	// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse forces re-publication
 	// of a bound domain's DANE records (TLSA) into the managed authoritative zone.
 	PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)
+	// PatchApiWebsitesIdDomainsDomainIdWithResponse updates a bound domain's
+	// per-domain DNS control (dns_hosting_enabled and/or primary).
+	PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body internalclient.DomainUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PatchApiWebsitesIdDomainsDomainIdResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -199,6 +203,10 @@ func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsDomainIdDaneRe
 	return a.client.PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx, id, domainId, reqEditors...)
 }
 
+func (a *internalClientToWebsitesAdapter) PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body internalclient.DomainUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PatchApiWebsitesIdDomainsDomainIdResponse, error) {
+	return a.client.PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx, id, domainId, body, reqEditors...)
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -245,6 +253,11 @@ type WebsitesService interface {
 	ListDomains(ctx context.Context, websiteID string) ([]DomainResponse, error)
 	// BindDomain binds a domain to a website under a specific namespace (icann or hns)
 	BindDomain(ctx context.Context, websiteID string, req DomainRequest) (*DomainResponse, error)
+	// UpdateDomain updates a bound domain's per-domain DNS control - whether the
+	// portal manages DNS hosting for this binding (dns_hosting_enabled) and/or
+	// whether it is the website's primary (apex) binding. Omitted fields are
+	// left unchanged.
+	UpdateDomain(ctx context.Context, websiteID string, domainID string, req DomainUpdateRequest) (*DomainResponse, error)
 	// UnbindDomain removes a domain binding from a website
 	UnbindDomain(ctx context.Context, websiteID string, domainID string) error
 	// VerifyDomain triggers verification of domain delegation
@@ -722,6 +735,37 @@ func (s *websitesService) BindDomain(ctx context.Context, websiteID string, req 
 		}
 
 		result = resp.JSON201
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+// UpdateDomain updates a bound domain's per-domain DNS control - whether the
+// portal manages DNS hosting for this binding (dns_hosting_enabled) and/or
+// whether it is the website's primary (apex) binding. Omitted fields are left
+// unchanged.
+func (s *websitesService) UpdateDomain(ctx context.Context, websiteID string, domainID string, req DomainUpdateRequest) (*DomainResponse, error) {
+	var result *DomainResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx, websiteID, domainID, req)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpUpdateWebsiteDomain, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpUpdateWebsiteDomain) + " no response data for domain " + domainID)
+		}
+
+		result = resp.JSON200
 		return nil
 	})
 	if err != nil {

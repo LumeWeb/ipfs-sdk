@@ -182,14 +182,21 @@ type DomainRequest struct {
 
 // DomainResponse defines model for DomainResponse.
 type DomainResponse struct {
-	Delegation  *DNSDelegation `json:"delegation,omitempty"`
-	Domain      string         `json:"domain"`
-	GatewayHost *string        `json:"gateway_host,omitempty"`
-	Id          int            `json:"id"`
-	Namespace   string         `json:"namespace"`
-	Ssl         *SSLStatusInfo `json:"ssl,omitempty"`
-	Status      *string        `json:"status,omitempty"`
-	ZoneName    *string        `json:"zone_name,omitempty"`
+	Delegation        *DNSDelegation `json:"delegation,omitempty"`
+	DnsHostingEnabled *bool          `json:"dns_hosting_enabled,omitempty"`
+	Domain            string         `json:"domain"`
+	GatewayHost       *string        `json:"gateway_host,omitempty"`
+	Id                int            `json:"id"`
+	Namespace         string         `json:"namespace"`
+	Ssl               *SSLStatusInfo `json:"ssl,omitempty"`
+	Status            *string        `json:"status,omitempty"`
+	ZoneName          *string        `json:"zone_name,omitempty"`
+}
+
+// DomainUpdateRequest defines model for DomainUpdateRequest.
+type DomainUpdateRequest struct {
+	DnsHostingEnabled *bool `json:"dns_hosting_enabled,omitempty"`
+	Primary           *bool `json:"primary,omitempty"`
 }
 
 // ErrorDetail defines model for ErrorDetail.
@@ -684,6 +691,9 @@ type PutApiWebsitesIdJSONRequestBody = WebsiteUpdateRequest
 // PostApiWebsitesIdDomainsJSONRequestBody defines body for PostApiWebsitesIdDomains for application/json ContentType.
 type PostApiWebsitesIdDomainsJSONRequestBody = DomainRequest
 
+// PatchApiWebsitesIdDomainsDomainIdJSONRequestBody defines body for PatchApiWebsitesIdDomainsDomainId for application/json ContentType.
+type PatchApiWebsitesIdDomainsDomainIdJSONRequestBody = DomainUpdateRequest
+
 // PostInternalDnsCertJSONRequestBody defines body for PostInternalDnsCert for application/json ContentType.
 type PostInternalDnsCertJSONRequestBody = CertPushRequest
 
@@ -933,6 +943,11 @@ type ClientInterface interface {
 
 	// DeleteApiWebsitesIdDomainsDomainId request
 	DeleteApiWebsitesIdDomainsDomainId(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PatchApiWebsitesIdDomainsDomainIdWithBody request with any body
+	PatchApiWebsitesIdDomainsDomainIdWithBody(ctx context.Context, id string, domainId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PatchApiWebsitesIdDomainsDomainId(ctx context.Context, id string, domainId string, body PatchApiWebsitesIdDomainsDomainIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostApiWebsitesIdDomainsDomainIdDaneRepublish request
 	PostApiWebsitesIdDomainsDomainIdDaneRepublish(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1703,6 +1718,30 @@ func (c *Client) PostApiWebsitesIdDomains(ctx context.Context, id string, body P
 
 func (c *Client) DeleteApiWebsitesIdDomainsDomainId(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteApiWebsitesIdDomainsDomainIdRequest(c.Server, id, domainId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchApiWebsitesIdDomainsDomainIdWithBody(ctx context.Context, id string, domainId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchApiWebsitesIdDomainsDomainIdRequestWithBody(c.Server, id, domainId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PatchApiWebsitesIdDomainsDomainId(ctx context.Context, id string, domainId string, body PatchApiWebsitesIdDomainsDomainIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPatchApiWebsitesIdDomainsDomainIdRequest(c.Server, id, domainId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -3902,6 +3941,60 @@ func NewDeleteApiWebsitesIdDomainsDomainIdRequest(server string, id string, doma
 	return req, nil
 }
 
+// NewPatchApiWebsitesIdDomainsDomainIdRequest calls the generic PatchApiWebsitesIdDomainsDomainId builder with application/json body
+func NewPatchApiWebsitesIdDomainsDomainIdRequest(server string, id string, domainId string, body PatchApiWebsitesIdDomainsDomainIdJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPatchApiWebsitesIdDomainsDomainIdRequestWithBody(server, id, domainId, "application/json", bodyReader)
+}
+
+// NewPatchApiWebsitesIdDomainsDomainIdRequestWithBody generates requests for PatchApiWebsitesIdDomainsDomainId with any type of body
+func NewPatchApiWebsitesIdDomainsDomainIdRequestWithBody(server string, id string, domainId string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "domain_id", domainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/websites/%s/domains/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostApiWebsitesIdDomainsDomainIdDaneRepublishRequest generates requests for PostApiWebsitesIdDomainsDomainIdDaneRepublish
 func NewPostApiWebsitesIdDomainsDomainIdDaneRepublishRequest(server string, id string, domainId string) (*http.Request, error) {
 	var err error
@@ -5115,6 +5208,11 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteApiWebsitesIdDomainsDomainIdWithResponse request
 	DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*DeleteApiWebsitesIdDomainsDomainIdResponse, error)
+
+	// PatchApiWebsitesIdDomainsDomainIdWithBodyWithResponse request with any body
+	PatchApiWebsitesIdDomainsDomainIdWithBodyWithResponse(ctx context.Context, id string, domainId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchApiWebsitesIdDomainsDomainIdResponse, error)
+
+	PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body PatchApiWebsitesIdDomainsDomainIdJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchApiWebsitesIdDomainsDomainIdResponse, error)
 
 	// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse request
 	PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)
@@ -6457,6 +6555,34 @@ func (r DeleteApiWebsitesIdDomainsDomainIdResponse) StatusCode() int {
 	return 0
 }
 
+type PatchApiWebsitesIdDomainsDomainIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DomainResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PatchApiWebsitesIdDomainsDomainIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PatchApiWebsitesIdDomainsDomainIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7635,6 +7761,23 @@ func (c *ClientWithResponses) DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx
 		return nil, err
 	}
 	return ParseDeleteApiWebsitesIdDomainsDomainIdResponse(rsp)
+}
+
+// PatchApiWebsitesIdDomainsDomainIdWithBodyWithResponse request with arbitrary body returning *PatchApiWebsitesIdDomainsDomainIdResponse
+func (c *ClientWithResponses) PatchApiWebsitesIdDomainsDomainIdWithBodyWithResponse(ctx context.Context, id string, domainId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchApiWebsitesIdDomainsDomainIdResponse, error) {
+	rsp, err := c.PatchApiWebsitesIdDomainsDomainIdWithBody(ctx, id, domainId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchApiWebsitesIdDomainsDomainIdResponse(rsp)
+}
+
+func (c *ClientWithResponses) PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body PatchApiWebsitesIdDomainsDomainIdJSONRequestBody, reqEditors ...RequestEditorFn) (*PatchApiWebsitesIdDomainsDomainIdResponse, error) {
+	rsp, err := c.PatchApiWebsitesIdDomainsDomainId(ctx, id, domainId, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePatchApiWebsitesIdDomainsDomainIdResponse(rsp)
 }
 
 // PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse request returning *PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse
@@ -10764,6 +10907,74 @@ func ParseDeleteApiWebsitesIdDomainsDomainIdResponse(rsp *http.Response) (*Delet
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePatchApiWebsitesIdDomainsDomainIdResponse parses an HTTP response from a PatchApiWebsitesIdDomainsDomainIdWithResponse call
+func ParsePatchApiWebsitesIdDomainsDomainIdResponse(rsp *http.Response) (*PatchApiWebsitesIdDomainsDomainIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PatchApiWebsitesIdDomainsDomainIdResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DomainResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
