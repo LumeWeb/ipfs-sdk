@@ -56,6 +56,7 @@ const (
 	// Website domain binding operations
 	OpListWebsiteDomains
 	OpBindWebsiteDomain
+	OpUpdateWebsiteDomain
 	OpUnbindWebsiteDomain
 	OpVerifyWebsiteDomain
 	OpDNSRequirementsWebsiteDomain
@@ -119,6 +120,7 @@ var operationString = map[int]string{
 	// Website domain binding operations
 	OpListWebsiteDomains:           "list website domains",
 	OpBindWebsiteDomain:            "bind website domain",
+	OpUpdateWebsiteDomain:          "update website domain",
 	OpUnbindWebsiteDomain:          "unbind website domain",
 	OpVerifyWebsiteDomain:          "verify website domain",
 	OpDNSRequirementsWebsiteDomain: "get domain DNS requirements",
@@ -367,6 +369,12 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusBadRequest:   plainErr("invalid domain data"),
 		http.StatusNotFound:     notFoundErr("website not found"),
 		http.StatusConflict:     plainErr("domain already bound"),
+	},
+	OpUpdateWebsiteDomain: {
+		http.StatusUnauthorized:        authErr("authentication required"),
+		http.StatusBadRequest:          plainErr("invalid request"),
+		http.StatusNotFound:            notFoundErr("domain or website not found"),
+		http.StatusUnprocessableEntity: plainErr("validation failed"),
 	},
 	OpUnbindWebsiteDomain: {
 		http.StatusUnauthorized: authErr("authentication required"),

@@ -982,6 +982,10 @@ func strPtr(s string) *string {
 	return &s
 }
 
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 func TestSentinels_ErrNotFound(t *testing.T) {
 	t.Run("GetWebsite 404 wraps ErrNotFound", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
@@ -1383,6 +1387,78 @@ func TestWebsitesService_BindDomain(t *testing.T) {
 	})
 }
 
+func TestWebsitesService_UpdateDomain(t *testing.T) {
+	t.Run("updates domain successfully", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedResponse := &client.DomainResponse{
+			Id:                1,
+			Domain:            "example.com",
+			Namespace:         "icann",
+			DnsHostingEnabled: boolPtr(true),
+		}
+
+		updateReq := client.DomainUpdateRequest{
+			DnsHostingEnabled: boolPtr(true),
+		}
+
+		mockClient.EXPECT().
+			PatchApiWebsitesIdDomainsDomainIdWithResponse(mock.Anything, "1", "1", mock.AnythingOfType("client.DomainUpdateRequest")).
+			Return(&client.PatchApiWebsitesIdDomainsDomainIdResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.UpdateDomain(context.Background(), "1", "1", DomainUpdateRequest(updateReq))
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedResponse.Id, result.Id)
+		assert.Equal(t, "example.com", result.Domain)
+		assert.Equal(t, true, *result.DnsHostingEnabled)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		updateReq := client.DomainUpdateRequest{
+			DnsHostingEnabled: boolPtr(true),
+		}
+
+		mockClient.EXPECT().
+			PatchApiWebsitesIdDomainsDomainIdWithResponse(mock.Anything, "1", "1", mock.AnythingOfType("client.DomainUpdateRequest")).
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.UpdateDomain(context.Background(), "1", "1", DomainUpdateRequest(updateReq))
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		updateReq := client.DomainUpdateRequest{
+			DnsHostingEnabled: boolPtr(true),
+		}
+
+		mockClient.EXPECT().
+			PatchApiWebsitesIdDomainsDomainIdWithResponse(mock.Anything, "1", "1", mock.AnythingOfType("client.DomainUpdateRequest")).
+			Return(&client.PatchApiWebsitesIdDomainsDomainIdResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.UpdateDomain(context.Background(), "1", "1", DomainUpdateRequest(updateReq))
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 func TestWebsitesService_UnbindDomain(t *testing.T) {
 	t.Run("unbinds domain successfully", func(t *testing.T) {
 		service, mockClient := testWebsitesDomainService(t)
@@ -1485,8 +1561,8 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 			ZoneName:    strPtr("lumeweb."),
 			GatewayHost: strPtr("gateway.lumeweb.com"),
 			Delegation: &client.DNSDelegation{
-				Mode:         strPtr("delegated"),
-				Ds:           strPtr(ds),
+				Mode: strPtr("delegated"),
+				Ds:   strPtr(ds),
 				ParentRecords: &[]client.DNSDelegationRecord{
 					{Type: "NS", Value: strPtr("ns1.lumeweb,ns2.lumeweb")},
 					{Type: "DS", Value: strPtr(ds)},

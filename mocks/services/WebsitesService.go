@@ -1078,6 +1078,86 @@ func (_c *MockWebsitesService_Update_Call) RunAndReturn(run func(ctx context.Con
 	return _c
 }
 
+// UpdateDomain provides a mock function for the type MockWebsitesService
+func (_mock *MockWebsitesService) UpdateDomain(ctx context.Context, websiteID string, domainID string, req ipfs.DomainUpdateRequest) (*ipfs.DomainResponse, error) {
+	ret := _mock.Called(ctx, websiteID, domainID, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateDomain")
+	}
+
+	var r0 *ipfs.DomainResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ipfs.DomainUpdateRequest) (*ipfs.DomainResponse, error)); ok {
+		return returnFunc(ctx, websiteID, domainID, req)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ipfs.DomainUpdateRequest) *ipfs.DomainResponse); ok {
+		r0 = returnFunc(ctx, websiteID, domainID, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.DomainResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ipfs.DomainUpdateRequest) error); ok {
+		r1 = returnFunc(ctx, websiteID, domainID, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesService_UpdateDomain_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateDomain'
+type MockWebsitesService_UpdateDomain_Call struct {
+	*mock.Call
+}
+
+// UpdateDomain is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+//   - domainID string
+//   - req ipfs.DomainUpdateRequest
+func (_e *MockWebsitesService_Expecter) UpdateDomain(ctx any, websiteID any, domainID any, req any) *MockWebsitesService_UpdateDomain_Call {
+	return &MockWebsitesService_UpdateDomain_Call{Call: _e.mock.On("UpdateDomain", ctx, websiteID, domainID, req)}
+}
+
+func (_c *MockWebsitesService_UpdateDomain_Call) Run(run func(ctx context.Context, websiteID string, domainID string, req ipfs.DomainUpdateRequest)) *MockWebsitesService_UpdateDomain_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 ipfs.DomainUpdateRequest
+		if args[3] != nil {
+			arg3 = args[3].(ipfs.DomainUpdateRequest)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_UpdateDomain_Call) Return(v *ipfs.DomainResponse, err error) *MockWebsitesService_UpdateDomain_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockWebsitesService_UpdateDomain_Call) RunAndReturn(run func(ctx context.Context, websiteID string, domainID string, req ipfs.DomainUpdateRequest) (*ipfs.DomainResponse, error)) *MockWebsitesService_UpdateDomain_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateSSLStatusInternal provides a mock function for the type MockWebsitesService
 func (_mock *MockWebsitesService) UpdateSSLStatusInternal(ctx context.Context, domain string, sslStatus ipfs.SSLStatusUpdateRequest) error {
 	ret := _mock.Called(ctx, domain, sslStatus)
