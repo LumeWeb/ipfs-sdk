@@ -1,3 +1,9 @@
+## 0.1.73 (2026-08-07)
+
+### Features
+
+- add dnssec/dnssec_error to DNSDelegation from live spec
+
 ## 0.1.72 (2026-08-07)
 
 ### Features
