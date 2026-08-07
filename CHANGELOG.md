@@ -1,3 +1,9 @@
+## 0.1.72 (2026-08-07)
+
+### Features
+
+- add UpdateDomain for per-domain DNS control
+
 ## 0.1.71 (2026-08-07)
 
 ### Features
