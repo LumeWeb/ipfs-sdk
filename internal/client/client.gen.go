@@ -152,6 +152,21 @@ type DNSDelegationRecord struct {
 	Value   *string `json:"value,omitempty"`
 }
 
+// DomainDANERepublishResponse defines model for DomainDANERepublishResponse.
+type DomainDANERepublishResponse struct {
+	Delegation  *DNSDelegation `json:"delegation,omitempty"`
+	Domain      string         `json:"domain"`
+	GatewayHost *string        `json:"gateway_host,omitempty"`
+	Id          int            `json:"id"`
+	Namespace   string         `json:"namespace"`
+	OwnerName   *string        `json:"owner_name,omitempty"`
+	Ssl         *SSLStatusInfo `json:"ssl,omitempty"`
+	Status      *string        `json:"status,omitempty"`
+	TlsaRdata   *string        `json:"tlsa_rdata,omitempty"`
+	TlsaRecord  *string        `json:"tlsa_record,omitempty"`
+	ZoneName    *string        `json:"zone_name,omitempty"`
+}
+
 // DomainListResponse defines model for DomainListResponse.
 type DomainListResponse struct {
 	Data  []DomainResponse `json:"data"`
@@ -919,6 +934,9 @@ type ClientInterface interface {
 	// DeleteApiWebsitesIdDomainsDomainId request
 	DeleteApiWebsitesIdDomainsDomainId(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostApiWebsitesIdDomainsDomainIdDaneRepublish request
+	PostApiWebsitesIdDomainsDomainIdDaneRepublish(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetApiWebsitesIdDomainsDomainIdDnsRequirements request
 	GetApiWebsitesIdDomainsDomainIdDnsRequirements(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1685,6 +1703,18 @@ func (c *Client) PostApiWebsitesIdDomains(ctx context.Context, id string, body P
 
 func (c *Client) DeleteApiWebsitesIdDomainsDomainId(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteApiWebsitesIdDomainsDomainIdRequest(c.Server, id, domainId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostApiWebsitesIdDomainsDomainIdDaneRepublish(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiWebsitesIdDomainsDomainIdDaneRepublishRequest(c.Server, id, domainId)
 	if err != nil {
 		return nil, err
 	}
@@ -3872,6 +3902,47 @@ func NewDeleteApiWebsitesIdDomainsDomainIdRequest(server string, id string, doma
 	return req, nil
 }
 
+// NewPostApiWebsitesIdDomainsDomainIdDaneRepublishRequest generates requests for PostApiWebsitesIdDomainsDomainIdDaneRepublish
+func NewPostApiWebsitesIdDomainsDomainIdDaneRepublishRequest(server string, id string, domainId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "domain_id", domainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/websites/%s/domains/%s/dane/republish", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetApiWebsitesIdDomainsDomainIdDnsRequirementsRequest generates requests for GetApiWebsitesIdDomainsDomainIdDnsRequirements
 func NewGetApiWebsitesIdDomainsDomainIdDnsRequirementsRequest(server string, id string, domainId string) (*http.Request, error) {
 	var err error
@@ -5044,6 +5115,9 @@ type ClientWithResponsesInterface interface {
 
 	// DeleteApiWebsitesIdDomainsDomainIdWithResponse request
 	DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*DeleteApiWebsitesIdDomainsDomainIdResponse, error)
+
+	// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse request
+	PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)
 
 	// GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse request
 	GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse, error)
@@ -6383,6 +6457,34 @@ func (r DeleteApiWebsitesIdDomainsDomainIdResponse) StatusCode() int {
 	return 0
 }
 
+type PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DomainDANERepublishResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -7533,6 +7635,15 @@ func (c *ClientWithResponses) DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx
 		return nil, err
 	}
 	return ParseDeleteApiWebsitesIdDomainsDomainIdResponse(rsp)
+}
+
+// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse request returning *PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse
+func (c *ClientWithResponses) PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error) {
+	rsp, err := c.PostApiWebsitesIdDomainsDomainIdDaneRepublish(ctx, id, domainId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostApiWebsitesIdDomainsDomainIdDaneRepublishResponse(rsp)
 }
 
 // GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse request returning *GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse
@@ -10653,6 +10764,74 @@ func ParseDeleteApiWebsitesIdDomainsDomainIdResponse(rsp *http.Response) (*Delet
 	}
 
 	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostApiWebsitesIdDomainsDomainIdDaneRepublishResponse parses an HTTP response from a PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse call
+func ParsePostApiWebsitesIdDomainsDomainIdDaneRepublishResponse(rsp *http.Response) (*PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DomainDANERepublishResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest ErrorResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {

@@ -908,6 +908,99 @@ func (_c *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesDomainWith
 	return _c
 }
 
+// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
+func (_mock *MockWebsitesClientWithResponsesInterface) PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]any, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []any
+	_ca = append(_ca, ctx, id, domainId)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse")
+	}
+
+	var r0 *client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)); ok {
+		return returnFunc(ctx, id, domainId, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) *client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse); ok {
+		r0 = returnFunc(ctx, id, domainId, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, id, domainId, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse'
+type MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call struct {
+	*mock.Call
+}
+
+// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - domainId string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockWebsitesClientWithResponsesInterface_Expecter) PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx any, id any, domainId any, reqEditors ...any) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call {
+	return &MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call{Call: _e.mock.On("PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse",
+		append([]any{ctx, id, domainId}, reqEditors...)...)}
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call) Run(run func(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn)) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call) Return(postApiWebsitesIdDomainsDomainIdDaneRepublishResponse *client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, err error) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call {
+	_c.Call.Return(postApiWebsitesIdDomainsDomainIdDaneRepublishResponse, err)
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PostApiWebsitesIdDomainsDomainIdVerifyWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
 func (_mock *MockWebsitesClientWithResponsesInterface) PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdVerifyResponse, error) {
 	// client.RequestEditorFn

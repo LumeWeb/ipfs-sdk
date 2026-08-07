@@ -59,6 +59,7 @@ const (
 	OpUnbindWebsiteDomain
 	OpVerifyWebsiteDomain
 	OpDNSRequirementsWebsiteDomain
+	OpRepublishDomainDANE
 
 	// Pinning operations
 	OpListPins
@@ -121,6 +122,7 @@ var operationString = map[int]string{
 	OpUnbindWebsiteDomain:          "unbind website domain",
 	OpVerifyWebsiteDomain:          "verify website domain",
 	OpDNSRequirementsWebsiteDomain: "get domain DNS requirements",
+	OpRepublishDomainDANE:          "republish domain DANE records",
 
 	// Pinning operations
 	OpListPins:  "list pins",
@@ -378,6 +380,12 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpDNSRequirementsWebsiteDomain: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusNotFound:     notFoundErr("domain or website not found"),
+	},
+	OpRepublishDomainDANE: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusNotFound:     notFoundErr("domain or website not found"),
+		http.StatusBadRequest:   plainErr("invalid request"),
+		http.StatusConflict:     plainErr("no DANE records to republish (no stored certificate or managed zone)"),
 	},
 	OpGetGatewayWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),

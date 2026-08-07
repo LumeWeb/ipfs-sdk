@@ -25,6 +25,7 @@ type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 type DomainRequest = internalclient.DomainRequest
 type DomainResponse = internalclient.DomainResponse
 type DomainListResponse = internalclient.DomainListResponse
+type DomainDANERepublishResponse = internalclient.DomainDANERepublishResponse
 type DNSDelegation = internalclient.DNSDelegation
 type DNSDelegationRecord = internalclient.DNSDelegationRecord
 
@@ -119,6 +120,9 @@ type WebsitesClientWithResponsesInterface interface {
 	DeleteApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWebsitesIdDomainsDomainIdResponse, error)
 	PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdVerifyResponse, error)
 	GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse, error)
+	// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse forces re-publication
+	// of a bound domain's DANE records (TLSA) into the managed authoritative zone.
+	PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -191,6 +195,10 @@ func (a *internalClientToWebsitesAdapter) GetApiWebsitesIdDomainsDomainIdDnsRequ
 	return a.client.GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx, id, domainId, reqEditors...)
 }
 
+func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error) {
+	return a.client.PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx, id, domainId, reqEditors...)
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -244,6 +252,11 @@ type WebsitesService interface {
 	// GetDomainDNSRequirements returns the DNS records (DS/NS/GLUE/TLSA parent +
 	// authoritative) a user must publish to complete delegation for a bound domain.
 	GetDomainDNSRequirements(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error)
+	// RepublishDANE forces re-publication of a bound domain's DANE records (the
+	// _443._tcp.<domain> TLSA RRset) into the managed authoritative zone. Use this
+	// to recover a TLSA that was deleted or went missing and wasn't re-published
+	// by cert renewal.
+	RepublishDANE(ctx context.Context, websiteID string, domainID string) (*DomainDANERepublishResponse, error)
 }
 
 type websitesService struct {
@@ -779,6 +792,37 @@ func (s *websitesService) GetDomainDNSRequirements(ctx context.Context, websiteI
 
 		if resp.JSON200 == nil {
 			return ErrBadRequest(opsString(OpDNSRequirementsWebsiteDomain) + " no response data for domain " + domainID)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+// RepublishDANE forces re-publication of a bound domain's DANE records (the
+// _443._tcp.<domain> TLSA RRset) into the managed authoritative zone. It is the
+// operator escape hatch for recovering a TLSA that was deleted or went missing
+// and was not re-published by cert renewal.
+func (s *websitesService) RepublishDANE(ctx context.Context, websiteID string, domainID string) (*DomainDANERepublishResponse, error) {
+	var result *DomainDANERepublishResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx, websiteID, domainID)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpRepublishDomainDANE, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpRepublishDomainDANE) + " no response data for domain " + domainID)
 		}
 
 		result = resp.JSON200

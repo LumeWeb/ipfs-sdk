@@ -855,6 +855,80 @@ func (_c *MockWebsitesService_ListDomains_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// RepublishDANE provides a mock function for the type MockWebsitesService
+func (_mock *MockWebsitesService) RepublishDANE(ctx context.Context, websiteID string, domainID string) (*ipfs.DomainDANERepublishResponse, error) {
+	ret := _mock.Called(ctx, websiteID, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RepublishDANE")
+	}
+
+	var r0 *ipfs.DomainDANERepublishResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*ipfs.DomainDANERepublishResponse, error)); ok {
+		return returnFunc(ctx, websiteID, domainID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *ipfs.DomainDANERepublishResponse); ok {
+		r0 = returnFunc(ctx, websiteID, domainID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.DomainDANERepublishResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, websiteID, domainID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesService_RepublishDANE_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RepublishDANE'
+type MockWebsitesService_RepublishDANE_Call struct {
+	*mock.Call
+}
+
+// RepublishDANE is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+//   - domainID string
+func (_e *MockWebsitesService_Expecter) RepublishDANE(ctx any, websiteID any, domainID any) *MockWebsitesService_RepublishDANE_Call {
+	return &MockWebsitesService_RepublishDANE_Call{Call: _e.mock.On("RepublishDANE", ctx, websiteID, domainID)}
+}
+
+func (_c *MockWebsitesService_RepublishDANE_Call) Run(run func(ctx context.Context, websiteID string, domainID string)) *MockWebsitesService_RepublishDANE_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_RepublishDANE_Call) Return(v *ipfs.DomainDANERepublishResponse, err error) *MockWebsitesService_RepublishDANE_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockWebsitesService_RepublishDANE_Call) RunAndReturn(run func(ctx context.Context, websiteID string, domainID string) (*ipfs.DomainDANERepublishResponse, error)) *MockWebsitesService_RepublishDANE_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UnbindDomain provides a mock function for the type MockWebsitesService
 func (_mock *MockWebsitesService) UnbindDomain(ctx context.Context, websiteID string, domainID string) error {
 	ret := _mock.Called(ctx, websiteID, domainID)
