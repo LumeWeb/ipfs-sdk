@@ -1395,7 +1395,7 @@ func TestWebsitesService_UpdateDomain(t *testing.T) {
 			Id:                1,
 			Domain:            "example.com",
 			Namespace:         "icann",
-			DnsHostingEnabled: boolPtr(true),
+			DnsHostingEnabled: true,
 		}
 
 		updateReq := client.DomainUpdateRequest{
@@ -1416,7 +1416,7 @@ func TestWebsitesService_UpdateDomain(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedResponse.Id, result.Id)
 		assert.Equal(t, "example.com", result.Domain)
-		assert.Equal(t, true, *result.DnsHostingEnabled)
+		assert.Equal(t, true, result.DnsHostingEnabled)
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
@@ -1561,8 +1561,9 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 			ZoneName:    strPtr("lumeweb."),
 			GatewayHost: strPtr("gateway.lumeweb.com"),
 			Delegation: &client.DNSDelegation{
-				Mode: strPtr("delegated"),
-				Ds:   strPtr(ds),
+				Mode:        strPtr("delegated"),
+				Dnssec:      strPtr("enabled"),
+				DnssecError: nil,
 				ParentRecords: &[]client.DNSDelegationRecord{
 					{Type: "NS", Value: strPtr("ns1.lumeweb,ns2.lumeweb")},
 					{Type: "DS", Value: strPtr(ds)},
@@ -1590,7 +1591,7 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 		assert.Equal(t, "hns", result.Namespace)
 		assert.Equal(t, strPtr("gateway.lumeweb.com"), result.GatewayHost)
 		assert.Equal(t, strPtr("delegated"), result.Delegation.Mode)
-		assert.Equal(t, strPtr(ds), result.Delegation.Ds)
+		assert.Equal(t, strPtr("enabled"), result.Delegation.Dnssec)
 		require.NotNil(t, result.Delegation.ParentRecords)
 		assert.Len(t, *result.Delegation.ParentRecords, 2)
 		assert.Equal(t, "TLSA", (*result.Delegation.AuthoritativeRecords)[1].Type)

@@ -160,7 +160,9 @@ components:
           items:
             $ref: '#/components/schemas/DNSDelegationRecord'
           type: array
-        ds:
+        dnssec:
+          type: string
+        dnssec_error:
           type: string
         mode:
           type: string
@@ -243,14 +245,6 @@ components:
       - domain
       - namespace
       type: object
-    DomainUpdateRequest:
-      additionalProperties: false
-      properties:
-        dns_hosting_enabled:
-          type: boolean
-        primary:
-          type: boolean
-      type: object
     DomainResponse:
       additionalProperties: false
       properties:
@@ -276,6 +270,15 @@ components:
       - id
       - domain
       - namespace
+      - dns_hosting_enabled
+      type: object
+    DomainUpdateRequest:
+      additionalProperties: false
+      properties:
+        dns_hosting_enabled:
+          type: boolean
+        primary:
+          type: boolean
       type: object
     ErrorDetail:
       additionalProperties: false
@@ -885,6 +888,8 @@ components:
           type: boolean
         domain:
           type: string
+        namespace:
+          type: string
         target_hash:
           type: string
         target_type:
@@ -958,6 +963,8 @@ components:
         dns_hosting_enabled:
           type: boolean
         domain:
+          type: string
+        namespace:
           type: string
         target_hash:
           type: string
@@ -4092,11 +4099,68 @@ paths:
       - Websites
       - Domains
   /api/websites/{id}/domains/{domain_id}:
+    delete:
+      description: Removes a domain binding from a website.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          type: string
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Domain deleted
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Remove domain from website
+      tags:
+      - Websites
+      - Domains
     patch:
-      description: Updates a bound domain's per-domain DNS control - whether the
-        portal manages DNS hosting for this binding (dns_hosting_enabled) and/or
-        whether it is the website's primary (apex) binding. Omitted fields are
-        left unchanged.
+      description: 'Updates a bound domain''s per-domain DNS control: whether the
+        portal manages DNS hosting for this binding (dns_hosting_enabled) and/or whether
+        it is the website''s primary (apex) binding. Omitted fields are left unchanged.'
       parameters:
       - description: Domain ID
         in: path
@@ -4161,64 +4225,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error
       summary: Update domain DNS control
-      tags:
-      - Websites
-      - Domains
-    delete:
-      description: Removes a domain binding from a website.
-      parameters:
-      - description: Domain ID
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          type: string
-      - description: Website ID
-        in: path
-        name: id
-        required: true
-        schema:
-          type: string
-      responses:
-        "204":
-          description: Domain deleted
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Not found
-        "422":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Validation failed
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal server error
-      summary: Remove domain from website
       tags:
       - Websites
       - Domains

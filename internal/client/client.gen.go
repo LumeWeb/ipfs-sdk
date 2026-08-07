@@ -138,7 +138,8 @@ type DAGResponse struct {
 // DNSDelegation defines model for DNSDelegation.
 type DNSDelegation struct {
 	AuthoritativeRecords *[]DNSDelegationRecord `json:"authoritative_records,omitempty"`
-	Ds                   *string                `json:"ds,omitempty"`
+	Dnssec               *string                `json:"dnssec,omitempty"`
+	DnssecError          *string                `json:"dnssec_error,omitempty"`
 	Mode                 *string                `json:"mode,omitempty"`
 	Nameservers          *[]string              `json:"nameservers,omitempty"`
 	ParentRecords        *[]DNSDelegationRecord `json:"parent_records,omitempty"`
@@ -183,7 +184,7 @@ type DomainRequest struct {
 // DomainResponse defines model for DomainResponse.
 type DomainResponse struct {
 	Delegation        *DNSDelegation `json:"delegation,omitempty"`
-	DnsHostingEnabled *bool          `json:"dns_hosting_enabled,omitempty"`
+	DnsHostingEnabled bool           `json:"dns_hosting_enabled"`
 	Domain            string         `json:"domain"`
 	GatewayHost       *string        `json:"gateway_host,omitempty"`
 	Id                int            `json:"id"`
@@ -482,10 +483,11 @@ type WebsiteItemResponse struct {
 
 // WebsiteRequest defines model for WebsiteRequest.
 type WebsiteRequest struct {
-	DnsHostingEnabled *bool  `json:"dns_hosting_enabled,omitempty"`
-	Domain            string `json:"domain"`
-	TargetHash        string `json:"target_hash"`
-	TargetType        string `json:"target_type"`
+	DnsHostingEnabled *bool   `json:"dns_hosting_enabled,omitempty"`
+	Domain            string  `json:"domain"`
+	Namespace         *string `json:"namespace,omitempty"`
+	TargetHash        string  `json:"target_hash"`
+	TargetType        string  `json:"target_type"`
 }
 
 // WebsiteResponse defines model for WebsiteResponse.
@@ -515,6 +517,7 @@ type WebsiteResponse struct {
 type WebsiteUpdateRequest struct {
 	DnsHostingEnabled *bool   `json:"dns_hosting_enabled,omitempty"`
 	Domain            *string `json:"domain,omitempty"`
+	Namespace         *string `json:"namespace,omitempty"`
 	TargetHash        *string `json:"target_hash,omitempty"`
 	TargetType        *string `json:"target_type,omitempty"`
 }
