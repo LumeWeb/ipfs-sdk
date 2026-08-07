@@ -1563,3 +1563,65 @@ func TestDomainNamespaceOf(t *testing.T) {
 		assert.Equal(t, DomainNamespace(""), DomainNamespaceOf(nil))
 	})
 }
+
+func TestWebsitesService_RepublishDANE(t *testing.T) {
+	t.Run("returns republish result", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedResponse := &client.DomainDANERepublishResponse{
+			Id:         1,
+			Domain:     "lumeweb",
+			Namespace:  "hns",
+			TlsaRdata:  strPtr("3 1 1 <sha256>"),
+			OwnerName:  strPtr("_443._tcp.lumeweb"),
+			TlsaRecord: strPtr("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"),
+		}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.RepublishDANE(context.Background(), "1", "1")
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, "hns", result.Namespace)
+		assert.Equal(t, strPtr("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"), result.TlsaRecord)
+		assert.Equal(t, strPtr("_443._tcp.lumeweb"), result.OwnerName)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(mock.Anything, "1", "1").
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.RepublishDANE(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.RepublishDANE(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
