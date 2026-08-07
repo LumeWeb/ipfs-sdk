@@ -1,58 +1,60 @@
-unroll-variadic: true
-filename: "{{.InterfaceName}}.go"
 include-auto-generated: true
+template: testify
+template-data:
+  unroll-variadic: true
+filename: "{{.InterfaceName}}.go"
 packages:
   go.lumeweb.com/ipfs-sdk:
     config:
       dir: ./mocks
-      outpkg: mocks
+      pkgname: mocks
     interfaces:
       BlockMetaClient: {}
-      DNSClientWithResponsesInterface: {}
-      IPNSClientWithResponsesInterface: {}
-      WebsitesClientWithResponsesInterface: {}
       DAGClientWithResponsesInterface: {}
-      DNSService:
-        config:
-          dir: ./mocks/services
-          outpkg: servicemocks
-      IPNSService:
-        config:
-          dir: ./mocks/services
-          outpkg: servicemocks
-      PinningService:
-        config:
-          dir: ./mocks/services
-          outpkg: servicemocks
-      WebsitesService:
-        config:
-          dir: ./mocks/services
-          outpkg: servicemocks
       DAGService:
         config:
           dir: ./mocks/services
-          outpkg: servicemocks
-  go.lumeweb.com/ipfs-sdk/internal/download:
-    config:
-      dir: ./mocks
-      outpkg: mocks
-    interfaces:
-      Backend: {}
-      Blockstore: {}
+          pkgname: servicemocks
+      DNSClientWithResponsesInterface: {}
+      DNSService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
+      IPNSClientWithResponsesInterface: {}
+      IPNSService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
+      PinningService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
+      WebsitesClientWithResponsesInterface: {}
+      WebsitesService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
   go.lumeweb.com/ipfs-sdk/fs:
     config:
       dir: ./mocks
-      outpkg: mocks
+      pkgname: mocks
     interfaces:
-      File: {}
-      FileInfo: {}
-      Node: {}
       DirEntry: {}
       DirIterator: {}
       Directory: {}
+      File: {}
+      FileInfo: {}
+      Node: {}
+  go.lumeweb.com/ipfs-sdk/internal/download:
+    config:
+      dir: ./mocks
+      pkgname: mocks
+    interfaces:
+      Backend: {}
+      Blockstore: {}
   go.lumeweb.com/ipfs-sdk/internal/testing:
     config:
       dir: ./internal/testing/mocks
-      outpkg: testingmocks
+      pkgname: testingmocks
     interfaces:
       Blockstore: {}
