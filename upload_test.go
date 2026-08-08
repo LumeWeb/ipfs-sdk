@@ -16,13 +16,11 @@ import (
 	"github.com/docker/go-units"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	"github.com/tus/tusd/v2/pkg/handler"
 	"github.com/tus/tusd/v2/pkg/memorylocker"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	"go.lumeweb.com/ipfs-sdk/internal/tusstore"
 )
-
-
 
 func TestNewUploadService(t *testing.T) {
 	t.Run("creates service with default endpoint", func(t *testing.T) {
@@ -183,7 +181,6 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 	})
 }
 
-
 func TestUploadService_Upload_Success(t *testing.T) {
 	t.Run("uploads data successfully via TUS", func(t *testing.T) {
 		server, _, _ := setupTUSTest(t)
@@ -341,8 +338,8 @@ func TestUploadService_GetUploadStatus(t *testing.T) {
 
 		// First create an upload
 		info := handler.FileInfo{
-			Size:      100,
-			MetaData:  map[string]string{"filename": "test.txt"},
+			Size:     100,
+			MetaData: map[string]string{"filename": "test.txt"},
 		}
 		upload, err := store.NewUpload(ctx, info)
 		require.NoError(t, err)
@@ -436,8 +433,8 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 
 		// First create an upload with partial data
 		info := handler.FileInfo{
-			Size:      100,
-			MetaData:  map[string]string{"filename": "test.txt"},
+			Size:     100,
+			MetaData: map[string]string{"filename": "test.txt"},
 		}
 		upload, err := store.NewUpload(ctx, info)
 		require.NoError(t, err)
@@ -465,6 +462,7 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.NotNil(t, result)
+		assert.Equal(t, location, result.Location)
 	})
 
 	t.Run("returns error when location is empty", func(t *testing.T) {
@@ -525,7 +523,7 @@ func TestTUSUploadSizeValidationRegression(t *testing.T) {
 		// Create test data slightly larger than the SDK's initial chunk size (2MB)
 		// to trigger the two-phase upload path
 		initialChunkSize := int64(2 * 1024 * 1024) // 2MB (SDK's initial chunk size)
-		remainingSize := int64(100 * 1024)        // 100KB
+		remainingSize := int64(100 * 1024)         // 100KB
 		totalSize := initialChunkSize + remainingSize
 
 		data := bytes.Repeat([]byte("A"), int(totalSize))
@@ -587,11 +585,13 @@ func TestUploadService_IntegrationCompleteFlow(t *testing.T) {
 		result, err := service.Upload(ctx, bytes.NewReader(testData), testName, testSize)
 		require.NoError(t, err)
 		require.Equal(t, int64(len(testData)), result.Size)
+		require.NotEmpty(t, result.Location)
 
-		// 2. Cancel upload
-		// Since UploadResult doesn't include Location, we can't cancel the upload
-		// This test demonstrates the complete upload flow
+		// 2. The returned location can be used to manage the upload.
+		status, err := service.GetUploadStatus(ctx, result.Location)
 		require.NoError(t, err)
+		require.NotNil(t, status)
+		require.NoError(t, service.CancelUpload(ctx, result.Location))
 	})
 }
 
@@ -717,7 +717,7 @@ func TestUploadFromFS(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.NotEmpty(t, result.CID)
 	})
- t.Run("respects opts uploadLimit", func(t *testing.T) {
+	t.Run("respects opts uploadLimit", func(t *testing.T) {
 		// Regression test: opts.UploadLimit should be used, not ignored
 		server, _, store := setupTUSTest(t)
 		defer server.Close()
@@ -747,7 +747,8 @@ func TestUploadFromFS(t *testing.T) {
 		// Verify TUS was used (not POST) by checking that an upload was stored
 		// If POST was used incorrectly, upload would fail on invalid URL
 		assert.Greater(t, store.GetUploadCount(), 0, "should have at least 1 TUS upload when opts.UploadLimit is 1")
-	})}
+	})
+}
 
 func TestUploadBytes(t *testing.T) {
 	t.Run("uploads bytes via TUS for large content", func(t *testing.T) {
@@ -820,7 +821,7 @@ func TestUploadBytes(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Greater(t, result.Size, int64(0))
 	})
- t.Run("uses TUS when CAR size exceeds upload limit", func(t *testing.T) {
+	t.Run("uses TUS when CAR size exceeds upload limit", func(t *testing.T) {
 		// Regression test: opts.UploadLimit should control routing (not service default)
 		// CAR size (~216 bytes) > opts.UploadLimit (1 byte) should route to TUS
 		server, _, _ := setupTUSTest(t)
@@ -847,7 +848,7 @@ func TestUploadBytes(t *testing.T) {
 		// Upload succeeded - routing to TUS was correct
 		// POST would have failed because it doesn't have a proper upload endpoint
 	})
- t.Run("uses POST when CAR size is under upload limit", func(t *testing.T) {
+	t.Run("uses POST when CAR size is under upload limit", func(t *testing.T) {
 		// Regression test: verify opts.UploadLimit works for POST routing too
 		server := setupPOSTTest(t)
 		defer server.Close()
@@ -876,38 +877,38 @@ func TestUploadFile(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-upload-*.txt")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
-	
+
 	content := "Hello, this is a test file for UploadFile!"
 	_, err = tmpFile.WriteString(content)
 	require.NoError(t, err)
 	tmpFile.Close()
-	
+
 	// Reopen the file
 	file, err := os.Open(tmpFile.Name())
 	require.NoError(t, err)
 	defer file.Close()
-	
+
 	// Create an upload service in test mode
 	// In a real test, you'd mock the HTTP client or use a test server
 	// For now, we'll just verify the method exists and accepts the right parameters
-	
+
 	svc := &UploadService{}
 	ctx := context.Background()
-	
+
 	// This would normally upload the file. Instead, we verify the method
 	// signature is correct and it properly wraps the file in SingleFileFS.
 	// The actual upload logic would be tested via integration tests with a mock server.
-	
+
 	// Verify the method exists and types match
 	opts := &UploadOptions{
 		MemoryLimit: 100 * 1024 * 1024,
 	}
-	
+
 	// This will fail to actually upload (no valid endpoint), but verifies
 	// the method signature is correct and the wrapping logic works.
 	// In a proper test environment, you'd set up a test HTTP server.
 	_, _ = svc.UploadFile(ctx, file, "test.txt", opts)
-	
+
 	// If we got here without panic, the method signature is correct
 }
 
@@ -915,30 +916,30 @@ func TestUploadFile(t *testing.T) {
 func TestUploadFileWithFS(t *testing.T) {
 	// This test verifies the internal behavior of UploadFile
 	// by checking that it properly wraps files for UploadFromFS
-	
+
 	content := strings.Repeat("test content ", 100)
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	require.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
-	
+
 	_, err = tmpFile.WriteString(content)
 	require.NoError(t, err)
 	tmpFile.Close()
-	
+
 	file, err := os.Open(tmpFile.Name())
 	require.NoError(t, err)
 	defer file.Close()
-	
+
 	// Verify file can be read as fs.File
 	_, err = file.Read(make([]byte, 10))
 	require.NoError(t, err)
-	
+
 	// Verify we can stat the file
 	stat, err := file.Stat()
 	require.NoError(t, err)
 	require.NotNil(t, stat)
 	require.False(t, stat.IsDir())
-	
+
 	// Verify we can seek
 	_, err = file.Seek(0, 0)
 	require.NoError(t, err)
@@ -948,7 +949,7 @@ func TestUploadFileWithFS(t *testing.T) {
 func TestUploadFileSetsWrapInDirFalse(t *testing.T) {
 	// This test verifies the internal logic that UploadFile sets
 	// WrapInDir to false for single file uploads
-	
+
 	// We can't easily test this directly without exposing internals,
 	// but we can verify the design intent by documentation
 	// The UploadFile method should always set WrapInDir=false

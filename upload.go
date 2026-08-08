@@ -19,9 +19,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"go.lumeweb.com/ipfs-content/car"
 	"go.lumeweb.com/ipfs-content/unixfs"
+	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
-	go_fs "go.lumeweb.com/ipfs-sdk/fs"
 )
 
 const maxRedirectHops = 5
@@ -38,6 +38,7 @@ func unwrapErrReader(r io.Reader) (error, bool) {
 	}
 	return nil, false
 }
+
 // StreamToPipe runs a blocking function in a goroutine that writes to a pipe.
 // This allows you to generate data (e.g., CAR files) without blocking the calling
 // thread. The pipe reader is returned immediately for consumption.
@@ -47,7 +48,7 @@ func unwrapErrReader(r io.Reader) (error, bool) {
 // stream the output as it's being generated.
 func StreamToPipe(fn func(io.Writer) error) io.ReadCloser {
 	pr, pw := io.Pipe()
-	
+
 	go func() {
 		err := fn(pw)
 		if err != nil {
@@ -56,7 +57,7 @@ func StreamToPipe(fn func(io.Writer) error) io.ReadCloser {
 			_ = pw.Close()
 		}
 	}()
-	
+
 	return pr
 }
 
@@ -112,11 +113,11 @@ func (t UploadDataType) String() string {
 
 // UploadService provides file upload functionality using TUS and HTTP POST.
 type UploadService struct {
-	httpClient    *http.Client
-	baseURL       string
-	authToken     string
-	tusEndpoint   string
-	uploadLimit   int64
+	httpClient  *http.Client
+	baseURL     string
+	authToken   string
+	tusEndpoint string
+	uploadLimit int64
 }
 
 // ChunkerStrategy is the DAG layout strategy for UnixFS node generation.
@@ -207,10 +208,10 @@ func WithHTTPClient(client *http.Client) UploadServiceOption {
 	return func(s *UploadService) {
 		if client != nil {
 			wrappedClient := &http.Client{
-				Timeout: client.Timeout,
+				Timeout:       client.Timeout,
 				CheckRedirect: client.CheckRedirect,
-				Jar: client.Jar,
-				Transport: httputil.NewAuthRoundTripper(getTransport(client), s.authToken),
+				Jar:           client.Jar,
+				Transport:     httputil.NewAuthRoundTripper(getTransport(client), s.authToken),
 			}
 			s.httpClient = wrappedClient
 		}
@@ -228,7 +229,6 @@ func getTransport(client *http.Client) http.RoundTripper {
 	}
 	return client.Transport
 }
-
 
 // WithTUSEndpoint sets a custom TUS endpoint URL.
 func WithTUSEndpoint(endpoint string) UploadServiceOption {
@@ -249,12 +249,12 @@ type TokenAwareTransport interface {
 	SetAuthToken(token string)
 }
 
-
 // UploadResult contains the result of an upload operation.
 type UploadResult struct {
-	CID     string  // The content identifier
-	Size    int64   // UnixFS logical file size (the actual file size users expect)
-	DAGSize int64   // Raw size of all blocks in the DAG
+	CID      string // The content identifier
+	Size     int64  // UnixFS logical file size (the actual file size users expect)
+	DAGSize  int64  // Raw size of all blocks in the DAG
+	Location string // The TUS upload location, when resumable upload was used
 }
 
 // UploadResultInfo is the result of querying upload status by identifier.
@@ -445,14 +445,14 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 
 	// Create upload on server and send initial data to initialize multipart upload
 	upload := &tusgo.Upload{}
-	
+
 	// For certain backends, we need to use CreateUploadWithData to initialize the upload
 	// Send initial chunk with default 2MB chunk size
 	const initialChunkSize = 2 * units.MiB
-	
+
 	var initialChunk []byte
 	var n int
-	
+
 	// Calculate how much to read in initial chunk (don't exceed file size)
 	readSize := int64(min(initialChunkSize, size))
 
@@ -460,20 +460,20 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 		initialChunk = make([]byte, readSize)
 		var readErr error
 		n, readErr = io.ReadFull(reader, initialChunk)
-		
+
 		// If we hit EOF or ErrUnexpectedEOF, it means the reader has less data than claimed
 		if readErr == io.EOF || readErr == io.ErrUnexpectedEOF {
 			return nil, fmt.Errorf("upload incomplete: reader ended after %d bytes, expected %d bytes", n, size)
 		}
-		
+
 		if readErr != nil {
 			return nil, fmt.Errorf("failed to read initial chunk: %w", readErr)
 		}
-		
+
 		// Slice to actual bytes read
 		initialChunk = initialChunk[:n]
 	}
-	
+
 	// Create upload with initial data (required for some backends)
 	// The server will initialize the multipart upload with this request
 	uploadedBytes, resp, err := tusClient.CreateUploadWithData(upload, initialChunk, size, false, metadata)
@@ -483,13 +483,14 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TUS upload: %w", err)
 	}
-	
+
 	// If the entire file was uploaded in the initial request, return early
 	if int64(n) == size {
 		return &UploadResult{
-			CID:     "", // Will be filled by the server response
-			Size:    getUploadResultSize(unixFSSize, uploadedBytes),
-			DAGSize: dagSize,
+			CID:      "", // Will be filled by the server response
+			Size:     getUploadResultSize(unixFSSize, uploadedBytes),
+			DAGSize:  dagSize,
+			Location: upload.Location,
 		}, nil
 	}
 
@@ -512,9 +513,10 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 	}
 
 	return &UploadResult{
-		CID:     "", // Will be filled by the server response
-		Size:    getUploadResultSize(unixFSSize, totalWritten),
-		DAGSize: dagSize,
+		CID:      "", // Will be filled by the server response
+		Size:     getUploadResultSize(unixFSSize, totalWritten),
+		DAGSize:  dagSize,
+		Location: upload.Location,
 	}, nil
 }
 
@@ -781,9 +783,10 @@ func (s *UploadService) ResumeUpload(ctx context.Context, location string, reade
 	}
 
 	return &UploadResult{
-		CID:     "", // Will be filled by the server response
-		Size:    upload.RemoteOffset + written,
-		DAGSize: 0, // Not available for non-CAR uploads
+		CID:      "", // Will be filled by the server response
+		Size:     upload.RemoteOffset + written,
+		DAGSize:  0, // Not available for non-CAR uploads
+		Location: upload.Location,
 	}, nil
 }
 
@@ -867,11 +870,11 @@ func (s *UploadService) UploadBytes(ctx context.Context, data []byte, filename s
 func (s *UploadService) UploadFile(ctx context.Context, file fs.File, filename string, opts *UploadOptions) (*UploadResult, error) {
 	// Wrap the file in a SingleFileFS
 	filesystem := go_fs.NewSingleFileFS(file, filename)
-	
+
 	// Ensure opts is not nil and set WrapInDir=false for single file
 	if opts == nil {
 		opts = &UploadOptions{}
 	}
-	
+
 	return s.UploadFromFS(ctx, filesystem, filename, opts)
 }
