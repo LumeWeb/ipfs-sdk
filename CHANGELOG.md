@@ -1,3 +1,9 @@
+## 0.1.74 (2026-08-08)
+
+### Features
+
+- [verified] preserve TUS upload location in results
+
 ## 0.1.73 (2026-08-07)
 
 ### Features
