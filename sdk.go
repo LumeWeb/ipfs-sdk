@@ -393,6 +393,12 @@ func (c *Client) rebuildInternalGen() error {
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
 	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
 	c.dag = NewDAGService(ConvertClientToDAG(internalGen), WithDAGRetry(c.retry))
+	// Re-wire the download service's blockMeta client so metadata queries
+	// (FileSize, BlockSize, File) reflect the new auth token; otherwise the
+	// download request editor captured the original token at construction.
+	if c.download != nil {
+		c.download.SetBlockMetaClient(internalGen)
+	}
 
 	return nil
 }

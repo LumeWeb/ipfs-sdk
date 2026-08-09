@@ -1555,8 +1555,8 @@ func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 500; j++ {
 				tok := service.AuthToken()
-				if tok != "" && !strings.HasPrefix(tok, "token-") {
-					t.Errorf("torn token read: %q", tok)
+				if tok != "initial" && !strings.HasPrefix(tok, "token-") {
+					t.Errorf("unexpected token read: %q", tok)
 				}
 			}
 		}()

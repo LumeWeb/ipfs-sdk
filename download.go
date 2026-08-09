@@ -115,6 +115,16 @@ func WithBlockMetaClient(client BlockMetaClient) DownloadServiceOption {
 	}
 }
 
+// SetBlockMetaClient re-wires the block meta client used for metadata queries
+// (FileSize, BlockSize, File). Client.SetAuthToken / rebuildInternalGen call
+// this after recreating internalGen so download metadata queries reflect the
+// new auth token instead of the stale request editor captured at construction.
+func (s *DownloadService) SetBlockMetaClient(client BlockMetaClient) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.blockMeta = client
+}
+
 // blockMetaBackendAdapter adapts BlockMetaClient to backend.BlockMetaClient interface.
 type blockMetaBackendAdapter struct {
 	client BlockMetaClient
@@ -224,12 +234,15 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 
 // queryBlockMeta queries the block meta REST API for metadata.
 func (s *DownloadService) queryBlockMeta(ctx context.Context, c cid.Cid) (*internalclient.GetApiBlockMetaCidResponse, error) {
-	if s.blockMeta == nil {
+	s.mu.RLock()
+	blockMeta := s.blockMeta
+	s.mu.RUnlock()
+	if blockMeta == nil {
 		return nil, fmt.Errorf("block meta client not initialized")
 	}
 
 	// Use the block meta REST API to get UnixFS metadata
-	response, err := s.blockMeta.GetApiBlockMetaCidWithResponse(ctx, c.String())
+	response, err := blockMeta.GetApiBlockMetaCidWithResponse(ctx, c.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to query block meta API: %w", err)
 	}

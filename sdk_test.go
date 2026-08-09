@@ -49,6 +49,10 @@ func TestClient_SetAuthToken(t *testing.T) {
 	client, err := NewClient("http://example.com", "token-a")
 	require.NoError(t, err)
 
+	// Capture the download service's blockMeta client before the token change.
+	require.NotNil(t, client.download, "download service should be initialized")
+	prevBlockMeta := client.download.blockMeta
+
 	err = client.SetAuthToken("token-b")
 	assert.NoError(t, err)
 	assert.Equal(t, "token-b", client.BearerToken())
@@ -60,6 +64,17 @@ func TestClient_SetAuthToken(t *testing.T) {
 	ps.mu.RLock()
 	assert.Equal(t, "token-b", ps.authToken, "SetAuthToken must propagate to the pinning service")
 	ps.mu.RUnlock()
+
+	// The download service's blockMeta client must be re-wired to the freshly
+	// rebuilt internalGen so metadata queries (FileSize, BlockSize, File) use
+	// the new token rather than the stale request editor captured at
+	// construction.
+	assert.Samef(t, client.internalGen, client.download.blockMeta,
+		"SetAuthToken must re-wire download blockMeta to the new internalGen")
+	assert.NotSamef(t, prevBlockMeta, client.download.blockMeta,
+		"blockMeta must not still point at the pre-rebuild internalGen")
+	assert.Equal(t, "token-b", client.download.AuthToken(),
+		"SetAuthToken must propagate to the download service")
 }
 
 func TestBaseURL(t *testing.T) {
