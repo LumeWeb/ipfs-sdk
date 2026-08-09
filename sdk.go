@@ -39,10 +39,10 @@ type Client struct {
 	genClientOpts internalclient.ClientOption
 	retry         RetryConfig
 	hostOverride  *HostOverride
-	
+
 	// Download service configuration
-	downloadRateLimiter    RateLimiter
-	downloadOptions        []DownloadServiceOption
+	downloadRateLimiter RateLimiter
+	downloadOptions     []DownloadServiceOption
 }
 
 // ClientConfig holds configuration for the main SDK client
@@ -294,7 +294,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		return nil, fmt.Errorf("failed to create upload service: %w", err)
 	}
 	c.upload = upload
-	
+
 	// Build download service options - apply rate limiter first, then other options
 	downloadOpts := []DownloadServiceOption{WithDownloadHTTPClient(httpClient)}
 	if c.downloadRateLimiter != nil {
@@ -302,7 +302,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 	}
 	downloadOpts = append(downloadOpts, c.downloadOptions...)
 	downloadOpts = append(downloadOpts, WithInternalGen(c.internalGen))
-	
+
 	download, err := NewDownloadService(normalizedURL, bearerToken, downloadOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create download service: %w", err)
@@ -437,4 +437,26 @@ func (c *Client) SetBearerToken(token string) error {
 		return nil
 	})
 	return c.rebuildInternalGen()
+}
+
+// SetAuthToken hot-updates the bearer token across every service the Client
+// exposes (DNS/IPNS/Websites via the generated client, plus Pinning, Upload,
+// and Download), without recreating any of the long-lived clients. This is the
+// canonical runtime token-refresh entrypoint used by consumers that live-relaod
+// config (e.g. an MCP server reacting to a `pinner login`) and must push a new
+// JWT into already-constructed services.
+func (c *Client) SetAuthToken(token string) error {
+	if err := c.SetBearerToken(token); err != nil {
+		return err
+	}
+	if c.pinning != nil {
+		c.pinning.SetAuthToken(token)
+	}
+	if c.upload != nil {
+		c.upload.SetAuthToken(token)
+	}
+	if c.download != nil {
+		c.download.SetAuthToken(token)
+	}
+	return nil
 }
