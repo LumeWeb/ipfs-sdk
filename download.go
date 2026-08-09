@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/boxo/gateway"
@@ -32,6 +33,7 @@ type DownloadService struct {
 	backend        backend.Backend
 	httpClient     *http.Client
 	authTransport  *httputil.AuthRoundTripper
+	mu             sync.RWMutex // guards authToken so SetAuthToken can hot-swap it concurrently with AuthToken reads
 	authToken      string
 	baseURL        string
 	rateLimiter    backend.RateLimiter
@@ -293,7 +295,9 @@ func (s *DownloadService) CopyBlock(ctx context.Context, c cid.Cid, w io.Writer)
 // SetAuthToken updates the authentication token used for requests.
 // This is thread-safe and can be called at any time.
 func (s *DownloadService) SetAuthToken(token string) {
+	s.mu.Lock()
 	s.authToken = token
+	s.mu.Unlock()
 	if s.authTransport != nil {
 		s.authTransport.SetAuthToken(token)
 	}
@@ -301,6 +305,8 @@ func (s *DownloadService) SetAuthToken(token string) {
 
 // AuthToken returns the current authentication token.
 func (s *DownloadService) AuthToken() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.authToken
 }
 

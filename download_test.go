@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -1525,4 +1527,40 @@ func (g *testUnixFSGenerator) createChunkedBlock(t *testing.T, fileSize int64, c
 	require.NoError(t, err)
 	
 	return block
+}
+
+// TestDownloadService_SetAuthTokenConcurrent is a regression test for the data
+// race on authToken: SetAuthToken (write) could run concurrently with AuthToken
+// (read) without synchronization. Run with -race to verify the mutex guard
+// holds.
+func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
+	service, err := NewDownloadService("https://api.example.com", "initial")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			for j := 0; j < 500; j++ {
+				service.SetAuthToken(fmt.Sprintf("token-%d-%d", n, j))
+			}
+		}(i)
+	}
+
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 500; j++ {
+				tok := service.AuthToken()
+				if tok != "" && !strings.HasPrefix(tok, "token-") {
+					t.Errorf("torn token read: %q", tok)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }

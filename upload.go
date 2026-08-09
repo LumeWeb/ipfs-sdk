@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/bdragon300/tusgo"
 	"github.com/docker/go-units"
@@ -115,6 +116,7 @@ func (t UploadDataType) String() string {
 type UploadService struct {
 	httpClient  *http.Client
 	baseURL     string
+	mu          sync.RWMutex // guards authToken so SetAuthToken can hot-swap it concurrently with request-header reads
 	authToken   string
 	tusEndpoint string
 	uploadLimit int64
@@ -637,8 +639,11 @@ func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	if s.authToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.authToken)
+	s.mu.RLock()
+	token := s.authToken
+	s.mu.RUnlock()
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	req.Header.Set("Content-Type", contentType)
 
@@ -710,8 +715,11 @@ func (s *UploadService) GetUploadResult(ctx context.Context, identifier string) 
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	if s.authToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.authToken)
+	s.mu.RLock()
+	token := s.authToken
+	s.mu.RUnlock()
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	resp, err := s.httpClient.Do(req)
@@ -804,7 +812,9 @@ func MaxChunkSize() int64 {
 
 // SetAuthToken sets a new authentication token.
 func (s *UploadService) SetAuthToken(token string) {
+	s.mu.Lock()
 	s.authToken = token
+	s.mu.Unlock()
 	// Update the token in the RoundTripper if it supports TokenAwareTransport
 	if rt, ok := s.httpClient.Transport.(TokenAwareTransport); ok {
 		rt.SetAuthToken(token)
@@ -813,6 +823,8 @@ func (s *UploadService) SetAuthToken(token string) {
 
 // GetAuthToken returns the current authentication token.
 func (s *UploadService) GetAuthToken() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.authToken
 }
 

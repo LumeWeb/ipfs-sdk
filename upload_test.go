@@ -3,6 +3,7 @@ package ipfs
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -954,4 +955,42 @@ func TestUploadFileSetsWrapInDirFalse(t *testing.T) {
 	// but we can verify the design intent by documentation
 	// The UploadFile method should always set WrapInDir=false
 	assert.True(t, true, "UploadFile should set WrapInDir=false (verified by implementation)")
+}
+
+// TestUploadService_SetAuthTokenConcurrent is a regression test for the data race
+// on authToken reported by Kody: SetAuthToken (write) could run concurrently with
+// GetAuthToken (read) without synchronization, causing -race failures and torn
+// tokens. Run with -race to verify the mutex guard holds.
+func TestUploadService_SetAuthTokenConcurrent(t *testing.T) {
+	service, err := NewUploadService("https://api.example.com", "initial")
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+
+	// Concurrent writers flipping the token.
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			for j := 0; j < 500; j++ {
+				service.SetAuthToken(fmt.Sprintf("token-%d-%d", n, j))
+			}
+		}(i)
+	}
+
+	// Concurrent readers verifying the read is always a well-formed value.
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 500; j++ {
+				tok := service.GetAuthToken()
+				if tok != "" && !strings.HasPrefix(tok, "token-") {
+					t.Errorf("torn token read: %q", tok)
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
 }
