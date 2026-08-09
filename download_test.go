@@ -1567,6 +1567,28 @@ func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
 	wg.Wait()
 }
 
+// TestDownloadService_SetAuthToken_RewiresBlockMeta verifies a direct
+// DownloadService.SetAuthToken (not via Client) re-wires the blockMeta client so
+// metadata queries use the new token, instead of the stale client captured at
+// construction (Kody finding on the direct path).
+func TestDownloadService_SetAuthToken_RewiresBlockMeta(t *testing.T) {
+	mockMeta := mocks.NewMockBlockMetaClient(t)
+
+	svc, err := NewDownloadService("https://api.example.com", testAuthToken, WithBlockMetaClient(mockMeta))
+	require.NoError(t, err)
+	require.Same(t, mockMeta, svc.blockMeta)
+
+	svc.SetAuthToken("refreshed-token")
+
+	// blockMeta should no longer be the original mock; it must have been rebuilt
+	// into a real generated client bound to the new token.
+	require.NotSame(t, mockMeta, svc.blockMeta)
+	rebuilt, ok := svc.blockMeta.(*internalclient.ClientWithResponses)
+	require.True(t, ok, "blockMeta should be rebuilt into an internal client, got %T", svc.blockMeta)
+	assert.NotNil(t, rebuilt)
+	assert.Equal(t, "refreshed-token", svc.authToken)
+}
+
 // TestDownloadService_SetBlockMetaClient_RateLimited verifies SetBlockMetaClient
 // re-wires the rate-limited blockstore's meta client on auth token hot-update, so
 // GetSize on the rate-limited download path reflects the new token instead of the

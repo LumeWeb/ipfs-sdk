@@ -13,10 +13,10 @@ import (
 	"github.com/ipfs/boxo/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	backend "go.lumeweb.com/ipfs-sdk/internal/download"
-	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	"go.lumeweb.com/ipfs-content/car"
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
+	backend "go.lumeweb.com/ipfs-sdk/internal/download"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
 
 // RateLimiter defines an interface for controlling download rate and availability.
@@ -42,7 +42,6 @@ type DownloadService struct {
 	workerPoolSize int
 	retryConfig    httputil.RetryConfig
 }
-
 
 // DownloadServiceOption configures the DownloadService.
 type DownloadServiceOption func(*DownloadService)
@@ -180,13 +179,13 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 	// Create gateway backend for UnixFS operations
 	// Use our rate-limited implementation when a rate limiter is provided
 	// Pass the blockMeta client adapter for size queries without rate limiting
-	
+
 	// Prepare block meta adapter for rate-limited backend
 	var metaClient backend.BlockMetaClient
 	if s.blockMeta != nil {
 		metaClient = &blockMetaBackendAdapter{client: s.blockMeta}
 	}
-	
+
 	if s.rateLimiter != nil {
 		gatewayBackend, rlb, err := backend.NewBlocksBackendWithRateLimit([]string{baseURL}, s.httpClient, s.rateLimiter, s.workerPoolSize, s.retryConfig, metaClient)
 		if err != nil {
@@ -213,18 +212,17 @@ func (s *DownloadService) Block(ctx context.Context, c cid.Cid) (blocks.Block, e
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	data, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
-	
-	
+
 	block := blocks.NewBlock(data)
 	if !block.Cid().Equals(c) {
 		return nil, fmt.Errorf("CID mismatch: expected %s, got %s", c, block.Cid())
 	}
-	
+
 	return block, nil
 }
 
@@ -237,7 +235,6 @@ func (s *DownloadService) Has(ctx context.Context, c cid.Cid) (bool, error) {
 	}
 	return true, nil
 }
-
 
 // queryBlockMeta queries the block meta REST API for metadata.
 func (s *DownloadService) queryBlockMeta(ctx context.Context, c cid.Cid) (*internalclient.GetApiBlockMetaCidResponse, error) {
@@ -307,13 +304,16 @@ func (s *DownloadService) CopyBlock(ctx context.Context, c cid.Cid, w io.Writer)
 		return err
 	}
 	defer file.Close()
-	
+
 	_, err = io.Copy(w, file)
 	return err
 }
 
 // SetAuthToken updates the authentication token used for requests.
 // This is thread-safe and can be called at any time.
+// It also re-wires the blockMeta client (and, if configured, the rate-limited
+// blockstore's meta client) so metadata queries (FileSize, BlockSize, File) use
+// the new token instead of the client captured at construction.
 func (s *DownloadService) SetAuthToken(token string) {
 	s.mu.Lock()
 	s.authToken = token
@@ -321,6 +321,27 @@ func (s *DownloadService) SetAuthToken(token string) {
 	if s.authTransport != nil {
 		s.authTransport.SetAuthToken(token)
 	}
+	s.rebuildBlockMetaClient(token)
+}
+
+// rebuildBlockMetaClient constructs a fresh block meta client bound to the
+// current baseURL with the given bearer token and re-wires it into both the
+// download service and the rate-limited blockstore. Mirrors Client.rebuildInternalGen
+// so a direct DownloadService.SetAuthToken hot-updates metadata-auth too.
+func (s *DownloadService) rebuildBlockMetaClient(token string) {
+	editor := internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		return nil
+	})
+	client, err := internalclient.NewClientWithResponses(s.baseURL, editor)
+	if err != nil {
+		// Leave the existing blockMeta client in place; the auth transport has
+		// already been updated so request-path auth is not regressed.
+		return
+	}
+	s.SetBlockMetaClient(client)
 }
 
 // AuthToken returns the current authentication token.
@@ -453,7 +474,7 @@ func directoryEntriesFromNode(node files.Node) ([]files.DirEntry, error) {
 // Returns an io.ReadCloser that should be closed when done.
 func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath string) (io.ReadCloser, error) {
 	basePath := path.FromCid(dirCID)
-	
+
 	// Handle empty file path by using base path with trailing separator
 	if strings.Trim(filePath, "/") == "" {
 		// Empty path means we're accessing the root CID directly
@@ -468,11 +489,11 @@ func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath 
 
 		return wrapFileNodeAsReadCloser(node, "CID is a directory, not a file")
 	}
-	
+
 	// Trim and split the file path
 	trimmedPath := strings.Trim(filePath, "/")
 	pathSegments := strings.Split(trimmedPath, "/")
-	
+
 	// Skip empty segments and validate no path traversal
 	var segments []string
 	for _, seg := range pathSegments {
@@ -483,18 +504,18 @@ func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath 
 			segments = append(segments, seg)
 		}
 	}
-	
+
 	fullPath, err := path.Join(basePath, segments...)
 	if err != nil {
 		return nil, fmt.Errorf("invalid path: %w", err)
 	}
-	
+
 	// Convert to immutable path
 	immutablePath, err := path.NewImmutablePath(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create immutable path: %w", err)
 	}
-	
+
 	// Use GetAll to handle chunked files properly
 	_, node, err := s.backend.GetAll(ctx, immutablePath)
 	if err != nil {
@@ -503,5 +524,3 @@ func (s *DownloadService) GetFile(ctx context.Context, dirCID cid.Cid, filePath 
 
 	return wrapFileNodeAsReadCloser(node, "path is a directory, not a file")
 }
-
-

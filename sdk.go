@@ -463,6 +463,11 @@ func (c *Client) SetAuthToken(token string) error {
 	}
 	if c.download != nil {
 		c.download.SetAuthToken(token)
+		// SetAuthToken self-rebuilds blockMeta from baseURL+token; restore the
+		// full-context internalGen (host override, gateway secret, httpClient)
+		// that rebuildInternalGen already wired in, so metadata queries keep the
+		// richer request context.
+		c.download.SetBlockMetaClient(c.internalGen)
 	}
 	return nil
 }
