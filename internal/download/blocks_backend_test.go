@@ -19,7 +19,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 		server := createTestServer(t, http.StatusOK)
 		defer server.Close()
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			&http.Client{},
 			nil,
@@ -40,7 +40,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			return true, nil
 		})
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			&http.Client{},
 			rl,
@@ -58,7 +58,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			return true, nil
 		})
 
-		_, err := NewBlocksBackendWithRateLimit(
+		_, _, err := NewBlocksBackendWithRateLimit(
 			[]string{"not-a-url"},
 			&http.Client{},
 			rl,
@@ -80,7 +80,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			return true, nil
 		})
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			&http.Client{},
 			rl,
@@ -107,7 +107,7 @@ func TestNewBlocksBackendWithRateLimit(t *testing.T) {
 			MaxDelay: 2 * time.Minute,
 		}
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			&http.Client{},
 			rl,
@@ -132,7 +132,7 @@ func TestNewBlocksBackendWithRateLimit_RateLimiting(t *testing.T) {
 		server := createTestServer(t, http.StatusOK)
 		defer server.Close()
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			&http.Client{},
 			rl,
@@ -157,7 +157,7 @@ func TestNewBlocksBackendWithRateLimit_RateLimiting(t *testing.T) {
 		server := createTestServer(t, http.StatusOK)
 		defer server.Close()
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			&http.Client{},
 			rl,
@@ -180,7 +180,7 @@ func TestNewBlocksBackendWithRateLimit_ErrorCases(t *testing.T) {
 			return true, nil
 		})
 
-		_, err := NewBlocksBackendWithRateLimit(
+		_, _, err := NewBlocksBackendWithRateLimit(
 			[]string{},
 			&http.Client{},
 			rl,
@@ -200,7 +200,7 @@ func TestNewBlocksBackendWithRateLimit_ErrorCases(t *testing.T) {
 		server := createTestServer(t, http.StatusOK)
 		defer server.Close()
 
-		backend, err := NewBlocksBackendWithRateLimit(
+		backend, _, err := NewBlocksBackendWithRateLimit(
 			[]string{server.URL},
 			nil,
 			rl,

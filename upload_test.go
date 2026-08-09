@@ -962,32 +962,33 @@ func TestUploadFileSetsWrapInDirFalse(t *testing.T) {
 // GetAuthToken (read) without synchronization, causing -race failures and torn
 // tokens. Run with -race to verify the mutex guard holds.
 func TestUploadService_SetAuthTokenConcurrent(t *testing.T) {
-	service, err := NewUploadService("https://api.example.com", "initial")
+	service, err := NewUploadService("https://api.example.com", testAuthToken)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
 
-	// Concurrent writers flipping the token.
+	// Concurrent writers flipping the token (derived from the env-sourced
+	// testAuthToken rather than a hard-coded literal).
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
 			for j := 0; j < 500; j++ {
-				service.SetAuthToken(fmt.Sprintf("token-%d-%d", n, j))
+				service.SetAuthToken(fmt.Sprintf("%s-%d-%d", testAuthToken, n, j))
 			}
 		}(i)
 	}
 
 	// Concurrent readers verifying the read is always a well-formed value.
-	// Writers only ever write "token-*" values, and the service starts with
-	// "initial", so any other value would indicate a torn/unexpected read.
+	// Writers only ever write "<testAuthToken>-*" values, so any other value
+	// would indicate a torn/unexpected read.
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 500; j++ {
 				tok := service.GetAuthToken()
-				if tok != "initial" && !strings.HasPrefix(tok, "token-") {
+				if tok != testAuthToken && !strings.HasPrefix(tok, testAuthToken+"-") {
 					t.Errorf("unexpected token read: %q", tok)
 				}
 			}

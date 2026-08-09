@@ -31,6 +31,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lumeweb.com/ipfs-sdk/fs"
 	"go.lumeweb.com/ipfs-sdk/mocks"
+	backend "go.lumeweb.com/ipfs-sdk/internal/download"
+	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	"go.lumeweb.com/ipfs-content/car"
 	unixfs "go.lumeweb.com/ipfs-content/unixfs"
@@ -1534,7 +1536,7 @@ func (g *testUnixFSGenerator) createChunkedBlock(t *testing.T, fileSize int64, c
 // (read) without synchronization. Run with -race to verify the mutex guard
 // holds.
 func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
-	service, err := NewDownloadService("https://api.example.com", "initial")
+	service, err := NewDownloadService("https://api.example.com", testAuthToken)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -1544,7 +1546,7 @@ func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			for j := 0; j < 500; j++ {
-				service.SetAuthToken(fmt.Sprintf("token-%d-%d", n, j))
+				service.SetAuthToken(fmt.Sprintf("%s-%d-%d", testAuthToken, n, j))
 			}
 		}(i)
 	}
@@ -1555,7 +1557,7 @@ func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < 500; j++ {
 				tok := service.AuthToken()
-				if tok != "initial" && !strings.HasPrefix(tok, "token-") {
+				if tok != testAuthToken && !strings.HasPrefix(tok, testAuthToken+"-") {
 					t.Errorf("unexpected token read: %q", tok)
 				}
 			}
@@ -1563,4 +1565,37 @@ func TestDownloadService_SetAuthTokenConcurrent(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+// TestDownloadService_SetBlockMetaClient_RateLimited verifies SetBlockMetaClient
+// re-wires the rate-limited blockstore's meta client on auth token hot-update, so
+// GetSize on the rate-limited download path reflects the new token instead of the
+// stale client captured at construction (Kody finding).
+func TestDownloadService_SetBlockMetaClient_RateLimited(t *testing.T) {
+	ctx := context.Background()
+	mockStore := mocks.NewMockBlockstore(t)
+	rl := backend.RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+		return true, nil
+	})
+
+	oldMeta := mocks.NewMockBlockMetaClient(t)
+	setupMockBlockMetaForBlockSize(oldMeta, 100)
+	newMeta := mocks.NewMockBlockMetaClient(t)
+	setupMockBlockMetaForBlockSize(newMeta, 2048)
+
+	svc := &DownloadService{}
+	svc.rateLimited = backend.NewRateLimitedBlockstoreWithOptions(
+		mockStore, rl, 0, httputil.RetryConfig{}, &blockMetaBackendAdapter{client: oldMeta},
+	)
+
+	// Initially the rate-limited blockstore uses the old meta client.
+	size, err := svc.rateLimited.GetSize(ctx, getTestCID(t))
+	require.NoError(t, err)
+	assert.Equal(t, 100, size)
+
+	// Re-wire; GetSize on the rate-limited path must now use the new client.
+	svc.SetBlockMetaClient(newMeta)
+	size, err = svc.rateLimited.GetSize(ctx, getTestCID(t))
+	require.NoError(t, err)
+	assert.Equal(t, 2048, size)
 }

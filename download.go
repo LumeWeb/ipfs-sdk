@@ -33,13 +33,14 @@ type DownloadService struct {
 	backend        backend.Backend
 	httpClient     *http.Client
 	authTransport  *httputil.AuthRoundTripper
-	mu             sync.RWMutex // guards authToken so SetAuthToken can hot-swap it concurrently with AuthToken reads
+	mu             sync.RWMutex // guards authToken and blockMeta so SetAuthToken can hot-swap them concurrently with reads
 	authToken      string
+	blockMeta      BlockMetaClient
+	rateLimited    *backend.RateLimitedBlockstore // non-nil when a download rate limiter is configured
 	baseURL        string
 	rateLimiter    backend.RateLimiter
 	workerPoolSize int
 	retryConfig    httputil.RetryConfig
-	blockMeta      BlockMetaClient
 }
 
 
@@ -116,13 +117,17 @@ func WithBlockMetaClient(client BlockMetaClient) DownloadServiceOption {
 }
 
 // SetBlockMetaClient re-wires the block meta client used for metadata queries
-// (FileSize, BlockSize, File). Client.SetAuthToken / rebuildInternalGen call
-// this after recreating internalGen so download metadata queries reflect the
-// new auth token instead of the stale request editor captured at construction.
+// (FileSize, BlockSize, File) and the rate-limited blockstore's meta client.
+// Client.SetAuthToken / rebuildInternalGen call this after recreating internalGen
+// so download metadata queries reflect the new auth token instead of the stale
+// request editor captured at construction.
 func (s *DownloadService) SetBlockMetaClient(client BlockMetaClient) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.blockMeta = client
+	s.mu.Unlock()
+	if s.rateLimited != nil {
+		s.rateLimited.SetMetaClient(&blockMetaBackendAdapter{client: client})
+	}
 }
 
 // blockMetaBackendAdapter adapts BlockMetaClient to backend.BlockMetaClient interface.
@@ -175,8 +180,6 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 	// Create gateway backend for UnixFS operations
 	// Use our rate-limited implementation when a rate limiter is provided
 	// Pass the blockMeta client adapter for size queries without rate limiting
-	var gatewayBackend gateway.IPFSBackend
-	var err error
 	
 	// Prepare block meta adapter for rate-limited backend
 	var metaClient backend.BlockMetaClient
@@ -185,15 +188,19 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 	}
 	
 	if s.rateLimiter != nil {
-		gatewayBackend, err = backend.NewBlocksBackendWithRateLimit([]string{baseURL}, s.httpClient, s.rateLimiter, s.workerPoolSize, s.retryConfig, metaClient)
+		gatewayBackend, rlb, err := backend.NewBlocksBackendWithRateLimit([]string{baseURL}, s.httpClient, s.rateLimiter, s.workerPoolSize, s.retryConfig, metaClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gateway backend: %w", err)
+		}
+		s.rateLimited = rlb
+		s.backend = gatewayBackend
 	} else {
-		gatewayBackend, err = gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
+		gatewayBackend, err := gateway.NewRemoteBlocksBackend([]string{baseURL}, s.httpClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create gateway backend: %w", err)
+		}
+		s.backend = gatewayBackend
 	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gateway backend: %w", err)
-	}
-
-	s.backend = gatewayBackend
 
 	return s, nil
 }
