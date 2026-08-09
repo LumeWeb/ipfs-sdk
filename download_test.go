@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync"
@@ -1587,6 +1588,51 @@ func TestDownloadService_SetAuthToken_RewiresBlockMeta(t *testing.T) {
 	require.True(t, ok, "blockMeta should be rebuilt into an internal client, got %T", svc.blockMeta)
 	assert.NotNil(t, rebuilt)
 	assert.Equal(t, "refreshed-token", svc.authToken)
+}
+
+// TestDownloadService_SetAuthToken_PreservesHTTPClient verifies the blockMeta
+// client rebuilt by SetAuthToken is built on the download service's configured
+// http.Client (custom transport) and sends the new bearer token, rather than
+// swapping to a default-transport client (Kody finding on rebuildBlockMetaClient).
+func TestDownloadService_SetAuthToken_PreservesHTTPClient(t *testing.T) {
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	// A custom client with a marker transport to prove the download service's
+	// http.Client is used by the rebuilt blockMeta.
+	transport := &markerTransport{inner: http.DefaultTransport}
+	customClient := &http.Client{Transport: transport}
+
+	svc, err := NewDownloadService(server.URL, testAuthToken,
+		WithDownloadHTTPClient(customClient),
+	)
+	require.NoError(t, err)
+
+	svc.SetAuthToken("refreshed-token")
+
+	out, err := svc.blockMeta.GetApiBlockMetaCidWithResponse(context.Background(), "bafy-test")
+	require.NoError(t, err)
+	require.NotNil(t, out)
+	require.True(t, transport.used, "rebuilt blockMeta should use the configured http.Client")
+	assert.Equal(t, "Bearer refreshed-token", gotAuth)
+}
+
+// markerTransport records whether it was used, to detect which http.Client the
+// rebuilt blockMeta client is backed by.
+type markerTransport struct {
+	inner http.RoundTripper
+	used  bool
+}
+
+func (m *markerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	m.used = true
+	return m.inner.RoundTrip(req)
 }
 
 // TestDownloadService_SetBlockMetaClient_RateLimited verifies SetBlockMetaClient

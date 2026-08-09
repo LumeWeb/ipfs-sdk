@@ -329,13 +329,16 @@ func (s *DownloadService) SetAuthToken(token string) {
 // download service and the rate-limited blockstore. Mirrors Client.rebuildInternalGen
 // so a direct DownloadService.SetAuthToken hot-updates metadata-auth too.
 func (s *DownloadService) rebuildBlockMetaClient(token string) {
-	editor := internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
+	opts := []internalclient.ClientOption{internalclient.WithRequestEditorFn(func(ctx context.Context, req *http.Request) error {
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}
 		return nil
-	})
-	client, err := internalclient.NewClientWithResponses(s.baseURL, editor)
+	})}
+	if s.httpClient != nil {
+		opts = append(opts, internalclient.WithHTTPClient(s.httpClient))
+	}
+	client, err := internalclient.NewClientWithResponses(s.baseURL, opts...)
 	if err != nil {
 		// Leave the existing blockMeta client in place; the auth transport has
 		// already been updated so request-path auth is not regressed.
