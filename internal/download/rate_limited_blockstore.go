@@ -70,14 +70,26 @@ func (r *RateLimitedBlockstore) Stop() {
 	}
 }
 
+// SetMetaClient re-wires the meta client used for size queries. Called on token
+// hot-update so Get/GetSize/Has keep using the current auth token instead of the
+// stale client captured at construction.
+func (r *RateLimitedBlockstore) SetMetaClient(client BlockMetaClient) {
+	r.mu.Lock()
+	r.metaClient = client
+	r.mu.Unlock()
+}
+
 // Get fetches a block with rate limiting.
 // Goes directly to the underlying blockstore without using the memory store.
 // Uses metaClient for GetSize if available to get accurate size for rate limiting.
 func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	// Get size for accurate rate limiting (uses metaClient if available)
 	size := 0
-	if r.metaClient != nil {
-		if s, err := r.metaClient.GetBlockSize(ctx, c); err == nil {
+	r.mu.RLock()
+	metaClient := r.metaClient
+	r.mu.RUnlock()
+	if metaClient != nil {
+		if s, err := metaClient.GetBlockSize(ctx, c); err == nil {
 			size = s
 		}
 	}
@@ -95,8 +107,11 @@ func (r *RateLimitedBlockstore) Get(ctx context.Context, c cid.Cid) (blocks.Bloc
 // Uses meta API if available, otherwise goes directly to the underlying blockstore with rate limiting.
 func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 	// Try meta API client first (bypasses rate limiter)
-	if r.metaClient != nil {
-		if size, err := r.metaClient.GetBlockSize(ctx, c); err == nil {
+	r.mu.RLock()
+	metaClient := r.metaClient
+	r.mu.RUnlock()
+	if metaClient != nil {
+		if size, err := metaClient.GetBlockSize(ctx, c); err == nil {
 			return size, nil
 		}
 	}
@@ -115,8 +130,11 @@ func (r *RateLimitedBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, er
 // Uses meta API first (bypasses rate limiter), then falls back to underlying blockstore with rate limiting.
 func (r *RateLimitedBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
 	// Try meta API client first (bypasses rate limiter)
-	if r.metaClient != nil {
-		if size, err := r.metaClient.GetBlockSize(ctx, c); err == nil && size > 0 {
+	r.mu.RLock()
+	metaClient := r.metaClient
+	r.mu.RUnlock()
+	if metaClient != nil {
+		if size, err := metaClient.GetBlockSize(ctx, c); err == nil && size > 0 {
 			return true, nil
 		}
 	}

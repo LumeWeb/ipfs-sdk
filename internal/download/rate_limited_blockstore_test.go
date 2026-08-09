@@ -596,3 +596,29 @@ func createProperTestBlock(t *testing.T) blocks.Block {
 	data := []byte("test data data")
 	return blocks.NewBlock(data)
 }
+
+// TestRateLimitedBlockstore_SetMetaClient verifies the meta client can be
+// re-wired on auth token hot-update so GetSize/Get/Has keep using the current
+// token instead of the stale client captured at construction.
+func TestRateLimitedBlockstore_SetMetaClient(t *testing.T) {
+	mockBlockstore := mocks.NewMockBlockstore(t)
+	testCID := createTestCID(t)
+	rl := RateLimiterFunc(func(ctx context.Context, size int64) (bool, error) {
+		return true, nil
+	})
+
+	oldMeta := &mockBlockMetaClient{size: 100}
+	newMeta := &mockBlockMetaClient{size: 2048}
+	rlb := NewRateLimitedBlockstoreWithOptions(mockBlockstore, rl, 5, htputil.RetryConfig{}, oldMeta)
+
+	// Initially uses the old meta client.
+	size, err := rlb.GetSize(context.Background(), testCID)
+	assert.NoError(t, err)
+	assert.Equal(t, 100, size)
+
+	// Re-wire, then GetSize must use the new meta client.
+	rlb.SetMetaClient(newMeta)
+	size, err = rlb.GetSize(context.Background(), testCID)
+	assert.NoError(t, err)
+	assert.Equal(t, 2048, size)
+}

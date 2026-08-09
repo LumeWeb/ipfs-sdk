@@ -331,3 +331,43 @@ func (_c *MockPinningService_RemovePin_Call) RunAndReturn(run func(ctx context.C
 	_c.Call.Return(run)
 	return _c
 }
+
+// SetAuthToken provides a mock function for the type MockPinningService
+func (_mock *MockPinningService) SetAuthToken(token string) {
+	_mock.Called(token)
+	return
+}
+
+// MockPinningService_SetAuthToken_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAuthToken'
+type MockPinningService_SetAuthToken_Call struct {
+	*mock.Call
+}
+
+// SetAuthToken is a helper method to define mock.On call
+//   - token string
+func (_e *MockPinningService_Expecter) SetAuthToken(token any) *MockPinningService_SetAuthToken_Call {
+	return &MockPinningService_SetAuthToken_Call{Call: _e.mock.On("SetAuthToken", token)}
+}
+
+func (_c *MockPinningService_SetAuthToken_Call) Run(run func(token string)) *MockPinningService_SetAuthToken_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockPinningService_SetAuthToken_Call) Return() *MockPinningService_SetAuthToken_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockPinningService_SetAuthToken_Call) RunAndReturn(run func(token string)) *MockPinningService_SetAuthToken_Call {
+	_c.Run(run)
+	return _c
+}

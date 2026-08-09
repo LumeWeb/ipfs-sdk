@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -45,6 +46,11 @@ type PinningService interface {
 	GetPin(ctx context.Context, requestID string) (*PinStatus, error)
 	// Remove a pin by request ID
 	RemovePin(ctx context.Context, requestID string) error
+	// SetAuthToken hot-updates the bearer token used for authenticated
+	// requests. The pinning service is long-lived, so the token must be
+	// swappable at runtime (e.g. after a `pinner login` rewrites the config)
+	// without recreating the client.
+	SetAuthToken(token string)
 }
 
 // pinningService implements PinningService using the generated client
@@ -52,6 +58,11 @@ type pinningService struct {
 	client  ippinning.ClientWithResponsesInterface
 	retry   httputil.RetryConfig
 	httpCli *http.Client
+
+	// mu guards authToken so a concurrent SetAuthToken (from the live-reload
+	// path) can never race a request editor read of the token.
+	mu        sync.RWMutex
+	authToken string
 }
 
 // NewPinningService creates a pinning service using the generated client
@@ -67,10 +78,21 @@ func NewPinningService(baseURL, bearerToken string, opts ...PinningServiceOption
 		httpClient = &http.Client{}
 	}
 
-	// Create request editor for authentication
+	svc := &pinningService{
+		retry:     cfg.Retry,
+		httpCli:   httpClient,
+		authToken: bearerToken,
+	}
+
+	// Create request editor for authentication. The token is read from the
+	// service's mutable field so SetAuthToken can hot-swap it for subsequent
+	// requests without recreating the generated client.
 	requestEditor := func(ctx context.Context, req *http.Request) error {
-		if bearerToken != "" {
-			req.Header.Set("Authorization", "Bearer "+bearerToken)
+		svc.mu.RLock()
+		token := svc.authToken
+		svc.mu.RUnlock()
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
 		}
 		return nil
 	}
@@ -82,12 +104,16 @@ func NewPinningService(baseURL, bearerToken string, opts ...PinningServiceOption
 	if err != nil {
 		panic(fmt.Sprintf("failed to create pinning client: %v", err))
 	}
+	svc.client = client
 
-	return &pinningService{
-		client:  client,
-		retry:   cfg.Retry,
-		httpCli: httpClient,
-	}
+	return svc
+}
+
+// SetAuthToken hot-updates the bearer token used for pinning requests.
+func (s *pinningService) SetAuthToken(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authToken = token
 }
 
 // PinningServiceOption applies configuration to PinningService

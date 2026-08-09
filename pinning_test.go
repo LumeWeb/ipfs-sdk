@@ -1,12 +1,16 @@
 package ipfs
 
 import (
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
@@ -70,9 +74,9 @@ func TestWithFilterStatus(t *testing.T) {
 func TestWithListMeta(t *testing.T) {
 	t.Run("creates metadata option", func(t *testing.T) {
 		meta := PinMeta{
-			"app":      "test",
-			"version":  "1.0.0",
-			"author":   "user123",
+			"app":     "test",
+			"version": "1.0.0",
+			"author":  "user123",
 		}
 		opt := WithListMeta(meta)
 
@@ -99,6 +103,44 @@ func TestNewPinningService(t *testing.T) {
 
 		assert.NotNil(t, s)
 	})
+}
+
+// TestPinningService_SetAuthToken verifies a pinning service's bearer token can
+// be hot-swapped at runtime without recreating the client. A long-lived server
+// (e.g. an MCP instance) must be able to push a fresh JWT into the existing
+// pinning service after a `pinner login` rewrites the config; otherwise the
+// service keeps sending the stale startup token.
+func TestPinningService_SetAuthToken(t *testing.T) {
+	var mu sync.Mutex
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		gotAuth = r.Header.Get("Authorization")
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"count":0,"results":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	s := NewPinningService(srv.URL, "token-a")
+	require.NotNil(t, s)
+
+	// Build a list-pins request and assert it used token-a.
+	_, err := s.ListPins(context.Background(), WithLimit(1))
+	require.NoError(t, err)
+	mu.Lock()
+	first := gotAuth
+	mu.Unlock()
+	assert.Equal(t, "Bearer token-a", first, "initial request should use the startup token")
+
+	// Hot-swap the token, then verify subsequent requests send the new one.
+	s.SetAuthToken("token-b")
+	_, err = s.ListPins(context.Background())
+	require.NoError(t, err)
+	mu.Lock()
+	second := gotAuth
+	mu.Unlock()
+	assert.Equal(t, "Bearer token-b", second, "request after SetAuthToken must use the new token")
 }
 
 func TestWithLimit(t *testing.T) {
