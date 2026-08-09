@@ -1,3 +1,17 @@
+## 0.1.75 (2026-08-09)
+
+### Features
+
+- support hot-updating the auth token on long-lived clients
+
+### Fixes
+
+- guard authToken access in Upload and Download services against data races
+- re-wire download blockMeta to rebuilt internalGen on token change
+- re-wire rate-limited blockstore meta client on token hot-update
+- re-wire download blockMeta on direct DownloadService.SetAuthToken
+- rebuild download blockMeta client from configured http.Client
+
 ## 0.1.74 (2026-08-08)
 
 ### Features
