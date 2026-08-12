@@ -180,7 +180,9 @@ func NewUploadService(baseURL, authToken string, opts ...UploadServiceOption) (*
 		baseURL:   baseURL,
 		authToken: authToken,
 		httpClient: &http.Client{
-			Transport: httputil.NewAuthRoundTripper(http.DefaultTransport, authToken),
+			Transport: httputil.NewAuthRoundTripper(defaultHTTPClient().Transport, authToken),
+			// No client-level Timeout on the streaming path: it would abort large
+			// block/file body transfers; transport timeouts guard idle hangs.
 		},
 	}
 

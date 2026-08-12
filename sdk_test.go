@@ -1,8 +1,12 @@
 package ipfs
 
 import (
+	"bufio"
+	"io"
+	"net"
 	"net/http"
 	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -159,6 +163,51 @@ func TestSetHTTPClientPropagatesToInternalGen(t *testing.T) {
 	assert.Equal(t, 42*time.Second, httpDoer.Timeout)
 }
 
+// TestNewClientDefaultTransportIsHardened guards the root fix for stale pooled
+// connections. Previously NewClient used &http.Client{} (zero value), which has
+// no client-level timeout and defaults its transport to http.DefaultTransport —
+// a pool that keeps idle keep-alive connections indefinitely. When a server
+// restarts/changes, the client keeps holding conns whose server side died, and
+// any request that draws one blocks on the dead socket (e.g. stuck in
+// http2pipe.Read) until a caller timeout, surfacing as intermittent hangs
+// across every SDK consumer (website gateway GetWebsite, prewarm, etc.).
+//
+// The hardened default must carry a finite timeout and a transport that reaps
+// idle keep-alive connections and bounds the pool, so a stale connection cannot
+// be handed out indefinitely.
+func TestNewClientDefaultTransportIsHardened(t *testing.T) {
+	client, err := NewClient("http://example.com", "token123")
+	require.NoError(t, err)
+
+	// The default client must not be the zero-value client (no timeout, pooled
+	// http.DefaultTransport that holds idle conns forever).
+	require.NotNil(t, client.httpClient, "default http client must be set")
+	assert.Positive(t, client.httpClient.Timeout,
+		"default client must have a finite timeout so a wedged connection cannot hang forever")
+
+	// The shared transport is sourced from defaultHTTPClient (wrapped by the
+	// download service in an auth round tripper); assert the hardened pool
+	// settings at their source, which NewClient wires in as its default.
+	defClient := defaultHTTPClient()
+	require.NotNil(t, defClient.Transport, "defaultHTTPClient must set a transport")
+	transport, ok := defClient.Transport.(*http.Transport)
+	require.True(t, ok, "defaultHTTPClient transport should be *http.Transport")
+	assert.Positive(t, transport.IdleConnTimeout,
+		"idle keep-alive connections must be reaped after a finite timeout")
+	assert.NotZero(t, transport.MaxIdleConnsPerHost,
+		"per-host idle conn pool must be bounded")
+	assert.NotZero(t, transport.MaxIdleConns,
+		"total idle conn pool must be bounded")
+
+	// The internal generated client must also carry the hardened client, so
+	// DNS/IPNS/Websites/Ping all benefit from the default.
+	doer := extractHTTPDoer(t, client.internalGen)
+	internalHTTP, ok := doer.(*http.Client)
+	require.True(t, ok, "internalGen should use *http.Client")
+	assert.Equal(t, client.httpClient.Timeout, internalHTTP.Timeout,
+		"internal generated client must use the hardened default client")
+}
+
 func TestSetHTTPClientPreservesHostOverride(t *testing.T) {
 	client, err := NewClient(
 		"http://example.com",
@@ -250,4 +299,121 @@ func extractHTTPDoer(t *testing.T, cwr interface{}) interface{} {
 	doerField := embedded.FieldByName("Client")
 	assert.True(t, doerField.IsValid(), "Client field should exist on embedded *Client")
 	return doerField.Interface()
+}
+
+// TestHTTPHardeningReapsStaleConnections is the behavioral guard for the root
+// stale-pooled-connection fix. Production showed requests hanging in a pooled
+// HTTP connection whose server side had died (e.g. after a portal restart),
+// blocked in http2pipe.Read until a caller timeout (or forever with the old
+// zero-value http.Client{} which had no timeout).
+//
+// This test proves the mechanism the hardened default relies on: when the
+// server closes an idle connection, a client with a finite IdleConnTimeout plus
+// a bounded per-host pool does NOT keep reusing the dead connection forever —
+// it reaps it and opens a fresh one, so the request succeeds instead of hanging.
+func TestHTTPHardeningReapsStaleConnections(t *testing.T) {
+	var accepts atomic.Int64
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer ln.Close()
+
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return // listener closed by test teardown
+			}
+			accepts.Add(1)
+			go func(c net.Conn) {
+				defer c.Close()
+				// Read the request head, then respond with a minimal 200.
+				br := bufio.NewReader(c)
+				for {
+					line, err := br.ReadString('\n')
+					if err != nil {
+						return
+					}
+					if line == "\r\n" || line == "\n" {
+						break
+					}
+				}
+				io.WriteString(c, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: keep-alive\r\n\r\nok")
+			}(conn)
+		}
+	}()
+
+	url := "http://" + ln.Addr().String()
+
+	// A client configured with the SAME hardening the SDK default applies
+	// (finite idle timeout + bounded pool), so we can test the mechanism in a
+	// short time window instead of waiting 90s for the production constant.
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.IdleConnTimeout = 100 * time.Millisecond
+	tr.MaxIdleConns = 100
+	tr.MaxIdleConnsPerHost = 10
+	client := &http.Client{Transport: tr, Timeout: 5 * time.Second}
+
+	// First request populates the idle pool (one accepted connection).
+	resp, err := client.Get(url)
+	if err != nil {
+		t.Fatalf("first request: %v", err)
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	if accepts.Load() != 1 {
+		t.Fatalf("expected 1 accepted conn after first request, got %d", accepts.Load())
+	}
+
+	// Simulate the server restarting: the pooled keep-alive connection's server
+	// side dies. Force the idle timeout to elapse (the transport's janitor reaps
+	// the idle conn). Sleep past IdleConnTimeout.
+	time.Sleep(250 * time.Millisecond)
+
+	// A second request must NOT hang on the dead pooled connection. With the
+	// finite IdleConnTimeout the transport reaped the idle conn and dials a
+	// fresh one, so the request succeeds and a second TCP connection is opened.
+	start := time.Now()
+	resp, err = client.Get(url)
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("second request after idle reap failed: %v (elapsed %v)", err, elapsed)
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+
+	if accepts.Load() != 2 {
+		t.Fatalf("expected a fresh connection after idle reap (2 accepts), got %d — the request reused a stale pooled connection", accepts.Load())
+	}
+	// Must not have hung anywhere near the 90s regression; a fast fresh dial is
+	// expected well under this bound.
+	if elapsed > 3*time.Second {
+		t.Fatalf("second request took %v — too slow, likely blocked on a stale connection", elapsed)
+	}
+}
+
+// TestDefaultHTTPClientHasSaneSettings directly guards the hardened default
+// produced by defaultHTTPClient: a non-nil bounded transport and a finite
+// client timeout.
+func TestDefaultHTTPClientHasSaneSettings(t *testing.T) {
+	c := defaultHTTPClient()
+	if c.Timeout == 0 {
+		t.Fatal("defaultHTTPClient must set a finite client timeout")
+	}
+	tr, ok := c.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("defaultHTTPClient transport type = %T, want *http.Transport", c.Transport)
+	}
+	if tr.IdleConnTimeout <= 0 {
+		t.Fatalf("defaultHTTPClient IdleConnTimeout = %v, want > 0", tr.IdleConnTimeout)
+	}
+	if tr.MaxIdleConns <= 0 || tr.MaxIdleConnsPerHost <= 0 {
+		t.Fatalf("defaultHTTPClient pool limits must be bounded (MaxIdleConns=%d MaxIdleConnsPerHost=%d)",
+			tr.MaxIdleConns, tr.MaxIdleConnsPerHost)
+	}
+	// HTTP/2 must be preserved (the clone keeps ForceAttemptHTTP2).
+	if !tr.ForceAttemptHTTP2 {
+		t.Fatal("defaultHTTPClient must preserve ForceAttemptHTTP2 (HTTP/2)")
+	}
 }

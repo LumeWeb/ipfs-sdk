@@ -165,7 +165,11 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 	// Create or wrap HTTP client with auth injection
 	var authTransport *httputil.AuthRoundTripper
 	if s.httpClient == nil {
-		authTransport = httputil.NewAuthRoundTripper(http.DefaultTransport, authToken)
+		authTransport = httputil.NewAuthRoundTripper(defaultHTTPClient().Transport, authToken)
+		// No client-level Timeout on the streaming path: it would abort large
+		// block/file body transfers. The transport's dial/TLS/response-header
+		// timeouts (from the hardened defaultHTTPClient clone) already guard
+		// against wedged idle connections without capping streaming bodies.
 		s.httpClient = &http.Client{
 			Transport: authTransport,
 		}
