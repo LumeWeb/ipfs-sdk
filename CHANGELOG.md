@@ -1,3 +1,9 @@
+## 0.1.76 (2026-08-12)
+
+### Fixes
+
+- harden default HTTP client against stale pooled connections
+
 ## 0.1.75 (2026-08-09)
 
 ### Features
