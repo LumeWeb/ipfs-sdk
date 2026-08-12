@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 )
@@ -54,6 +55,48 @@ type ClientConfig struct {
 func DefaultClientConfig() ClientConfig {
 	return ClientConfig{
 		Retry: DefaultRetryConfig(),
+	}
+}
+
+// defaultIdleConnTimeout is how long an idle keep-alive connection is held in
+// the pool before being reaped. Finite idle timeouts are the root protection
+// against stale pooled connections: when a server restarts/changes, the client
+// still holds conns whose server side died. If those are never reaped, requests
+// that draw one from the pool block on the dead socket (e.g. stuck in
+// http2pipe.Read) until a caller-level timeout, which surfaces as intermittent
+// hangs/timeouts across every SDK consumer. Reaping idle conns bounds the window
+// in which a stale connection can be handed out to a request.
+const defaultIdleConnTimeout = 90 * time.Second
+
+// defaultHTTPTimeout bounds a single HTTP request on the default client. It is
+// generous for the metadata and block APIs while still failing fast on a
+// wedged connection whose server side died mid-flight.
+const defaultHTTPTimeout = 30 * time.Second
+
+// defaultHTTPClient returns the client used by NewClient when a caller does not
+// supply their own via SetHTTPClient. It deliberately avoids the zero-value
+// http.Client{}, which pools idle keep-alive connections indefinitely (via
+// http.DefaultTransport) and has no client-level timeout — both of which let a
+// stale connection to a restarted server wedge requests, as observed in
+// production across the website gateway and other SDK consumers.
+//
+// The transport is a clone of http.DefaultTransport so standard behavior
+// (proxy from environment, dial/TLS timeouts, HTTP/2, ForceAttemptHTTP2) is
+// preserved; only connection-pool reaping and per-host limits are tightened.
+func defaultHTTPClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	// Reap idle keep-alive connections so the pool cannot serve a connection
+	// that went stale against a dead/restarted peer.
+	transport.IdleConnTimeout = defaultIdleConnTimeout
+	// Bound the pool so stale connections are not retained unbounded.
+	transport.MaxIdleConns = 100
+	transport.MaxIdleConnsPerHost = 10
+
+	// A client-level timeout bounds every request so a request on a conn that
+	// died mid-flight cannot hang forever.
+	return &http.Client{
+		Transport: transport,
+		Timeout:   defaultHTTPTimeout,
 	}
 }
 
@@ -232,7 +275,7 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		return nil, fmt.Errorf("failed to create internal client: %w", err)
 	}
 
-	httpClient := &http.Client{}
+	httpClient := defaultHTTPClient()
 
 	c := &Client{
 		httpClient:    httpClient,

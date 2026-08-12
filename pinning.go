@@ -75,7 +75,7 @@ func NewPinningService(baseURL, bearerToken string, opts ...PinningServiceOption
 
 	httpClient := cfg.HTTPClient
 	if httpClient == nil {
-		httpClient = &http.Client{}
+		httpClient = defaultHTTPClient()
 	}
 
 	svc := &pinningService{
