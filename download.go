@@ -174,9 +174,15 @@ func NewDownloadService(baseURL, authToken string, opts ...DownloadServiceOption
 			Transport: authTransport,
 		}
 	} else {
-		// Wrap existing transport
+		// Wrap the caller's transport in an auth round tripper WITHOUT mutating
+		// the shared client in place. Constructing the download service must not
+		// have the side effect of re-wrapping every service that shares the same
+		// *http.Transport (pinning, upload, the internal client). Copy the struct
+		// so only this service's client carries the auth wrapper.
 		authTransport = httputil.NewAuthRoundTripper(s.httpClient.Transport, authToken)
-		s.httpClient.Transport = authTransport
+		clone := *s.httpClient
+		clone.Transport = authTransport
+		s.httpClient = &clone
 	}
 	s.authTransport = authTransport
 

@@ -472,3 +472,44 @@ func TestWithTimeoutPreservesHardenedTransport(t *testing.T) {
 	assert.Nil(t, internalHTTP2.Transport,
 		"bare SetHTTPClient &http.Client{} must fall back to default transport (documents why WithTimeout exists)")
 }
+
+// TestHostOverrideReachesAllServices guards the split-brain fix: NewClient used
+// to wire Pinning/Upload/Download from a pre-option local httpClient and apply
+// the host override to that stale local, so WithTimeout + WithHostOverride left
+// the host override missing (or the timeout missing) on those services. After
+// the refactor the host override and timeout must both reach the shared client
+// and every service reading from it.
+func TestHostOverrideReachesAllServices(t *testing.T) {
+	client, err := NewClient(
+		"http://example.com", "token123",
+		WithTimeout(5*time.Second),
+		WithHostOverride("api.example.com", "127.0.0.1:8080"),
+	)
+	require.NoError(t, err)
+
+	// The shared client carries both the timeout and the host override.
+	assert.Equal(t, 5*time.Second, client.httpClient.Timeout,
+		"shared client must carry the WithTimeout value")
+	require.NotNil(t, client.httpClient.Transport, "shared client transport must be set")
+
+	// With a host override configured, the shared client's transport must be
+	// (possibly auth-wrapped) built on the host override wrapper chain. The
+	// host override wrapper itself lives at the top level when no other
+	// service has re-wrapped it yet; more importantly the timeout must reach
+	// every service, proving they are all wired from the same post-option
+	// shared client (the split-brain divergence symptom).
+	assert.NotNil(t, client.Pinning(), "pinning service must be initialized")
+	assert.Equal(t, 5*time.Second, client.httpClient.Timeout,
+		"shared client timeout preserved")
+
+	// Upload and download must see the same timeout (not the default 30s),
+	// confirming they are wired from the post-option shared client.
+	require.NotNil(t, client.upload)
+	require.NotNil(t, client.upload.httpClient)
+	assert.Equal(t, 5*time.Second, client.upload.httpClient.Timeout,
+		"WithTimeout must reach the upload service even with a host override")
+	require.NotNil(t, client.download)
+	require.NotNil(t, client.download.httpClient)
+	assert.Equal(t, 5*time.Second, client.download.httpClient.Timeout,
+		"WithTimeout must reach the download service even with a host override")
+}

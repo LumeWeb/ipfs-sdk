@@ -275,10 +275,8 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		return nil, fmt.Errorf("failed to create internal client: %w", err)
 	}
 
-	httpClient := defaultHTTPClient()
-
 	c := &Client{
-		httpClient:    httpClient,
+		httpClient:    defaultHTTPClient(),
 		baseURL:       normalizedURL,
 		bearerToken:   bearerToken,
 		internalGen:   internalGen,
@@ -286,7 +284,9 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 		retry:         cfg.Retry,
 	}
 
-	// Apply client options first (including hostOverride)
+	// Apply client options first. Options may replace c.httpClient (WithTimeout,
+	// SetHTTPClient) — c.httpClient is the single source of truth every service
+	// is wired from below, so consumer options apply uniformly.
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -306,33 +306,38 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 
 	c.genClientOpts = combinedRequestEditor
 
-	// Rebuild internalGen with the current httpClient (includes host override transport if configured)
-	if err := c.rebuildInternalGen(); err != nil {
-		return nil, err
+	// If needed, fall back to the hardened default client; options must never
+	// leave it nil.
+	if c.httpClient == nil {
+		c.httpClient = defaultHTTPClient()
 	}
 
 	// If host override is configured, wrap the transport on the shared httpClient
-	// so pinning, upload, and download services also route through the override
+	// so pinning, upload, and download services also route through the override.
+	// This is applied to c.httpClient (the single source of truth) so consumer
+	// options like WithTimeout + WithHostOverride combine correctly. rebuildInternalGen
+	// applies its own deduped wrap on the internal client's copy.
 	if c.hostOverride != nil {
-		if httpClient.Transport == nil {
-			httpClient.Transport = http.DefaultTransport
+		if c.httpClient.Transport == nil {
+			c.httpClient.Transport = http.DefaultTransport
 		}
-		httpClient.Transport = &hostOverrideRoundTripper{
-			transport: httpClient.Transport,
+		c.httpClient.Transport = &hostOverrideRoundTripper{
+			transport: c.httpClient.Transport,
 			host:      c.hostOverride.Host,
 			target:    c.hostOverride.Target,
 		}
 	}
 
-	// Initialize pinning service
-	// PinningService now supports host override when custom HTTP client is provided
-	// Route through c.httpClient (the post-option single source of truth) so
-	// consumer options like WithTimeout reach pinning requests too.
-	if c.hostOverride != nil {
-		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(c.httpClient))
-	} else {
-		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(c.httpClient))
+	// Rebuild internalGen with the current httpClient (includes host override transport if configured).
+	// This wires all internal-API services (DNS/IPNS/Websites/Ping/DAG).
+	if err := c.rebuildInternalGen(); err != nil {
+		return nil, err
 	}
+
+	// Initialize pinning service.
+	// Route through c.httpClient (the post-option single source of truth) so
+	// consumer options like WithTimeout/host override reach pinning requests.
+	c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(c.httpClient))
 
 	upload, err := NewUploadService(normalizedURL, bearerToken, WithHTTPClient(c.httpClient))
 	if err != nil {
