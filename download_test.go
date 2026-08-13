@@ -69,13 +69,24 @@ func TestNewDownloadService(t *testing.T) {
 
 	t.Run("creates service with custom HTTP client", func(t *testing.T) {
 		baseURL := "https://api.example.com"
-		customClient := &http.Client{}
+		customClient := &http.Client{Timeout: 5 * time.Second}
 
 		service, err := NewDownloadService(baseURL, testAPIToken, WithDownloadHTTPClient(customClient))
 
 		require.NoError(t, err)
 		assert.NotNil(t, service)
-		assert.Same(t, customClient, service.httpClient)
+		// The download service must NOT mutate the caller's client in place
+		// (that was the split-brain side effect). It uses a copy carrying the
+		// auth round tripper; the caller's client keeps its own transport.
+		assert.NotSame(t, customClient, service.httpClient,
+			"download service must not reuse/mutate the shared client in place")
+		assert.NotNil(t, service.httpClient)
+		assert.NotNil(t, service.authTransport, "auth round tripper must be applied to the copy")
+		// The caller's client must be untouched (no auth wrapper injected).
+		_, ok := customClient.Transport.(*httputil.AuthRoundTripper)
+		assert.False(t, ok, "caller's client transport must not be re-wrapped by download construction")
+		assert.Equal(t, 5*time.Second, service.httpClient.Timeout,
+			"downloaded client copy preserves the caller's timeout")
 	})
 
 	t.Run("fails with invalid base URL", func(t *testing.T) {
