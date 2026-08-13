@@ -326,20 +326,22 @@ func NewClient(baseURL, bearerToken string, opts ...ClientOption) (*Client, erro
 
 	// Initialize pinning service
 	// PinningService now supports host override when custom HTTP client is provided
+	// Route through c.httpClient (the post-option single source of truth) so
+	// consumer options like WithTimeout reach pinning requests too.
 	if c.hostOverride != nil {
-		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(httpClient))
+		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(c.httpClient))
 	} else {
-		c.pinning = NewPinningService(normalizedURL, bearerToken)
+		c.pinning = NewPinningService(normalizedURL, bearerToken, WithPinningHTTPClient(c.httpClient))
 	}
 
-	upload, err := NewUploadService(normalizedURL, bearerToken, WithHTTPClient(httpClient))
+	upload, err := NewUploadService(normalizedURL, bearerToken, WithHTTPClient(c.httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create upload service: %w", err)
 	}
 	c.upload = upload
 
 	// Build download service options - apply rate limiter first, then other options
-	downloadOpts := []DownloadServiceOption{WithDownloadHTTPClient(httpClient)}
+	downloadOpts := []DownloadServiceOption{WithDownloadHTTPClient(c.httpClient)}
 	if c.downloadRateLimiter != nil {
 		downloadOpts = append(downloadOpts, WithDownloadRateLimiter(c.downloadRateLimiter))
 	}
