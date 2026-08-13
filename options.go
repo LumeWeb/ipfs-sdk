@@ -44,19 +44,20 @@ func WithTimeout(timeout time.Duration) ClientOption {
 //
 // If the option is not passed at all, the SDK default applies unchanged.
 // The transport is a clone of the hardened default, so overrides never mutate
-// a shared default transport.
+// a shared default transport. When a caller has installed a custom transport
+// that is not a *http.Transport (via SetHTTPClient), the keep-alive toggle
+// cannot be cloned and is skipped rather than panicking.
 func WithKeepAlive(keepAlive bool) ClientOption {
 	return func(c *Client) {
 		if c.httpClient == nil {
 			c.httpClient = defaultHTTPClient()
 		}
 		client := *c.httpClient
-		if client.Transport == nil {
-			client.Transport = defaultHTTPClient().Transport
+		if base, ok := client.Transport.(*http.Transport); ok {
+			transport := base.Clone()
+			transport.DisableKeepAlives = !keepAlive
+			client.Transport = transport
+			c.httpClient = &client
 		}
-		transport := client.Transport.(*http.Transport).Clone()
-		transport.DisableKeepAlives = !keepAlive
-		client.Transport = transport
-		c.httpClient = &client
 	}
 }

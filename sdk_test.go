@@ -547,4 +547,20 @@ func TestWithKeepAlive(t *testing.T) {
 	// WithKeepAlive must not disturb the transport hardening's client timeout.
 	assert.Equal(t, defaultHTTPTimeout, noKA.httpClient.Timeout,
 		"WithKeepAlive must preserve the default client timeout")
+
+	// A custom non-*http.Transport must not panic — the keep-alive toggle is
+	// simply skipped (cannot clone a generic RoundTripper), and the custom
+	// transport is left untouched.
+	customRTClient, err := NewClient("http://example.com", "token123")
+	require.NoError(t, err)
+	customRTClient.SetHTTPClient(&http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) { return nil, nil })})
+	require.NotPanics(t, func() {
+		WithKeepAlive(false)(customRTClient)
+	}, "WithKeepAlive must not panic on a non-*http.Transport")
+	_, isStd := customRTClient.httpClient.Transport.(*http.Transport)
+	assert.False(t, isStd, "custom transport must be left intact")
 }
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
