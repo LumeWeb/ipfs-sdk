@@ -1,3 +1,14 @@
+## 0.1.78 (2026-08-13)
+
+### Features
+
+- add WithKeepAlive option to toggle connection reuse
+
+### Fixes
+
+- guard WithKeepAlive against non-http.Transport transports
+- WithKeepAlive falls back to hardened transport on nil
+
 ## 0.1.77 (2026-08-13)
 
 ### Features
