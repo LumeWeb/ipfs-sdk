@@ -417,3 +417,44 @@ func TestDefaultHTTPClientHasSaneSettings(t *testing.T) {
 		t.Fatal("defaultHTTPClient must preserve ForceAttemptHTTP2 (HTTP/2)")
 	}
 }
+
+// TestWithTimeoutPreservesHardenedTransport guards the root fix for consumers
+// that want to change the request timeout. Constructing a bare
+// &http.Client{Timeout: t} (as callers historically fed to SetHTTPClient)
+// drops the hardened transport and falls back to http.DefaultTransport's
+// unbounded idle pool. WithTimeout must apply the custom timeout while keeping
+// the hardened (finite-reaping, bounded) transport, across the served client
+// and the internal generated client.
+func TestWithTimeoutPreservesHardenedTransport(t *testing.T) {
+	client, err := NewClient("http://example.com", "token123", WithTimeout(5*time.Second))
+	require.NoError(t, err)
+
+	// The served client gets the custom timeout AND the hardened transport.
+	require.NotNil(t, client.httpClient, "http client must be set")
+	assert.Equal(t, 5*time.Second, client.httpClient.Timeout,
+		"WithTimeout must apply the custom timeout")
+	tr, ok := client.httpClient.Transport.(*http.Transport)
+	require.True(t, ok, "WithTimeout must preserve a *http.Transport (not drop to nil/default)")
+	assert.Positive(t, tr.IdleConnTimeout,
+		"WithTimeout must preserve finite idle-conn reaping (stale pooled-conn guard)")
+	assert.NotZero(t, tr.MaxIdleConnsPerHost,
+		"WithTimeout must preserve bounded per-host idle pool")
+
+	// The internal generated client (DNS/IPNS/Websites/Ping) must reflect it too.
+	doer := extractHTTPDoer(t, client.internalGen)
+	internalHTTP, ok := doer.(*http.Client)
+	require.True(t, ok, "internalGen should use *http.Client")
+	assert.Equal(t, 5*time.Second, internalHTTP.Timeout,
+		"internal generated client must carry the WithTimeout value")
+
+	// Sanity: a traditional bare-client override drops the hardened transport.
+	stripped := &http.Client{Timeout: 5 * time.Second}
+	client2, err := NewClient("http://example.com", "token123")
+	require.NoError(t, err)
+	require.NoError(t, client2.SetHTTPClient(stripped))
+	doer2 := extractHTTPDoer(t, client2.internalGen)
+	internalHTTP2, ok := doer2.(*http.Client)
+	require.True(t, ok)
+	assert.Nil(t, internalHTTP2.Transport,
+		"bare SetHTTPClient &http.Client{} must fall back to default transport (documents why WithTimeout exists)")
+}
