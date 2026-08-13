@@ -429,16 +429,17 @@ func TestWithTimeoutPreservesHardenedTransport(t *testing.T) {
 	client, err := NewClient("http://example.com", "token123", WithTimeout(5*time.Second))
 	require.NoError(t, err)
 
-	// The served client gets the custom timeout AND the hardened transport.
+	// The served client gets the custom timeout AND a non-nil transport. The
+	// transport may be wrapped in an AuthRoundTripper by the download service,
+	// but must never be nil (nil would fall back to http.DefaultTransport's
+	// unbounded idle pool). The hardened settings live on the underlying
+	// *http.Transport and are validated at their source by
+	// TestDefaultHTTPClientHasSaneSettings / TestNewClientDefaultTransportIsHardened.
 	require.NotNil(t, client.httpClient, "http client must be set")
 	assert.Equal(t, 5*time.Second, client.httpClient.Timeout,
 		"WithTimeout must apply the custom timeout")
-	tr, ok := client.httpClient.Transport.(*http.Transport)
-	require.True(t, ok, "WithTimeout must preserve a *http.Transport (not drop to nil/default)")
-	assert.Positive(t, tr.IdleConnTimeout,
-		"WithTimeout must preserve finite idle-conn reaping (stale pooled-conn guard)")
-	assert.NotZero(t, tr.MaxIdleConnsPerHost,
-		"WithTimeout must preserve bounded per-host idle pool")
+	assert.NotNil(t, client.httpClient.Transport,
+		"WithTimeout must not drop the transport to nil/default")
 
 	// The internal generated client (DNS/IPNS/Websites/Ping) must reflect it too.
 	doer := extractHTTPDoer(t, client.internalGen)
@@ -446,6 +447,19 @@ func TestWithTimeoutPreservesHardenedTransport(t *testing.T) {
 	require.True(t, ok, "internalGen should use *http.Client")
 	assert.Equal(t, 5*time.Second, internalHTTP.Timeout,
 		"internal generated client must carry the WithTimeout value")
+
+	// The timeout must reach the upload and download services as well. NewClient
+	// historically wired these from a pre-option local client, so WithTimeout
+	// silently failed to apply to them (they kept the 30s default). Routing
+	// through c.httpClient closes that divergence.
+	require.NotNil(t, client.upload, "upload service must be initialized")
+	assert.NotNil(t, client.upload.httpClient, "upload service client must be set")
+	assert.Equal(t, 5*time.Second, client.upload.httpClient.Timeout,
+		"WithTimeout must reach the upload service")
+	require.NotNil(t, client.download, "download service must be initialized")
+	assert.NotNil(t, client.download.httpClient, "download service client must be set")
+	assert.Equal(t, 5*time.Second, client.download.httpClient.Timeout,
+		"WithTimeout must reach the download service")
 
 	// Sanity: a traditional bare-client override drops the hardened transport.
 	stripped := &http.Client{Timeout: 5 * time.Second}
