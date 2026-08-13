@@ -53,6 +53,12 @@ func WithKeepAlive(keepAlive bool) ClientOption {
 			c.httpClient = defaultHTTPClient()
 		}
 		client := *c.httpClient
+		// A nil transport (e.g. a bare &http.Client{} installed via
+		// SetHTTPClient) would fail the assertion below; fall back to the
+		// hardened default first so the toggle still applies.
+		if client.Transport == nil {
+			client.Transport = defaultHTTPClient().Transport
+		}
 		if base, ok := client.Transport.(*http.Transport); ok {
 			transport := base.Clone()
 			transport.DisableKeepAlives = !keepAlive
