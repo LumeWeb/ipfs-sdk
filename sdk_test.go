@@ -513,3 +513,71 @@ func TestHostOverrideReachesAllServices(t *testing.T) {
 	assert.Equal(t, 5*time.Second, client.download.httpClient.Timeout,
 		"WithTimeout must reach the download service even with a host override")
 }
+
+func TestWithKeepAlive(t *testing.T) {
+	// Without the option, the SDK default (keep-alive enabled) applies.
+	def, err := NewClient("http://example.com", "token123")
+	require.NoError(t, err)
+	defTransport, ok := def.httpClient.Transport.(*http.Transport)
+	require.True(t, ok, "default client transport should be *http.Transport")
+	assert.False(t, defTransport.DisableKeepAlives,
+		"SDK default must have keep-alive enabled (hardened idle reaping, not disabled)")
+
+	// WithKeepAlive(false): fresh connection per request (health-check pattern).
+	noKA, err := NewClient("http://example.com", "token123", WithKeepAlive(false))
+	require.NoError(t, err)
+	kaTransport, ok := noKA.httpClient.Transport.(*http.Transport)
+	require.True(t, ok, "client transport should be *http.Transport")
+	assert.True(t, kaTransport.DisableKeepAlives,
+		"WithKeepAlive(false) must disable keep-alive reuse")
+	// The hardened reaping settings must survive the clone.
+	assert.Equal(t, defaultIdleConnTimeout, kaTransport.IdleConnTimeout,
+		"WithKeepAlive must preserve the hardened idle-conn timeout")
+	assert.Equal(t, 10, kaTransport.MaxIdleConnsPerHost,
+		"WithKeepAlive must preserve the bounded idle pool")
+
+	// WithKeepAlive(true): explicitly re-enables reuse (idempotent with default).
+	ta, err := NewClient("http://example.com", "token123", WithKeepAlive(true))
+	require.NoError(t, err)
+	tTransport, ok := ta.httpClient.Transport.(*http.Transport)
+	require.True(t, ok, "client transport should be *http.Transport")
+	assert.False(t, tTransport.DisableKeepAlives,
+		"WithKeepAlive(true) must leave keep-alive reuse enabled")
+
+	// WithKeepAlive must not disturb the transport hardening's client timeout.
+	assert.Equal(t, defaultHTTPTimeout, noKA.httpClient.Timeout,
+		"WithKeepAlive must preserve the default client timeout")
+
+	// A custom non-*http.Transport must not panic — the keep-alive toggle is
+	// simply skipped (cannot clone a generic RoundTripper), and the custom
+	// transport is left untouched.
+	customRTClient, err := NewClient("http://example.com", "token123")
+	require.NoError(t, err)
+	customRTClient.SetHTTPClient(&http.Client{Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) { return nil, nil })})
+	require.NotPanics(t, func() {
+		WithKeepAlive(false)(customRTClient)
+	}, "WithKeepAlive must not panic on a non-*http.Transport")
+	_, isStd := customRTClient.httpClient.Transport.(*http.Transport)
+	assert.False(t, isStd, "custom transport must be left intact")
+
+	// A bare &http.Client{} (nil transport, e.g. via SetHTTPClient) must fall
+	// back to the hardened transport and then apply the toggle, not skip.
+	bareClient, err := NewClient("http://example.com", "token123")
+	require.NoError(t, err)
+	bareClient.SetHTTPClient(&http.Client{Timeout: 9 * time.Second})
+	require.NotPanics(t, func() {
+		WithKeepAlive(false)(bareClient)
+	}, "WithKeepAlive must handle a nil transport")
+	bareTransport, ok := bareClient.httpClient.Transport.(*http.Transport)
+	require.True(t, ok, "nil transport must be replaced with the hardened *http.Transport")
+	assert.True(t, bareTransport.DisableKeepAlives,
+		"WithKeepAlive(false) must apply to a nil-transport client")
+	assert.Equal(t, 9*time.Second, bareClient.httpClient.Timeout,
+		"WithKeepAlive must preserve the caller's timeout on a bare client")
+	assert.Equal(t, defaultIdleConnTimeout, bareTransport.IdleConnTimeout,
+		"nil-transport fallback must keep the hardened idle-conn timeout")
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

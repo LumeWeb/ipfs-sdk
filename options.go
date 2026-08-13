@@ -1,6 +1,9 @@
 package ipfs
 
-import "time"
+import (
+	"net/http"
+	"time"
+)
 
 // options.go — ClientOption helpers for the main SDK client.
 
@@ -23,5 +26,44 @@ func WithTimeout(timeout time.Duration) ClientOption {
 		client := *c.httpClient
 		client.Timeout = timeout
 		c.httpClient = &client
+	}
+}
+
+// WithKeepAlive toggles HTTP keep-alive connection reuse while preserving the
+// SDK's hardened default transport (finite idle-conn reaping + bounded idle
+// pool).
+//
+// The SDK default has keep-alive reuse enabled and reaps stale idle
+// connections (see defaultHTTPClient). Pass WithKeepAlive only when you need
+// to override that default:
+//
+//   - WithKeepAlive(true)  — keep-alive connection reuse enabled.
+//   - WithKeepAlive(false) — keep-alive disabled (fresh connection per
+//     request). Useful for low-frequency liveness/health checks where a stale
+//     pooled connection to a restarted peer must never wedge the probe.
+//
+// If the option is not passed at all, the SDK default applies unchanged.
+// The transport is a clone of the hardened default, so overrides never mutate
+// a shared default transport. When a caller has installed a custom transport
+// that is not a *http.Transport (via SetHTTPClient), the keep-alive toggle
+// cannot be cloned and is skipped rather than panicking.
+func WithKeepAlive(keepAlive bool) ClientOption {
+	return func(c *Client) {
+		if c.httpClient == nil {
+			c.httpClient = defaultHTTPClient()
+		}
+		client := *c.httpClient
+		// A nil transport (e.g. a bare &http.Client{} installed via
+		// SetHTTPClient) would fail the assertion below; fall back to the
+		// hardened default first so the toggle still applies.
+		if client.Transport == nil {
+			client.Transport = defaultHTTPClient().Transport
+		}
+		if base, ok := client.Transport.(*http.Transport); ok {
+			transport := base.Clone()
+			transport.DisableKeepAlives = !keepAlive
+			client.Transport = transport
+			c.httpClient = &client
+		}
 	}
 }
