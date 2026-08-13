@@ -1,3 +1,13 @@
+## 0.1.77 (2026-08-13)
+
+### Features
+
+- add WithTimeout option that preserves the hardened transport
+
+### Fixes
+
+- route Pinning/Upload/Download services through c.httpClient
+
 ## 0.1.76 (2026-08-12)
 
 ### Fixes
