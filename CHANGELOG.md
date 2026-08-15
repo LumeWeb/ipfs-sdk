@@ -1,3 +1,9 @@
+## 0.1.79 (2026-08-15)
+
+### Features
+
+- add WithFilterMatch for spec-compliant name substring search
+
 ## 0.1.78 (2026-08-13)
 
 ### Features
