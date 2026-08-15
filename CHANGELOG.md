@@ -1,3 +1,9 @@
+## 0.1.81 (2026-08-15)
+
+### Features
+
+- expose name-partial helper and match strategies
+
 ## 0.1.80 (2026-08-15)
 
 ### Features
