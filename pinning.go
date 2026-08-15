@@ -164,6 +164,15 @@ func WithFilterName(name string) ListOption {
 	return ListOption{Name: &nameCopy}
 }
 
+// WithFilterMatch sets the text matching strategy applied together with
+// WithFilterName (exact, iexact, partial, ipartial). Partial/ipartial perform
+// substring matching anywhere in the name, per the IPFS Pinning Services API
+// spec's TextMatchingStrategy. Empty zero-value disables match overrides.
+func WithFilterMatch(strategy ippinning.TextMatchingStrategy) ListOption {
+	matchCopy := ippinning.Match(strategy)
+	return ListOption{Match: &matchCopy}
+}
+
 // WithFilterStatus filters by status
 func WithFilterStatus(statuses ...PinStatusEnum) ListOption {
 	statusesCopy := ippinning.Status(statuses)
@@ -224,6 +233,9 @@ func (s *pinningService) ListPins(ctx context.Context, opts ...ListOption) ([]Pi
 			}
 			if opt.Name != nil {
 				params.Name = opt.Name
+			}
+			if opt.Match != nil {
+				params.Match = opt.Match
 			}
 			if opt.Status != nil {
 				params.Status = opt.Status
