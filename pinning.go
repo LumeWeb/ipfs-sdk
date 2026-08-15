@@ -173,6 +173,28 @@ func WithFilterMatch(strategy ippinning.TextMatchingStrategy) ListOption {
 	return ListOption{Match: &matchCopy}
 }
 
+// TextMatchingStrategy is the name-match strategy applied to WithFilterName.
+// It mirrors the IPFS Pinning Services API TextMatchingStrategy enum.
+type TextMatchingStrategy = ippinning.TextMatchingStrategy
+
+// Name-match strategies per the IPFS Pinning Services API spec.
+const (
+	MatchExact    TextMatchingStrategy = ippinning.Exact
+	MatchIExact   TextMatchingStrategy = ippinning.Iexact
+	MatchPartial  TextMatchingStrategy = ippinning.Partial
+	MatchIPartial TextMatchingStrategy = ippinning.Ipartial
+)
+
+// WithFilterNamePartial sets a server-side substring name search (match=partial),
+// the IPFS Pinning Services API's contains-style match. It composes
+// WithFilterName(name) with WithFilterMatch(partial) in a single ListOption so
+// callers do not need to name the match strategy type themselves.
+func WithFilterNamePartial(name string) ListOption {
+	nameCopy := ippinning.Name(name)
+	matchCopy := ippinning.Match(ippinning.Partial)
+	return ListOption{Name: &nameCopy, Match: &matchCopy}
+}
+
 // WithFilterStatus filters by status
 func WithFilterStatus(statuses ...PinStatusEnum) ListOption {
 	statusesCopy := ippinning.Status(statuses)

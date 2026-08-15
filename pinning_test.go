@@ -65,6 +65,25 @@ func TestWithFilterMatch(t *testing.T) {
 	})
 }
 
+// TestWithFilterNamePartial guards the convenience helper that composes a name
+// filter with match=partial in a single ListOption, so callers can express a
+// server-side substring name search without naming the strategy type.
+func TestWithFilterNamePartial(t *testing.T) {
+	opt := WithFilterNamePartial("docs")
+	require.NotNil(t, opt.Name)
+	assert.Equal(t, ippinning.Name("docs"), *opt.Name)
+	require.NotNil(t, opt.Match)
+	assert.Equal(t, ippinning.TextMatchingStrategy("partial"), *opt.Match)
+}
+
+// TestReExportedMatchStrategies guards the publicly re-exported strategy consts.
+func TestReExportedMatchStrategies(t *testing.T) {
+	assert.Equal(t, ippinning.Exact, TextMatchingStrategy(MatchExact))
+	assert.Equal(t, ippinning.Partial, TextMatchingStrategy(MatchPartial))
+	assert.Equal(t, ippinning.Iexact, TextMatchingStrategy(MatchIExact))
+	assert.Equal(t, ippinning.Ipartial, TextMatchingStrategy(MatchIPartial))
+}
+
 // TestListPinsSendsMatchParam is the end-to-end guard for server-side substring
 // pin search: when WithFilterName is combined with WithFilterMatch(Partial),
 // ListPins must emit the spec's name and match=partial query params (the IPFS
