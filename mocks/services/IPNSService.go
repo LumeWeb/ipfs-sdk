@@ -251,8 +251,16 @@ func (_c *MockIPNSService_GetKey_Call) RunAndReturn(run func(ctx context.Context
 }
 
 // ListKeys provides a mock function for the type MockIPNSService
-func (_mock *MockIPNSService) ListKeys(ctx context.Context) ([]ipfs.IPNSKeyResponse, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockIPNSService) ListKeys(ctx context.Context, opts ...ipfs.ListKeyOption) ([]ipfs.IPNSKeyResponse, error) {
+	// ipfs.ListKeyOption
+	_va := make([]any, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []any
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListKeys")
@@ -260,18 +268,18 @@ func (_mock *MockIPNSService) ListKeys(ctx context.Context) ([]ipfs.IPNSKeyRespo
 
 	var r0 []ipfs.IPNSKeyResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]ipfs.IPNSKeyResponse, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, ...ipfs.ListKeyOption) ([]ipfs.IPNSKeyResponse, error)); ok {
+		return returnFunc(ctx, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []ipfs.IPNSKeyResponse); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, ...ipfs.ListKeyOption) []ipfs.IPNSKeyResponse); ok {
+		r0 = returnFunc(ctx, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]ipfs.IPNSKeyResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, ...ipfs.ListKeyOption) error); ok {
+		r1 = returnFunc(ctx, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -285,19 +293,22 @@ type MockIPNSService_ListKeys_Call struct {
 
 // ListKeys is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockIPNSService_Expecter) ListKeys(ctx any) *MockIPNSService_ListKeys_Call {
-	return &MockIPNSService_ListKeys_Call{Call: _e.mock.On("ListKeys", ctx)}
+//   - opts ...ipfs.ListKeyOption
+func (_e *MockIPNSService_Expecter) ListKeys(ctx any, opts ...any) *MockIPNSService_ListKeys_Call {
+	return &MockIPNSService_ListKeys_Call{Call: _e.mock.On("ListKeys",
+		append([]any{ctx}, opts...)...,
+	)}
 }
 
-func (_c *MockIPNSService_ListKeys_Call) Run(run func(ctx context.Context)) *MockIPNSService_ListKeys_Call {
+func (_c *MockIPNSService_ListKeys_Call) Run(run func(ctx context.Context, opts ...ipfs.ListKeyOption)) *MockIPNSService_ListKeys_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
+		variadicArgs := make([]ipfs.ListKeyOption, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(ipfs.ListKeyOption)
+			}
 		}
-		run(
-			arg0,
-		)
+		run(args[0].(context.Context), variadicArgs...)
 	})
 	return _c
 }
@@ -307,7 +318,7 @@ func (_c *MockIPNSService_ListKeys_Call) Return(vs []ipfs.IPNSKeyResponse, err e
 	return _c
 }
 
-func (_c *MockIPNSService_ListKeys_Call) RunAndReturn(run func(ctx context.Context) ([]ipfs.IPNSKeyResponse, error)) *MockIPNSService_ListKeys_Call {
+func (_c *MockIPNSService_ListKeys_Call) RunAndReturn(run func(ctx context.Context, opts ...ipfs.ListKeyOption) ([]ipfs.IPNSKeyResponse, error)) *MockIPNSService_ListKeys_Call {
 	_c.Call.Return(run)
 	return _c
 }

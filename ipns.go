@@ -63,6 +63,22 @@ func WithIPNSKey(key string) CreateKeyOption {
 	}
 }
 
+// ListKeyOption configures the server-side filtering of ListKeys. The portal
+// /api/ipns/keys endpoint is a queryutil list endpoint, so filters are sent as
+// query params (filters[field][op]=value); searched name filters use the
+// contains operator, matching the handler with zero portal changes.
+type ListKeyOption struct {
+	// FilterName, when set, narrows results to keys whose name contains the
+	// substring via filters[name][contains].
+	FilterName string
+}
+
+// WithFilterName narrows ListKeys to keys whose name contains the given
+// substring. Sentinel by being server-side, not post-fetch client filtering.
+func (ListKeyOption) WithFilterName(name string) ListKeyOption {
+	return ListKeyOption{FilterName: name}
+}
+
 // PublishOption applies optional parameters to Publish
 type PublishOption func(*IPNSPublishRequest)
 
@@ -76,7 +92,7 @@ func WithTTL(ttl string) PublishOption {
 // IPNSService provides IPNS key management functionality
 type IPNSService interface {
 	// Key management
-	ListKeys(ctx context.Context) ([]IPNSKeyResponse, error)
+	ListKeys(ctx context.Context, opts ...ListKeyOption) ([]IPNSKeyResponse, error)
 	GetKey(ctx context.Context, id string) (*IPNSKeyResponse, error)
 	CreateKey(ctx context.Context, name string, opts ...CreateKeyOption) (*IPNSKeyResponse, error)
 	DeleteKey(ctx context.Context, id string) error
@@ -113,12 +129,35 @@ func NewIPNSService(genClient IPNSClientWithResponsesInterface, opts ...IPNSOpti
 	return &ipnsService{client: genClient, config: cfg}
 }
 
-// ListKeys retrieves all IPNS keys for the authenticated user
-func (s *ipnsService) ListKeys(ctx context.Context) ([]IPNSKeyResponse, error) {
+// ListKeys retrieves IPNS keys for the authenticated user, optionally narrowed
+// server-side by the provided list options. The portal /api/ipns/keys endpoint
+// is a queryutil list endpoint, so name search is sent as filters[name]
+// [contains] rather than fetched-then-filtered client-side.
+func (s *ipnsService) ListKeys(ctx context.Context, opts ...ListKeyOption) ([]IPNSKeyResponse, error) {
+	var (
+		filterName string
+	)
+	for _, opt := range opts {
+		if opt.FilterName != "" {
+			filterName = opt.FilterName
+		}
+	}
+
 	var result []IPNSKeyResponse
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.GetApiIpnsKeysWithResponse(ctx)
+		var (
+			resp *internalclient.GetApiIpnsKeysResponse
+			err  error
+		)
+		if filterName == "" {
+			// No filters: preserve the no-editor call so existing callers and
+			// mocks are unaffected.
+			resp, err = s.client.GetApiIpnsKeysWithResponse(ctx)
+		} else {
+			reqEditor := buildListKeysEditor(filterName)
+			resp, err = s.client.GetApiIpnsKeysWithResponse(ctx, reqEditor)
+		}
 		if err != nil {
 			return err
 		}
@@ -152,6 +191,23 @@ func (s *ipnsService) ListKeys(ctx context.Context) ([]IPNSKeyResponse, error) {
 	}
 
 	return result, nil
+}
+
+// buildListKeysEditor returns a request editor that appends the queryutil
+// list-query params for an IPNS key list call. When filterName is non-empty it
+// adds filters[name][contains]=<filterName>, matching the portal handler's
+// expectations for server-side name substring search with zero portal changes.
+// A nil filterName yields a nil editor (no query mutations).
+func buildListKeysEditor(filterName string) internalclient.RequestEditorFn {
+	if filterName == "" {
+		return nil
+	}
+	return func(_ context.Context, req *http.Request) error {
+		q := req.URL.Query()
+		q.Set("filters[name][contains]", filterName)
+		req.URL.RawQuery = q.Encode()
+		return nil
+	}
 }
 
 // GetKey retrieves a specific IPNS key by ID
