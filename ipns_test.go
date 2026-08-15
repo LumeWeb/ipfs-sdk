@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -111,6 +114,47 @@ func TestIPNSService_ListKeys_NoRetryOn400(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed with status 400")
 		assert.Nil(t, result)
 	})
+}
+
+// TestListKeysSendsNameFilter is the end-to-end guard for server-side IPNS key
+// search: ListKeys with WithFilterName must emit the queryutil filters[name]
+// [contains]=<name> query param (not fetch-then-filter client-side), and a
+// plain ListKeys must send no filters.
+func TestListKeysSendsNameFilter(t *testing.T) {
+	var (
+		mu    sync.Mutex
+		gotQuery url.Values
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		gotQuery = r.URL.Query()
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"total":0}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	// Build a real generated client pointed at the test server, then wire it
+	// through the public IPNS service.
+	genClient, err := client.NewClientWithResponses(srv.URL)
+	require.NoError(t, err)
+	service := NewIPNSService(genClient)
+
+	// With a name filter: the server-side contains filter must be sent.
+	_, err = service.ListKeys(context.Background(), ListKeyOption{}.WithFilterName("docs"))
+	require.NoError(t, err)
+	mu.Lock()
+	withFilter := gotQuery.Get("filters[name][contains]")
+	mu.Unlock()
+	assert.Equal(t, "docs", withFilter, "filters[name][contains] must be sent server-side for name search")
+
+	// Without a filter: no query params on the list call.
+	_, err = service.ListKeys(context.Background())
+	require.NoError(t, err)
+	mu.Lock()
+	plain := gotQuery.Get("filters[name][contains]")
+	mu.Unlock()
+	assert.Empty(t, plain, "plain ListKeys must not send a name filter")
 }
 
 func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
