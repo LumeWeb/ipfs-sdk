@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"sync"
 	"testing"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	ippinning "go.lumeweb.com/ipfs-sdk/internal/pinning"
 
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
@@ -41,6 +44,59 @@ func TestWithFilterName(t *testing.T) {
 
 		assert.NotNil(t, opt)
 	})
+}
+
+func TestWithFilterMatch(t *testing.T) {
+	t.Run("sets the text matching strategy", func(t *testing.T) {
+		opt := WithFilterMatch(ippinning.Partial)
+		require.NotNil(t, opt.Match)
+		assert.Equal(t, ippinning.TextMatchingStrategy("partial"), *opt.Match)
+	})
+
+	t.Run("supports all spec strategies", func(t *testing.T) {
+		want := []ippinning.TextMatchingStrategy{
+			ippinning.Exact, ippinning.Iexact, ippinning.Partial, ippinning.Ipartial,
+		}
+		for _, s := range want {
+			opt := WithFilterMatch(s)
+			require.NotNil(t, opt.Match, "WithFilterMatch(%q)", s)
+			assert.Equal(t, s, *opt.Match)
+		}
+	})
+}
+
+// TestListPinsSendsMatchParam is the end-to-end guard for server-side substring
+// pin search: when WithFilterName is combined with WithFilterMatch(Partial),
+// ListPins must emit the spec's name and match=partial query params (the IPFS
+// Pinning Services API TextMatchingStrategy), not drop the match on the floor.
+func TestListPinsSendsMatchParam(t *testing.T) {
+	var (
+		mu    sync.Mutex
+		query = url.Values{}
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		query = r.URL.Query()
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"count":0,"results":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	s := NewPinningService(srv.URL, "token-a")
+	require.NotNil(t, s)
+
+	_, err := s.ListPins(context.Background(),
+		WithFilterName("docs"),
+		WithFilterMatch(ippinning.Partial),
+		WithLimit(10),
+	)
+	require.NoError(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, "docs", query.Get("name"), "name filter must be sent server-side")
+	assert.Equal(t, "partial", query.Get("match"), "match=partial must be sent server-side for substring search")
 }
 
 func TestWithFilterStatus(t *testing.T) {
