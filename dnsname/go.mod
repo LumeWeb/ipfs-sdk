@@ -1,4 +1,4 @@
-module go.lumeweb.com/ipfs-sdk/dnsname // v0.1.79
+module go.lumeweb.com/ipfs-sdk/dnsname // v0.1.80
 
 go 1.26.0
 

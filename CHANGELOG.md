@@ -1,3 +1,9 @@
+## 0.1.80 (2026-08-15)
+
+### Features
+
+- server-side name search on ListKeys
+
 ## 0.1.79 (2026-08-15)
 
 ### Features
