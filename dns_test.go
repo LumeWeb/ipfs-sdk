@@ -443,7 +443,7 @@ func TestDNSService_DeleteRecord(t *testing.T) {
 		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
-			DeleteApiDnsZonesIdRecordsNameTypeWithResponse(mock.Anything, "123", "www", "A").
+			DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(mock.Anything, "123", "www", "A", "application/json", mock.Anything).
 			Return(&internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse{
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 			}, nil).
@@ -458,13 +458,71 @@ func TestDNSService_DeleteRecord(t *testing.T) {
 		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
-			DeleteApiDnsZonesIdRecordsNameTypeWithResponse(mock.Anything, "123", "www", "A").
+			DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(mock.Anything, "123", "www", "A", "application/json", mock.Anything).
 			Return(nil, assert.AnError).
 			Once()
 
 		err := service.DeleteRecord(context.Background(), "123", "www", "A")
 
 		assert.Error(t, err)
+	})
+
+	t.Run("deletes single record by content", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		var capturedBody internalclient.RecordDeleteRequest
+		mockClient.EXPECT().
+			DeleteApiDnsZonesIdRecordsNameTypeWithResponse(mock.Anything, "123", "www", "TXT", mock.Anything).
+			Run(func(_ context.Context, _, _, _ string, body internalclient.RecordDeleteRequest, _ ...internalclient.RequestEditorFn) {
+				capturedBody = body
+			}).
+			Return(&internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNoContent},
+			}, nil).
+			Once()
+
+		err := service.DeleteRecord(context.Background(), "123", "www", "TXT", "v=spf1 include:mxroute.com -all")
+
+		assert.NoError(t, err)
+		require.NotNil(t, capturedBody.Content, "content should be present")
+		assert.Equal(t, "v=spf1 include:mxroute.com -all", *capturedBody.Content)
+	})
+
+	t.Run("no content sends no body (whole RRSet)", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		mockClient.EXPECT().
+			DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(mock.Anything, "123", "www", "A", "application/json", mock.Anything).
+			Return(&internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNoContent},
+			}, nil).
+			Once()
+
+		err := service.DeleteRecord(context.Background(), "123", "www", "A")
+
+		assert.NoError(t, err)
+	})
+
+	t.Run("rejects multiple content selectors", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		err := service.DeleteRecord(context.Background(), "123", "www", "TXT", "v=spf1 include:mxroute.com -all", "another-value")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "at most one content selector")
+		mockClient.AssertNotCalled(t, "DeleteApiDnsZonesIdRecordsNameTypeWithResponse", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		mockClient.AssertNotCalled(t, "DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("rejects empty content selector", func(t *testing.T) {
+		service, mockClient := testDNSService(t)
+
+		err := service.DeleteRecord(context.Background(), "123", "www", "TXT", "")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "empty content selector")
+		mockClient.AssertNotCalled(t, "DeleteApiDnsZonesIdRecordsNameTypeWithResponse", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		mockClient.AssertNotCalled(t, "DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	})
 }
 

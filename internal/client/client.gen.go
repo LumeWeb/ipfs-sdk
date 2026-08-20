@@ -176,9 +176,10 @@ type DomainListResponse struct {
 
 // DomainRequest defines model for DomainRequest.
 type DomainRequest struct {
-	Config    *map[string]interface{} `json:"config,omitempty"`
-	Domain    string                  `json:"domain"`
-	Namespace string                  `json:"namespace"`
+	Config            *map[string]interface{} `json:"config,omitempty"`
+	DnsHostingEnabled *bool                   `json:"dns_hosting_enabled,omitempty"`
+	Domain            string                  `json:"domain"`
+	Namespace         string                  `json:"namespace"`
 }
 
 // DomainResponse defines model for DomainResponse.
@@ -366,10 +367,16 @@ type PostUploadResponse struct {
 	CID string `json:"CID"`
 }
 
+// RecordDeleteRequest defines model for RecordDeleteRequest.
+type RecordDeleteRequest struct {
+	Content *string `json:"content,omitempty"`
+}
+
 // RecordIdentifier defines model for RecordIdentifier.
 type RecordIdentifier struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Content *string `json:"content,omitempty"`
+	Name    string  `json:"name"`
+	Type    string  `json:"type"`
 }
 
 // RecordRequest defines model for RecordRequest.
@@ -385,6 +392,7 @@ type RecordRequest struct {
 type RecordResponse struct {
 	Content  string `json:"content"`
 	Disabled bool   `json:"disabled"`
+	Id       string `json:"id"`
 	Name     string `json:"name"`
 	Ttl      int    `json:"ttl"`
 	Type     string `json:"type"`
@@ -457,7 +465,6 @@ type WebsiteItem struct {
 	ActiveCid            *string        `json:"active_cid,omitempty"`
 	Created              time.Time      `json:"created"`
 	DnsHostingEnabled    bool           `json:"dns_hosting_enabled"`
-	DnsZoneId            *int           `json:"dns_zone_id,omitempty"`
 	Domain               string         `json:"domain"`
 	Expired              bool           `json:"expired"`
 	GatewayDomain        *string        `json:"gateway_domain,omitempty"`
@@ -473,6 +480,7 @@ type WebsiteItem struct {
 	ValidationExpiresAt  *time.Time     `json:"validation_expires_at,omitempty"`
 	ValidationRecordHost *string        `json:"validation_record_host,omitempty"`
 	ValidationToken      string         `json:"validation_token"`
+	ZoneId               *int           `json:"zone_id,omitempty"`
 }
 
 // WebsiteItemResponse defines model for WebsiteItemResponse.
@@ -495,7 +503,6 @@ type WebsiteResponse struct {
 	ActiveCid            *string        `json:"active_cid,omitempty"`
 	Created              time.Time      `json:"created"`
 	DnsHostingEnabled    bool           `json:"dns_hosting_enabled"`
-	DnsZoneId            *int           `json:"dns_zone_id,omitempty"`
 	Domain               string         `json:"domain"`
 	Expired              bool           `json:"expired"`
 	GatewayDomain        *string        `json:"gateway_domain,omitempty"`
@@ -511,6 +518,7 @@ type WebsiteResponse struct {
 	ValidationExpiresAt  *time.Time     `json:"validation_expires_at,omitempty"`
 	ValidationRecordHost *string        `json:"validation_record_host,omitempty"`
 	ValidationToken      string         `json:"validation_token"`
+	ZoneId               *int           `json:"zone_id,omitempty"`
 }
 
 // WebsiteUpdateRequest defines model for WebsiteUpdateRequest.
@@ -673,6 +681,9 @@ type PostApiDnsZonesIdRecordsBulkJSONRequestBody = BulkRecordRequest
 // PostApiDnsZonesIdRecordsBulkDeleteJSONRequestBody defines body for PostApiDnsZonesIdRecordsBulkDelete for application/json ContentType.
 type PostApiDnsZonesIdRecordsBulkDeleteJSONRequestBody = BulkDeleteRequest
 
+// DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody defines body for DeleteApiDnsZonesIdRecordsNameType for application/json ContentType.
+type DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody = RecordDeleteRequest
+
 // PutApiDnsZonesIdRecordsNameTypeJSONRequestBody defines body for PutApiDnsZonesIdRecordsNameType for application/json ContentType.
 type PutApiDnsZonesIdRecordsNameTypeJSONRequestBody = RecordRequest
 
@@ -833,8 +844,10 @@ type ClientInterface interface {
 
 	PostApiDnsZonesIdRecordsBulkDelete(ctx context.Context, id string, body PostApiDnsZonesIdRecordsBulkDeleteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteApiDnsZonesIdRecordsNameType request
-	DeleteApiDnsZonesIdRecordsNameType(ctx context.Context, id string, name string, pType string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// DeleteApiDnsZonesIdRecordsNameTypeWithBody request with any body
+	DeleteApiDnsZonesIdRecordsNameTypeWithBody(ctx context.Context, id string, name string, pType string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	DeleteApiDnsZonesIdRecordsNameType(ctx context.Context, id string, name string, pType string, body DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiDnsZonesIdRecordsNameType request
 	GetApiDnsZonesIdRecordsNameType(ctx context.Context, id string, name string, pType string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1251,8 +1264,20 @@ func (c *Client) PostApiDnsZonesIdRecordsBulkDelete(ctx context.Context, id stri
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteApiDnsZonesIdRecordsNameType(ctx context.Context, id string, name string, pType string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteApiDnsZonesIdRecordsNameTypeRequest(c.Server, id, name, pType)
+func (c *Client) DeleteApiDnsZonesIdRecordsNameTypeWithBody(ctx context.Context, id string, name string, pType string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteApiDnsZonesIdRecordsNameTypeRequestWithBody(c.Server, id, name, pType, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteApiDnsZonesIdRecordsNameType(ctx context.Context, id string, name string, pType string, body DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteApiDnsZonesIdRecordsNameTypeRequest(c.Server, id, name, pType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -2568,8 +2593,19 @@ func NewPostApiDnsZonesIdRecordsBulkDeleteRequestWithBody(server string, id stri
 	return req, nil
 }
 
-// NewDeleteApiDnsZonesIdRecordsNameTypeRequest generates requests for DeleteApiDnsZonesIdRecordsNameType
-func NewDeleteApiDnsZonesIdRecordsNameTypeRequest(server string, id string, name string, pType string) (*http.Request, error) {
+// NewDeleteApiDnsZonesIdRecordsNameTypeRequest calls the generic DeleteApiDnsZonesIdRecordsNameType builder with application/json body
+func NewDeleteApiDnsZonesIdRecordsNameTypeRequest(server string, id string, name string, pType string, body DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewDeleteApiDnsZonesIdRecordsNameTypeRequestWithBody(server, id, name, pType, "application/json", bodyReader)
+}
+
+// NewDeleteApiDnsZonesIdRecordsNameTypeRequestWithBody generates requests for DeleteApiDnsZonesIdRecordsNameType with any type of body
+func NewDeleteApiDnsZonesIdRecordsNameTypeRequestWithBody(server string, id string, name string, pType string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -2608,10 +2644,12 @@ func NewDeleteApiDnsZonesIdRecordsNameTypeRequest(server string, id string, name
 		return nil, err
 	}
 
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	req, err := http.NewRequest("DELETE", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -5098,8 +5136,10 @@ type ClientWithResponsesInterface interface {
 
 	PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx context.Context, id string, body PostApiDnsZonesIdRecordsBulkDeleteJSONRequestBody, reqEditors ...RequestEditorFn) (*PostApiDnsZonesIdRecordsBulkDeleteResponse, error)
 
-	// DeleteApiDnsZonesIdRecordsNameTypeWithResponse request
-	DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...RequestEditorFn) (*DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
+	// DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse request with any body
+	DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(ctx context.Context, id string, name string, pType string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
+
+	DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, body DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
 
 	// GetApiDnsZonesIdRecordsNameTypeWithResponse request
 	GetApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...RequestEditorFn) (*GetApiDnsZonesIdRecordsNameTypeResponse, error)
@@ -7412,9 +7452,17 @@ func (c *ClientWithResponses) PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx
 	return ParsePostApiDnsZonesIdRecordsBulkDeleteResponse(rsp)
 }
 
-// DeleteApiDnsZonesIdRecordsNameTypeWithResponse request returning *DeleteApiDnsZonesIdRecordsNameTypeResponse
-func (c *ClientWithResponses) DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...RequestEditorFn) (*DeleteApiDnsZonesIdRecordsNameTypeResponse, error) {
-	rsp, err := c.DeleteApiDnsZonesIdRecordsNameType(ctx, id, name, pType, reqEditors...)
+// DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse request with arbitrary body returning *DeleteApiDnsZonesIdRecordsNameTypeResponse
+func (c *ClientWithResponses) DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(ctx context.Context, id string, name string, pType string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*DeleteApiDnsZonesIdRecordsNameTypeResponse, error) {
+	rsp, err := c.DeleteApiDnsZonesIdRecordsNameTypeWithBody(ctx, id, name, pType, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteApiDnsZonesIdRecordsNameTypeResponse(rsp)
+}
+
+func (c *ClientWithResponses) DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, body DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody, reqEditors ...RequestEditorFn) (*DeleteApiDnsZonesIdRecordsNameTypeResponse, error) {
+	rsp, err := c.DeleteApiDnsZonesIdRecordsNameType(ctx, id, name, pType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
