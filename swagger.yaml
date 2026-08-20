@@ -237,6 +237,8 @@ components:
       properties:
         config:
           type: object
+        dns_hosting_enabled:
+          type: boolean
         domain:
           type: string
         namespace:
@@ -637,9 +639,17 @@ components:
       required:
       - CID
       type: object
+    RecordDeleteRequest:
+      additionalProperties: false
+      properties:
+        content:
+          type: string
+      type: object
     RecordIdentifier:
       additionalProperties: false
       properties:
+        content:
+          type: string
         name:
           type: string
         type:
@@ -673,6 +683,8 @@ components:
           type: string
         disabled:
           type: boolean
+        id:
+          type: string
         name:
           type: string
         ttl:
@@ -683,6 +695,7 @@ components:
           type: integer
       required:
       - zone_id
+      - id
       - name
       - type
       - content
@@ -820,8 +833,6 @@ components:
           type: string
         dns_hosting_enabled:
           type: boolean
-        dns_zone_id:
-          type: integer
         domain:
           type: string
         expired:
@@ -855,6 +866,8 @@ components:
           type: string
         validation_token:
           type: string
+        zone_id:
+          type: integer
       required:
       - id
       - domain
@@ -909,8 +922,6 @@ components:
           type: string
         dns_hosting_enabled:
           type: boolean
-        dns_zone_id:
-          type: integer
         domain:
           type: string
         expired:
@@ -944,6 +955,8 @@ components:
           type: string
         validation_token:
           type: string
+        zone_id:
+          type: integer
       required:
       - id
       - domain
@@ -1753,6 +1766,14 @@ paths:
         required: true
         schema:
           type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordDeleteRequest'
+        description: 'Optional content selector: when set, only the record with this
+          content is deleted; when the body is absent the whole RRSet is deleted,
+          and a present body with empty content is rejected'
       responses:
         "204":
           description: Record deleted

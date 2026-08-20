@@ -3,6 +3,7 @@ package ipfs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	dnsreq "go.lumeweb.com/ipfs-sdk/internal/dnsreq"
@@ -76,7 +77,7 @@ type DNSService interface {
 	CreateRecord(ctx context.Context, zoneID string, record RecordRequest) (*RecordResponse, error)
 	GetRecord(ctx context.Context, zoneID string, name string, recordType string) (*RecordResponse, error)
 	UpdateRecord(ctx context.Context, zoneID string, name string, recordType string, record RecordRequest) (*RecordResponse, error)
-	DeleteRecord(ctx context.Context, zoneID string, name string, recordType string) error
+	DeleteRecord(ctx context.Context, zoneID string, name string, recordType string, content ...string) error
 
 	// Bulk operations
 	BulkCreateRecords(ctx context.Context, zoneID string, records []RecordRequest) ([]RecordResponse, error)
@@ -393,10 +394,28 @@ func (s *dnsService) UpdateRecord(ctx context.Context, zoneID string, name strin
 	return result, nil
 }
 
-// DeleteRecord deletes a DNS record
-func (s *dnsService) DeleteRecord(ctx context.Context, zoneID string, name string, recordType string) error {
+// DeleteRecord deletes a DNS record. When content is provided and non-empty, only
+// the record with that content is deleted; otherwise the whole RRSet is deleted.
+// An empty content selector is rejected; omit the argument to delete the whole RRSet.
+func (s *dnsService) DeleteRecord(ctx context.Context, zoneID string, name string, recordType string, content ...string) error {
+	if len(content) > 1 {
+		return errors.New("DeleteRecord: at most one content selector is supported")
+	}
+	if len(content) > 0 && content[0] == "" {
+		return errors.New("DeleteRecord: empty content selector is not allowed; omit the argument to delete the whole RRSet")
+	}
 	return httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType)
+		var resp *internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse
+		var err error
+		if len(content) > 0 {
+			c := content[0]
+			body := internalclient.RecordDeleteRequest{Content: &c}
+			resp, err = s.client.DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx, zoneID, name, recordType, body)
+		} else {
+			// No content selector: send the request without a body so the server
+			// deletes the whole RRSet instead of rejecting an empty-content body.
+			resp, err = s.client.DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(ctx, zoneID, name, recordType, "application/json", nil)
+		}
 		if err != nil {
 			return err
 		}

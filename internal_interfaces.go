@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"io"
 
 	dnsreq "go.lumeweb.com/ipfs-sdk/internal/dnsreq"
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
@@ -68,7 +69,8 @@ type DNSClientWithResponsesInterface interface {
 	PostApiDnsZonesIdRecordsWithResponse(ctx context.Context, id string, body dnsreq.RecordRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsResponse, error)
 	GetApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiDnsZonesIdRecordsNameTypeResponse, error)
 	PutApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, body dnsreq.RecordRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PutApiDnsZonesIdRecordsNameTypeResponse, error)
-	DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
+	DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, body internalclient.DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
+	DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(ctx context.Context, id string, name string, pType string, contentType string, body io.Reader, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error)
 	PostApiDnsZonesIdRecordsBulkWithResponse(ctx context.Context, id string, body dnsreq.BulkRecordRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkResponse, error)
 	PostApiDnsZonesIdRecordsBulkDeleteWithResponse(ctx context.Context, id string, body dnsreq.BulkDeleteRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkDeleteResponse, error)
 	PostInternalDnsCertWithResponse(ctx context.Context, body internalclient.CertPushRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalDnsCertResponse, error)
@@ -121,8 +123,12 @@ func (a *internalClientToDNSAdapter) PutApiDnsZonesIdRecordsNameTypeWithResponse
 	return a.client.PutApiDnsZonesIdRecordsNameTypeWithResponse(ctx, id, name, pType, body, reqEditors...)
 }
 
-func (a *internalClientToDNSAdapter) DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error) {
-	return a.client.DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx, id, name, pType, reqEditors...)
+func (a *internalClientToDNSAdapter) DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx context.Context, id string, name string, pType string, body internalclient.DeleteApiDnsZonesIdRecordsNameTypeJSONRequestBody, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error) {
+	return a.client.DeleteApiDnsZonesIdRecordsNameTypeWithResponse(ctx, id, name, pType, body, reqEditors...)
+}
+
+func (a *internalClientToDNSAdapter) DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(ctx context.Context, id string, name string, pType string, contentType string, body io.Reader, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiDnsZonesIdRecordsNameTypeResponse, error) {
+	return a.client.DeleteApiDnsZonesIdRecordsNameTypeWithBodyWithResponse(ctx, id, name, pType, contentType, body, reqEditors...)
 }
 
 func (a *internalClientToDNSAdapter) PostApiDnsZonesIdRecordsBulkWithResponse(ctx context.Context, id string, body dnsreq.BulkRecordRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiDnsZonesIdRecordsBulkResponse, error) {
