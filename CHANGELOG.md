@@ -1,3 +1,9 @@
+## 0.1.82 (2026-08-20)
+
+### Features
+
+- support content-scoped record delete and expose record id
+
 ## 0.1.81 (2026-08-15)
 
 ### Features
