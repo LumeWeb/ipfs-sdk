@@ -1,11 +1,13 @@
 package ipfs
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/avast/retry-go/v4"
+	client "go.lumeweb.com/ipfs-sdk/internal/client"
 	backend "go.lumeweb.com/ipfs-sdk/internal/download"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
 )
@@ -214,6 +216,88 @@ func opsString(op int) string {
 // ErrBadRequest creates a bad request error with the given message.
 func ErrBadRequest(msg string) error {
 	return fmt.Errorf("%s", msg)
+}
+
+// Backend error reason codes returned by the API in ErrorDetail.Reason.
+// These distinguish otherwise-identical HTTP error responses so callers can
+// handle each failure mode explicitly.
+const (
+	// ErrorCodeCIDNotPinned is returned when a request targets a CID that is
+	// not pinned on the gateway.
+	ErrorCodeCIDNotPinned = "CID_NOT_PINNED"
+
+	// ErrorCodeIPNSKeyNotFound is returned when a request targets an IPNS key
+	// that does not exist.
+	ErrorCodeIPNSKeyNotFound = "IPNS_KEY_NOT_FOUND"
+
+	// ErrorCodeDNSValidationFailed is returned when domain DNS validation fails
+	// (e.g. verification TXT record not published or domain does not resolve).
+	ErrorCodeDNSValidationFailed = "DNS_VALIDATION_FAILED"
+)
+
+// APIError carries the machine-readable reason code and human-readable details
+// returned by the backend alongside the underlying error. It preserves the
+// underlying error chain so errors.Is/errors.As still match sentinels like
+// ErrNotFound.
+type APIError struct {
+	// Reason is the backend machine-readable error code (e.g. CID_NOT_PINNED).
+	Reason string
+
+	// Details is the optional human-readable detail message from the backend.
+	Details string
+
+	// Err is the wrapped underlying error.
+	Err error
+}
+
+// Error implements the error interface.
+func (e *APIError) Error() string {
+	if e.Err == nil {
+		return fmt.Sprintf("api error (reason: %s)", e.Reason)
+	}
+	if e.Reason != "" {
+		return fmt.Sprintf("%s (reason: %s)", e.Err, e.Reason)
+	}
+	return e.Err.Error()
+}
+
+// Unwrap returns the wrapped underlying error for errors.Is/As support.
+func (e *APIError) Unwrap() error {
+	return e.Err
+}
+
+// ErrorReasonOf extracts the backend reason code from err, or returns "" if the
+// error does not carry one.
+func ErrorReasonOf(err error) string {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Reason
+	}
+	return ""
+}
+
+// withReason wraps err with the backend ErrorResponse parsed from body, if the
+// body contains a non-empty machine-readable reason code. If err is nil or no
+// code is present, err is returned unchanged.
+func withReason(err error, body []byte) error {
+	if err == nil || len(body) == 0 {
+		return err
+	}
+
+	var resp client.ErrorResponse
+	if e := json.Unmarshal(body, &resp); e != nil || resp.Error.Reason == "" {
+		return err
+	}
+
+	apiErr := &APIError{
+		Reason: resp.Error.Reason,
+		Err:    err,
+	}
+	if resp.Error.Details != nil {
+		apiErr.Details = *resp.Error.Details
+	}
+
+	return apiErr
 }
 
 // httpErrorMessages maps operation IDs to their custom status code error messages.
@@ -454,6 +538,11 @@ func handleResponse(statusCode int, body []byte, op int, successCodes []int) err
 		// Generic error with body
 		err = fmt.Errorf("%s failed with status %d: %s", opName, statusCode, string(body))
 	}
+
+	// Attach the backend machine-readable reason code (if present) so callers
+	// can distinguish otherwise-identical HTTP error responses (e.g.
+	// CID_NOT_PINNED vs IPNS_KEY_NOT_FOUND vs DNS_VALIDATION_FAILED).
+	err = withReason(err, body)
 
 	// Mark client errors as unrecoverable to prevent retries
 	if httputil.IsUnrecoverable(statusCode) {
