@@ -1,3 +1,9 @@
+## 0.1.83 (2026-08-23)
+
+### Features
+
+- expose backend error reason codes on API errors
+
 ## 0.1.82 (2026-08-20)
 
 ### Features
