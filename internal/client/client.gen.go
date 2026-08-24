@@ -179,7 +179,11 @@ type DomainRequest struct {
 	Config            *map[string]interface{} `json:"config,omitempty"`
 	DnsHostingEnabled *bool                   `json:"dns_hosting_enabled,omitempty"`
 	Domain            string                  `json:"domain"`
+	Generate          *bool                   `json:"generate,omitempty"`
+	Label             *string                 `json:"label,omitempty"`
 	Namespace         string                  `json:"namespace"`
+	PlatformDomain    *string                 `json:"platform_domain,omitempty"`
+	PlatformNamespace *string                 `json:"platform_namespace,omitempty"`
 }
 
 // DomainResponse defines model for DomainResponse.
@@ -360,6 +364,19 @@ type PinStatusResponse struct {
 // PingResponse defines model for PingResponse.
 type PingResponse struct {
 	Status string `json:"status"`
+}
+
+// PlatformAvailabilityResponse defines model for PlatformAvailabilityResponse.
+type PlatformAvailabilityResponse struct {
+	Label   string                       `json:"label"`
+	Results []PlatformAvailabilityResult `json:"results"`
+}
+
+// PlatformAvailabilityResult defines model for PlatformAvailabilityResult.
+type PlatformAvailabilityResult struct {
+	Available      bool   `json:"available"`
+	Namespace      string `json:"namespace"`
+	PlatformDomain string `json:"platform_domain"`
 }
 
 // PostUploadResponse defines model for PostUploadResponse.
@@ -577,6 +594,12 @@ type ZoneResponse struct {
 type GetApiIpnsResolveNameParams struct {
 	// CheckRouting Whether to verify routing through the IPFS network. 1 = verify (queries DHT), 0 = local only. Default: 0
 	CheckRouting *string `form:"check_routing,omitempty" json:"check_routing,omitempty"`
+}
+
+// GetApiPlatformDomainsAvailabilityParams defines parameters for GetApiPlatformDomainsAvailability.
+type GetApiPlatformDomainsAvailabilityParams struct {
+	// Label Candidate subdomain label
+	Label *string `form:"label,omitempty" json:"label,omitempty"`
 }
 
 // PostApiUploadMultipartBody defines parameters for PostApiUpload.
@@ -899,6 +922,9 @@ type ClientInterface interface {
 
 	// GetApiIpnsResolveName request
 	GetApiIpnsResolveName(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApiPlatformDomainsAvailability request
+	GetApiPlatformDomainsAvailability(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostApiUploadWithBody request with any body
 	PostApiUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1494,6 +1520,18 @@ func (c *Client) PostApiIpnsPublish(ctx context.Context, body PostApiIpnsPublish
 
 func (c *Client) GetApiIpnsResolveName(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetApiIpnsResolveNameRequest(c.Server, name, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetApiPlatformDomainsAvailability(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiPlatformDomainsAvailabilityRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3180,6 +3218,55 @@ func NewGetApiIpnsResolveNameRequest(server string, name string, params *GetApiI
 		if params.CheckRouting != nil {
 
 			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "check_routing", *params.CheckRouting, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetApiPlatformDomainsAvailabilityRequest generates requests for GetApiPlatformDomainsAvailability
+func NewGetApiPlatformDomainsAvailabilityRequest(server string, params *GetApiPlatformDomainsAvailabilityParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/platform-domains/availability")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Label != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "label", *params.Label, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
 				return nil, err
 			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
 				return nil, err
@@ -5192,6 +5279,9 @@ type ClientWithResponsesInterface interface {
 	// GetApiIpnsResolveNameWithResponse request
 	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error)
 
+	// GetApiPlatformDomainsAvailabilityWithResponse request
+	GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*GetApiPlatformDomainsAvailabilityResponse, error)
+
 	// PostApiUploadWithBodyWithResponse request with any body
 	PostApiUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiUploadResponse, error)
 
@@ -6115,6 +6205,34 @@ func (r GetApiIpnsResolveNameResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetApiIpnsResolveNameResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetApiPlatformDomainsAvailabilityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PlatformAvailabilityResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApiPlatformDomainsAvailabilityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiPlatformDomainsAvailabilityResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7626,6 +7744,15 @@ func (c *ClientWithResponses) GetApiIpnsResolveNameWithResponse(ctx context.Cont
 		return nil, err
 	}
 	return ParseGetApiIpnsResolveNameResponse(rsp)
+}
+
+// GetApiPlatformDomainsAvailabilityWithResponse request returning *GetApiPlatformDomainsAvailabilityResponse
+func (c *ClientWithResponses) GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*GetApiPlatformDomainsAvailabilityResponse, error) {
+	rsp, err := c.GetApiPlatformDomainsAvailability(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApiPlatformDomainsAvailabilityResponse(rsp)
 }
 
 // PostApiUploadWithBodyWithResponse request with arbitrary body returning *PostApiUploadResponse
@@ -9918,6 +10045,74 @@ func ParseGetApiIpnsResolveNameResponse(rsp *http.Response) (*GetApiIpnsResolveN
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest IPNSResolveResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApiPlatformDomainsAvailabilityResponse parses an HTTP response from a GetApiPlatformDomainsAvailabilityWithResponse call
+func ParseGetApiPlatformDomainsAvailabilityResponse(rsp *http.Response) (*GetApiPlatformDomainsAvailabilityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiPlatformDomainsAvailabilityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlatformAvailabilityResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

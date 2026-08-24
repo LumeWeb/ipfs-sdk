@@ -112,6 +112,74 @@ func (_c *MockWebsitesService_BindDomain_Call) RunAndReturn(run func(ctx context
 	return _c
 }
 
+// CheckPlatformDomainAvailability provides a mock function for the type MockWebsitesService
+func (_mock *MockWebsitesService) CheckPlatformDomainAvailability(ctx context.Context, label string) (*ipfs.PlatformAvailabilityResponse, error) {
+	ret := _mock.Called(ctx, label)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CheckPlatformDomainAvailability")
+	}
+
+	var r0 *ipfs.PlatformAvailabilityResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*ipfs.PlatformAvailabilityResponse, error)); ok {
+		return returnFunc(ctx, label)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *ipfs.PlatformAvailabilityResponse); ok {
+		r0 = returnFunc(ctx, label)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.PlatformAvailabilityResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, label)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesService_CheckPlatformDomainAvailability_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckPlatformDomainAvailability'
+type MockWebsitesService_CheckPlatformDomainAvailability_Call struct {
+	*mock.Call
+}
+
+// CheckPlatformDomainAvailability is a helper method to define mock.On call
+//   - ctx context.Context
+//   - label string
+func (_e *MockWebsitesService_Expecter) CheckPlatformDomainAvailability(ctx any, label any) *MockWebsitesService_CheckPlatformDomainAvailability_Call {
+	return &MockWebsitesService_CheckPlatformDomainAvailability_Call{Call: _e.mock.On("CheckPlatformDomainAvailability", ctx, label)}
+}
+
+func (_c *MockWebsitesService_CheckPlatformDomainAvailability_Call) Run(run func(ctx context.Context, label string)) *MockWebsitesService_CheckPlatformDomainAvailability_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_CheckPlatformDomainAvailability_Call) Return(v *ipfs.PlatformAvailabilityResponse, err error) *MockWebsitesService_CheckPlatformDomainAvailability_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockWebsitesService_CheckPlatformDomainAvailability_Call) RunAndReturn(run func(ctx context.Context, label string) (*ipfs.PlatformAvailabilityResponse, error)) *MockWebsitesService_CheckPlatformDomainAvailability_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type MockWebsitesService
 func (_mock *MockWebsitesService) Create(ctx context.Context, domain string, targetHash string, targetType string) (*ipfs.WebsiteResponse, error) {
 	ret := _mock.Called(ctx, domain, targetHash, targetType)
