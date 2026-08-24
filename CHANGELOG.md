@@ -1,3 +1,9 @@
+## 0.1.84 (2026-08-24)
+
+### Features
+
+- add platform domain availability check
+
 ## 0.1.83 (2026-08-23)
 
 ### Features
