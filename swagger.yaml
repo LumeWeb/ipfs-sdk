@@ -241,7 +241,15 @@ components:
           type: boolean
         domain:
           type: string
+        generate:
+          type: boolean
+        label:
+          type: string
         namespace:
+          type: string
+        platform_domain:
+          type: string
+        platform_namespace:
           type: string
       required:
       - domain
@@ -630,6 +638,33 @@ components:
           type: string
       required:
       - status
+      type: object
+    PlatformAvailabilityResponse:
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+        results:
+          items:
+            $ref: '#/components/schemas/PlatformAvailabilityResult'
+          type: array
+      required:
+      - label
+      - results
+      type: object
+    PlatformAvailabilityResult:
+      additionalProperties: false
+      properties:
+        available:
+          type: boolean
+        namespace:
+          type: string
+        platform_domain:
+          type: string
+      required:
+      - platform_domain
+      - namespace
+      - available
       type: object
     PostUploadResponse:
       additionalProperties: false
@@ -2868,6 +2903,64 @@ paths:
       summary: Resolve IPNS
       tags:
       - IPNS
+  /api/platform-domains/availability:
+    get:
+      description: Checks, for a candidate label, whether it is claimable on each
+        enabled platform (free-subdomain) root. Returns one result per root. Auth-required;
+        only probes platform-owned roots, never user-managed zones.
+      parameters:
+      - description: Candidate subdomain label
+        in: query
+        name: label
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformAvailabilityResponse'
+          description: Availability by root
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Check platform subdomain availability
+      tags:
+      - Websites
+      - Domains
   /api/upload:
     post:
       description: |-
@@ -3965,7 +4058,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Bad request
+          description: Invalid website ID or request body
         "401":
           content:
             application/json:
@@ -3983,19 +4076,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Not found
+          description: Website not found
         "422":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Validation failed
+          description: Invalid target (CID/IPNS) or DNS hosting value; target CID
+            not pinned (CID_NOT_PINNED) or IPNS key not found (IPNS_KEY_NOT_FOUND)
         "500":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Internal server error
+          description: Internal server error occurred
       summary: Update website
       tags:
       - Websites
@@ -4475,7 +4569,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Bad request
+          description: Invalid website ID format
         "401":
           content:
             application/json:
@@ -4493,19 +4587,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Not found
+          description: Website not found
         "422":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Validation failed
+          description: 'DNS validation failed: verification TXT record not published
+            or domain does not resolve (DNS_VALIDATION_FAILED)'
         "500":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-          description: Internal server error
+          description: Internal server error occurred
       summary: Validate website DNS
       tags:
       - Websites

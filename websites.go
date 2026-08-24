@@ -30,6 +30,10 @@ type DomainDANERepublishResponse = internalclient.DomainDANERepublishResponse
 type DNSDelegation = internalclient.DNSDelegation
 type DNSDelegationRecord = internalclient.DNSDelegationRecord
 
+// Platform domain availability types
+type PlatformAvailabilityResponse = internalclient.PlatformAvailabilityResponse
+type PlatformAvailabilityResult = internalclient.PlatformAvailabilityResult
+
 // DomainNamespace identifies the DNS namespace a website domain is bound under.
 type DomainNamespace string
 
@@ -127,6 +131,9 @@ type WebsitesClientWithResponsesInterface interface {
 	// PatchApiWebsitesIdDomainsDomainIdWithResponse updates a bound domain's
 	// per-domain DNS control (dns_hosting_enabled and/or primary).
 	PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body internalclient.DomainUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PatchApiWebsitesIdDomainsDomainIdResponse, error)
+	// GetApiPlatformDomainsAvailabilityWithResponse checks, for a candidate label,
+	// whether it is claimable on each enabled platform (free-subdomain) root.
+	GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *internalclient.GetApiPlatformDomainsAvailabilityParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiPlatformDomainsAvailabilityResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -207,6 +214,10 @@ func (a *internalClientToWebsitesAdapter) PatchApiWebsitesIdDomainsDomainIdWithR
 	return a.client.PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx, id, domainId, body, reqEditors...)
 }
 
+func (a *internalClientToWebsitesAdapter) GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *internalclient.GetApiPlatformDomainsAvailabilityParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiPlatformDomainsAvailabilityResponse, error) {
+	return a.client.GetApiPlatformDomainsAvailabilityWithResponse(ctx, params, reqEditors...)
+}
+
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
 func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesClientWithResponsesInterface {
 	return &internalClientToWebsitesAdapter{client: client}
@@ -270,6 +281,11 @@ type WebsitesService interface {
 	// to recover a TLSA that was deleted or went missing and wasn't re-published
 	// by cert renewal.
 	RepublishDANE(ctx context.Context, websiteID string, domainID string) (*DomainDANERepublishResponse, error)
+	// CheckPlatformDomainAvailability checks, for a candidate subdomain label,
+	// whether it is claimable on each enabled platform (free-subdomain) root.
+	// Returns one availability result per platform-owned root (never user-managed
+	// zones). label may be empty to probe all roots.
+	CheckPlatformDomainAvailability(ctx context.Context, label string) (*PlatformAvailabilityResponse, error)
 }
 
 type websitesService struct {
@@ -867,6 +883,41 @@ func (s *websitesService) RepublishDANE(ctx context.Context, websiteID string, d
 
 		if resp.JSON200 == nil {
 			return ErrBadRequest(opsString(OpRepublishDomainDANE) + " no response data for domain " + domainID)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+// CheckPlatformDomainAvailability checks, for a candidate subdomain label,
+// whether it is claimable on each enabled platform (free-subdomain) root.
+// Returns one availability result per platform-owned root.
+func (s *websitesService) CheckPlatformDomainAvailability(ctx context.Context, label string) (*PlatformAvailabilityResponse, error) {
+	var result *PlatformAvailabilityResponse
+
+	params := &internalclient.GetApiPlatformDomainsAvailabilityParams{}
+	if label != "" {
+		params.Label = &label
+	}
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiPlatformDomainsAvailabilityWithResponse(ctx, params)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpCheckPlatformDomainAvailability, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpCheckPlatformDomainAvailability) + " no response data")
 		}
 
 		result = resp.JSON200

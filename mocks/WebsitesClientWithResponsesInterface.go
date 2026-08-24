@@ -218,6 +218,93 @@ func (_c *MockWebsitesClientWithResponsesInterface_DeleteApiWebsitesIdWithRespon
 	return _c
 }
 
+// GetApiPlatformDomainsAvailabilityWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
+func (_mock *MockWebsitesClientWithResponsesInterface) GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *client.GetApiPlatformDomainsAvailabilityParams, reqEditors ...client.RequestEditorFn) (*client.GetApiPlatformDomainsAvailabilityResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]any, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []any
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetApiPlatformDomainsAvailabilityWithResponse")
+	}
+
+	var r0 *client.GetApiPlatformDomainsAvailabilityResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *client.GetApiPlatformDomainsAvailabilityParams, ...client.RequestEditorFn) (*client.GetApiPlatformDomainsAvailabilityResponse, error)); ok {
+		return returnFunc(ctx, params, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *client.GetApiPlatformDomainsAvailabilityParams, ...client.RequestEditorFn) *client.GetApiPlatformDomainsAvailabilityResponse); ok {
+		r0 = returnFunc(ctx, params, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.GetApiPlatformDomainsAvailabilityResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *client.GetApiPlatformDomainsAvailabilityParams, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, params, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetApiPlatformDomainsAvailabilityWithResponse'
+type MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call struct {
+	*mock.Call
+}
+
+// GetApiPlatformDomainsAvailabilityWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *client.GetApiPlatformDomainsAvailabilityParams
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockWebsitesClientWithResponsesInterface_Expecter) GetApiPlatformDomainsAvailabilityWithResponse(ctx any, params any, reqEditors ...any) *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call {
+	return &MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call{Call: _e.mock.On("GetApiPlatformDomainsAvailabilityWithResponse",
+		append([]any{ctx, params}, reqEditors...)...)}
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call) Run(run func(ctx context.Context, params *client.GetApiPlatformDomainsAvailabilityParams, reqEditors ...client.RequestEditorFn)) *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *client.GetApiPlatformDomainsAvailabilityParams
+		if args[1] != nil {
+			arg1 = args[1].(*client.GetApiPlatformDomainsAvailabilityParams)
+		}
+		var arg2 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call) Return(getApiPlatformDomainsAvailabilityResponse *client.GetApiPlatformDomainsAvailabilityResponse, err error) *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call {
+	_c.Call.Return(getApiPlatformDomainsAvailabilityResponse, err)
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call) RunAndReturn(run func(ctx context.Context, params *client.GetApiPlatformDomainsAvailabilityParams, reqEditors ...client.RequestEditorFn) (*client.GetApiPlatformDomainsAvailabilityResponse, error)) *MockWebsitesClientWithResponsesInterface_GetApiPlatformDomainsAvailabilityWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetApiWebsitesConfigWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
 func (_mock *MockWebsitesClientWithResponsesInterface) GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...client.RequestEditorFn) (*client.GetApiWebsitesConfigResponse, error) {
 	// client.RequestEditorFn

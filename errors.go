@@ -61,6 +61,7 @@ const (
 	OpVerifyWebsiteDomain
 	OpDNSRequirementsWebsiteDomain
 	OpRepublishDomainDANE
+	OpCheckPlatformDomainAvailability
 
 	// Pinning operations
 	OpListPins
@@ -118,13 +119,14 @@ var operationString = map[int]string{
 	OpGetWebsiteConfig:        "get website config",
 
 	// Website domain binding operations
-	OpListWebsiteDomains:           "list website domains",
-	OpBindWebsiteDomain:            "bind website domain",
-	OpUpdateWebsiteDomain:          "update website domain",
-	OpUnbindWebsiteDomain:          "unbind website domain",
-	OpVerifyWebsiteDomain:          "verify website domain",
-	OpDNSRequirementsWebsiteDomain: "get domain DNS requirements",
-	OpRepublishDomainDANE:          "republish domain DANE records",
+	OpListWebsiteDomains:              "list website domains",
+	OpBindWebsiteDomain:               "bind website domain",
+	OpUpdateWebsiteDomain:             "update website domain",
+	OpUnbindWebsiteDomain:             "unbind website domain",
+	OpVerifyWebsiteDomain:             "verify website domain",
+	OpDNSRequirementsWebsiteDomain:    "get domain DNS requirements",
+	OpRepublishDomainDANE:             "republish domain DANE records",
+	OpCheckPlatformDomainAvailability: "check platform domain availability",
 
 	// Pinning operations
 	OpListPins:  "list pins",
@@ -394,6 +396,10 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusNotFound:     notFoundErr("domain or website not found"),
 		http.StatusBadRequest:   plainErr("invalid request"),
 		http.StatusConflict:     plainErr("no DANE records to republish (no stored certificate or managed zone)"),
+	},
+	OpCheckPlatformDomainAvailability: {
+		http.StatusUnauthorized: authErr("authentication required"),
+		http.StatusBadRequest:   plainErr("invalid label"),
 	},
 	OpGetGatewayWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),
