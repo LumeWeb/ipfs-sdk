@@ -1,3 +1,9 @@
+## 0.1.85 (2026-08-25)
+
+### Fixes
+
+- update swagger and add platform domain listing
+
 ## 0.1.84 (2026-08-24)
 
 ### Features
