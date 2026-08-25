@@ -666,6 +666,39 @@ components:
       - namespace
       - available
       type: object
+    PlatformDomainListResponse:
+      additionalProperties: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/PlatformDomainResponse'
+          type: array
+        total:
+          type: integer
+      required:
+      - data
+      - total
+      type: object
+    PlatformDomainResponse:
+      additionalProperties: false
+      properties:
+        domain:
+          type: string
+        enabled:
+          type: boolean
+        id:
+          type: integer
+        namespace:
+          type: string
+        zone_id:
+          type: integer
+      required:
+      - id
+      - domain
+      - namespace
+      - zone_id
+      - enabled
+      type: object
     PostUploadResponse:
       additionalProperties: false
       properties:
@@ -2903,64 +2936,6 @@ paths:
       summary: Resolve IPNS
       tags:
       - IPNS
-  /api/platform-domains/availability:
-    get:
-      description: Checks, for a candidate label, whether it is claimable on each
-        enabled platform (free-subdomain) root. Returns one result per root. Auth-required;
-        only probes platform-owned roots, never user-managed zones.
-      parameters:
-      - description: Candidate subdomain label
-        in: query
-        name: label
-        schema:
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlatformAvailabilityResponse'
-          description: Availability by root
-        "400":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Bad request
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Unauthorized
-        "403":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Forbidden
-        "404":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Not found
-        "422":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Validation failed
-        "500":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-          description: Internal server error
-      summary: Check platform subdomain availability
-      tags:
-      - Websites
-      - Domains
   /api/upload:
     post:
       description: |-
@@ -4658,6 +4633,116 @@ paths:
       summary: Get website hosting configuration
       tags:
       - Websites
+  /api/websites/platform-domains:
+    get:
+      description: Lists the platform-owned root domains that are enabled and available
+        for users to claim free subdomains under. Returns the standard paginated list
+        shape ({data, total}), ordered by domain. Only enabled roots are returned.
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformDomainListResponse'
+          description: List of supported platform domains
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: List supported platform domains
+      tags:
+      - Websites
+      - PlatformDomains
+  /api/websites/platform-domains/availability:
+    get:
+      description: Checks, for a candidate label, whether it is claimable on each
+        enabled platform (free-subdomain) root. Returns one result per root. Auth-required;
+        only probes platform-owned roots, never user-managed zones.
+      parameters:
+      - description: Candidate subdomain label
+        in: query
+        name: label
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformAvailabilityResponse'
+          description: Availability by root
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Check platform subdomain availability
+      tags:
+      - Websites
+      - PlatformDomains
   /internal/dns/cert:
     post:
       description: Internal endpoint for Caddy to push a cert and receive computed

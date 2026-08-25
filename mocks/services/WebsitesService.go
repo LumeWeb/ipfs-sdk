@@ -923,6 +923,68 @@ func (_c *MockWebsitesService_ListDomains_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// ListPlatformDomains provides a mock function for the type MockWebsitesService
+func (_mock *MockWebsitesService) ListPlatformDomains(ctx context.Context) (*ipfs.PlatformDomainListResponse, error) {
+	ret := _mock.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListPlatformDomains")
+	}
+
+	var r0 *ipfs.PlatformDomainListResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context) (*ipfs.PlatformDomainListResponse, error)); ok {
+		return returnFunc(ctx)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context) *ipfs.PlatformDomainListResponse); ok {
+		r0 = returnFunc(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.PlatformDomainListResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = returnFunc(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesService_ListPlatformDomains_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListPlatformDomains'
+type MockWebsitesService_ListPlatformDomains_Call struct {
+	*mock.Call
+}
+
+// ListPlatformDomains is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockWebsitesService_Expecter) ListPlatformDomains(ctx any) *MockWebsitesService_ListPlatformDomains_Call {
+	return &MockWebsitesService_ListPlatformDomains_Call{Call: _e.mock.On("ListPlatformDomains", ctx)}
+}
+
+func (_c *MockWebsitesService_ListPlatformDomains_Call) Run(run func(ctx context.Context)) *MockWebsitesService_ListPlatformDomains_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_ListPlatformDomains_Call) Return(v *ipfs.PlatformDomainListResponse, err error) *MockWebsitesService_ListPlatformDomains_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockWebsitesService_ListPlatformDomains_Call) RunAndReturn(run func(ctx context.Context) (*ipfs.PlatformDomainListResponse, error)) *MockWebsitesService_ListPlatformDomains_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RepublishDANE provides a mock function for the type MockWebsitesService
 func (_mock *MockWebsitesService) RepublishDANE(ctx context.Context, websiteID string, domainID string) (*ipfs.DomainDANERepublishResponse, error) {
 	ret := _mock.Called(ctx, websiteID, domainID)

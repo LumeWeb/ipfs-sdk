@@ -34,6 +34,10 @@ type DNSDelegationRecord = internalclient.DNSDelegationRecord
 type PlatformAvailabilityResponse = internalclient.PlatformAvailabilityResponse
 type PlatformAvailabilityResult = internalclient.PlatformAvailabilityResult
 
+// Platform domain types
+type PlatformDomainListResponse = internalclient.PlatformDomainListResponse
+type PlatformDomainResponse = internalclient.PlatformDomainResponse
+
 // DomainNamespace identifies the DNS namespace a website domain is bound under.
 type DomainNamespace string
 
@@ -131,9 +135,12 @@ type WebsitesClientWithResponsesInterface interface {
 	// PatchApiWebsitesIdDomainsDomainIdWithResponse updates a bound domain's
 	// per-domain DNS control (dns_hosting_enabled and/or primary).
 	PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body internalclient.DomainUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PatchApiWebsitesIdDomainsDomainIdResponse, error)
-	// GetApiPlatformDomainsAvailabilityWithResponse checks, for a candidate label,
+	// GetApiWebsitesPlatformDomainsWithResponse lists the platform (free-subdomain)
+	// roots available for websites.
+	GetApiWebsitesPlatformDomainsWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesPlatformDomainsResponse, error)
+	// GetApiWebsitesPlatformDomainsAvailabilityWithResponse checks, for a candidate label,
 	// whether it is claimable on each enabled platform (free-subdomain) root.
-	GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *internalclient.GetApiPlatformDomainsAvailabilityParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiPlatformDomainsAvailabilityResponse, error)
+	GetApiWebsitesPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *internalclient.GetApiWebsitesPlatformDomainsAvailabilityParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesPlatformDomainsAvailabilityResponse, error)
 }
 
 // internalClientToWebsitesAdapter adapts ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -214,8 +221,12 @@ func (a *internalClientToWebsitesAdapter) PatchApiWebsitesIdDomainsDomainIdWithR
 	return a.client.PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx, id, domainId, body, reqEditors...)
 }
 
-func (a *internalClientToWebsitesAdapter) GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *internalclient.GetApiPlatformDomainsAvailabilityParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiPlatformDomainsAvailabilityResponse, error) {
-	return a.client.GetApiPlatformDomainsAvailabilityWithResponse(ctx, params, reqEditors...)
+func (a *internalClientToWebsitesAdapter) GetApiWebsitesPlatformDomainsWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesPlatformDomainsResponse, error) {
+	return a.client.GetApiWebsitesPlatformDomainsWithResponse(ctx, reqEditors...)
+}
+
+func (a *internalClientToWebsitesAdapter) GetApiWebsitesPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *internalclient.GetApiWebsitesPlatformDomainsAvailabilityParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesPlatformDomainsAvailabilityResponse, error) {
+	return a.client.GetApiWebsitesPlatformDomainsAvailabilityWithResponse(ctx, params, reqEditors...)
 }
 
 // convertWebsitesClient converts a ClientWithResponses to WebsitesClientWithResponsesInterface
@@ -281,6 +292,13 @@ type WebsitesService interface {
 	// to recover a TLSA that was deleted or went missing and wasn't re-published
 	// by cert renewal.
 	RepublishDANE(ctx context.Context, websiteID string, domainID string) (*DomainDANERepublishResponse, error)
+	// CheckPlatformDomainAvailability checks, for a candidate subdomain label,
+	// whether it is claimable on each enabled platform (free-subdomain) root.
+	// Returns one availability result per platform-owned root (never user-managed
+	// zones). label may be empty to probe all roots.
+	// ListPlatformDomains lists the platform (free-subdomain) roots available
+	// for websites.
+	ListPlatformDomains(ctx context.Context) (*PlatformDomainListResponse, error)
 	// CheckPlatformDomainAvailability checks, for a candidate subdomain label,
 	// whether it is claimable on each enabled platform (free-subdomain) root.
 	// Returns one availability result per platform-owned root (never user-managed
@@ -895,19 +913,48 @@ func (s *websitesService) RepublishDANE(ctx context.Context, websiteID string, d
 	return result, nil
 }
 
+// ListPlatformDomains lists the platform (free-subdomain) roots available for
+// websites.
+func (s *websitesService) ListPlatformDomains(ctx context.Context) (*PlatformDomainListResponse, error) {
+	var result *PlatformDomainListResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.GetApiWebsitesPlatformDomainsWithResponse(ctx)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpListPlatformDomains, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpListPlatformDomains) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
 // CheckPlatformDomainAvailability checks, for a candidate subdomain label,
 // whether it is claimable on each enabled platform (free-subdomain) root.
 // Returns one availability result per platform-owned root.
 func (s *websitesService) CheckPlatformDomainAvailability(ctx context.Context, label string) (*PlatformAvailabilityResponse, error) {
 	var result *PlatformAvailabilityResponse
 
-	params := &internalclient.GetApiPlatformDomainsAvailabilityParams{}
+	params := &internalclient.GetApiWebsitesPlatformDomainsAvailabilityParams{}
 	if label != "" {
 		params.Label = &label
 	}
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.GetApiPlatformDomainsAvailabilityWithResponse(ctx, params)
+		resp, err := s.client.GetApiWebsitesPlatformDomainsAvailabilityWithResponse(ctx, params)
 		if err != nil {
 			return err
 		}

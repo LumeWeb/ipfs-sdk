@@ -379,6 +379,21 @@ type PlatformAvailabilityResult struct {
 	PlatformDomain string `json:"platform_domain"`
 }
 
+// PlatformDomainListResponse defines model for PlatformDomainListResponse.
+type PlatformDomainListResponse struct {
+	Data  []PlatformDomainResponse `json:"data"`
+	Total int                      `json:"total"`
+}
+
+// PlatformDomainResponse defines model for PlatformDomainResponse.
+type PlatformDomainResponse struct {
+	Domain    string `json:"domain"`
+	Enabled   bool   `json:"enabled"`
+	Id        int    `json:"id"`
+	Namespace string `json:"namespace"`
+	ZoneId    int    `json:"zone_id"`
+}
+
 // PostUploadResponse defines model for PostUploadResponse.
 type PostUploadResponse struct {
 	CID string `json:"CID"`
@@ -596,12 +611,6 @@ type GetApiIpnsResolveNameParams struct {
 	CheckRouting *string `form:"check_routing,omitempty" json:"check_routing,omitempty"`
 }
 
-// GetApiPlatformDomainsAvailabilityParams defines parameters for GetApiPlatformDomainsAvailability.
-type GetApiPlatformDomainsAvailabilityParams struct {
-	// Label Candidate subdomain label
-	Label *string `form:"label,omitempty" json:"label,omitempty"`
-}
-
 // PostApiUploadMultipartBody defines parameters for PostApiUpload.
 type PostApiUploadMultipartBody struct {
 	File openapi_types.File `json:"file"`
@@ -651,6 +660,12 @@ type PatchApiUploadTusIdParams struct {
 
 	// UploadOffset The offset at which the upload should be continued.
 	UploadOffset map[string]interface{} `json:"Upload-Offset"`
+}
+
+// GetApiWebsitesPlatformDomainsAvailabilityParams defines parameters for GetApiWebsitesPlatformDomainsAvailability.
+type GetApiWebsitesPlatformDomainsAvailabilityParams struct {
+	// Label Candidate subdomain label
+	Label *string `form:"label,omitempty" json:"label,omitempty"`
 }
 
 // GetInternalDnsCertDomainParams defines parameters for GetInternalDnsCertDomain.
@@ -923,9 +938,6 @@ type ClientInterface interface {
 	// GetApiIpnsResolveName request
 	GetApiIpnsResolveName(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetApiPlatformDomainsAvailability request
-	GetApiPlatformDomainsAvailability(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// PostApiUploadWithBody request with any body
 	PostApiUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -960,6 +972,12 @@ type ClientInterface interface {
 
 	// GetApiWebsitesConfig request
 	GetApiWebsitesConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApiWebsitesPlatformDomains request
+	GetApiWebsitesPlatformDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApiWebsitesPlatformDomainsAvailability request
+	GetApiWebsitesPlatformDomainsAvailability(ctx context.Context, params *GetApiWebsitesPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiWebsitesDomainSslStatus request
 	GetApiWebsitesDomainSslStatus(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1530,18 +1548,6 @@ func (c *Client) GetApiIpnsResolveName(ctx context.Context, name string, params 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetApiPlatformDomainsAvailability(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApiPlatformDomainsAvailabilityRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) PostApiUploadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostApiUploadRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -1676,6 +1682,30 @@ func (c *Client) PostApiWebsites(ctx context.Context, body PostApiWebsitesJSONRe
 
 func (c *Client) GetApiWebsitesConfig(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetApiWebsitesConfigRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetApiWebsitesPlatformDomains(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiWebsitesPlatformDomainsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetApiWebsitesPlatformDomainsAvailability(ctx context.Context, params *GetApiWebsitesPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiWebsitesPlatformDomainsAvailabilityRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3242,55 +3272,6 @@ func NewGetApiIpnsResolveNameRequest(server string, name string, params *GetApiI
 	return req, nil
 }
 
-// NewGetApiPlatformDomainsAvailabilityRequest generates requests for GetApiPlatformDomainsAvailability
-func NewGetApiPlatformDomainsAvailabilityRequest(server string, params *GetApiPlatformDomainsAvailabilityParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/api/platform-domains/availability")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.Label != nil {
-
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "label", *params.Label, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewPostApiUploadRequestWithBody generates requests for PostApiUpload with any type of body
 func NewPostApiUploadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -3788,6 +3769,82 @@ func NewGetApiWebsitesConfigRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetApiWebsitesPlatformDomainsRequest generates requests for GetApiWebsitesPlatformDomains
+func NewGetApiWebsitesPlatformDomainsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/websites/platform-domains")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetApiWebsitesPlatformDomainsAvailabilityRequest generates requests for GetApiWebsitesPlatformDomainsAvailability
+func NewGetApiWebsitesPlatformDomainsAvailabilityRequest(server string, params *GetApiWebsitesPlatformDomainsAvailabilityParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/websites/platform-domains/availability")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Label != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "label", *params.Label, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -5279,9 +5336,6 @@ type ClientWithResponsesInterface interface {
 	// GetApiIpnsResolveNameWithResponse request
 	GetApiIpnsResolveNameWithResponse(ctx context.Context, name string, params *GetApiIpnsResolveNameParams, reqEditors ...RequestEditorFn) (*GetApiIpnsResolveNameResponse, error)
 
-	// GetApiPlatformDomainsAvailabilityWithResponse request
-	GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*GetApiPlatformDomainsAvailabilityResponse, error)
-
 	// PostApiUploadWithBodyWithResponse request with any body
 	PostApiUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiUploadResponse, error)
 
@@ -5316,6 +5370,12 @@ type ClientWithResponsesInterface interface {
 
 	// GetApiWebsitesConfigWithResponse request
 	GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesConfigResponse, error)
+
+	// GetApiWebsitesPlatformDomainsWithResponse request
+	GetApiWebsitesPlatformDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesPlatformDomainsResponse, error)
+
+	// GetApiWebsitesPlatformDomainsAvailabilityWithResponse request
+	GetApiWebsitesPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *GetApiWebsitesPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*GetApiWebsitesPlatformDomainsAvailabilityResponse, error)
 
 	// GetApiWebsitesDomainSslStatusWithResponse request
 	GetApiWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, reqEditors ...RequestEditorFn) (*GetApiWebsitesDomainSslStatusResponse, error)
@@ -6211,34 +6271,6 @@ func (r GetApiIpnsResolveNameResponse) StatusCode() int {
 	return 0
 }
 
-type GetApiPlatformDomainsAvailabilityResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *PlatformAvailabilityResponse
-	JSON400      *ErrorResponse
-	JSON401      *ErrorResponse
-	JSON403      *ErrorResponse
-	JSON404      *ErrorResponse
-	JSON422      *ErrorResponse
-	JSON500      *ErrorResponse
-}
-
-// Status returns HTTPResponse.Status
-func (r GetApiPlatformDomainsAvailabilityResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetApiPlatformDomainsAvailabilityResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type PostApiUploadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -6515,6 +6547,62 @@ func (r GetApiWebsitesConfigResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GetApiWebsitesConfigResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetApiWebsitesPlatformDomainsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PlatformDomainListResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApiWebsitesPlatformDomainsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiWebsitesPlatformDomainsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetApiWebsitesPlatformDomainsAvailabilityResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *PlatformAvailabilityResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApiWebsitesPlatformDomainsAvailabilityResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApiWebsitesPlatformDomainsAvailabilityResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -7746,15 +7834,6 @@ func (c *ClientWithResponses) GetApiIpnsResolveNameWithResponse(ctx context.Cont
 	return ParseGetApiIpnsResolveNameResponse(rsp)
 }
 
-// GetApiPlatformDomainsAvailabilityWithResponse request returning *GetApiPlatformDomainsAvailabilityResponse
-func (c *ClientWithResponses) GetApiPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *GetApiPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*GetApiPlatformDomainsAvailabilityResponse, error) {
-	rsp, err := c.GetApiPlatformDomainsAvailability(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetApiPlatformDomainsAvailabilityResponse(rsp)
-}
-
 // PostApiUploadWithBodyWithResponse request with arbitrary body returning *PostApiUploadResponse
 func (c *ClientWithResponses) PostApiUploadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiUploadResponse, error) {
 	rsp, err := c.PostApiUploadWithBody(ctx, contentType, body, reqEditors...)
@@ -7860,6 +7939,24 @@ func (c *ClientWithResponses) GetApiWebsitesConfigWithResponse(ctx context.Conte
 		return nil, err
 	}
 	return ParseGetApiWebsitesConfigResponse(rsp)
+}
+
+// GetApiWebsitesPlatformDomainsWithResponse request returning *GetApiWebsitesPlatformDomainsResponse
+func (c *ClientWithResponses) GetApiWebsitesPlatformDomainsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesPlatformDomainsResponse, error) {
+	rsp, err := c.GetApiWebsitesPlatformDomains(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApiWebsitesPlatformDomainsResponse(rsp)
+}
+
+// GetApiWebsitesPlatformDomainsAvailabilityWithResponse request returning *GetApiWebsitesPlatformDomainsAvailabilityResponse
+func (c *ClientWithResponses) GetApiWebsitesPlatformDomainsAvailabilityWithResponse(ctx context.Context, params *GetApiWebsitesPlatformDomainsAvailabilityParams, reqEditors ...RequestEditorFn) (*GetApiWebsitesPlatformDomainsAvailabilityResponse, error) {
+	rsp, err := c.GetApiWebsitesPlatformDomainsAvailability(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApiWebsitesPlatformDomainsAvailabilityResponse(rsp)
 }
 
 // GetApiWebsitesDomainSslStatusWithResponse request returning *GetApiWebsitesDomainSslStatusResponse
@@ -10097,74 +10194,6 @@ func ParseGetApiIpnsResolveNameResponse(rsp *http.Response) (*GetApiIpnsResolveN
 	return response, nil
 }
 
-// ParseGetApiPlatformDomainsAvailabilityResponse parses an HTTP response from a GetApiPlatformDomainsAvailabilityWithResponse call
-func ParseGetApiPlatformDomainsAvailabilityResponse(rsp *http.Response) (*GetApiPlatformDomainsAvailabilityResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetApiPlatformDomainsAvailabilityResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest PlatformAvailabilityResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON403 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON422 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest ErrorResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParsePostApiUploadResponse parses an HTTP response from a PostApiUploadWithResponse call
 func ParsePostApiUploadResponse(rsp *http.Response) (*PostApiUploadResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -10679,6 +10708,142 @@ func ParseGetApiWebsitesConfigResponse(rsp *http.Response) (*GetApiWebsitesConfi
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest WebsiteConfigResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApiWebsitesPlatformDomainsResponse parses an HTTP response from a GetApiWebsitesPlatformDomainsWithResponse call
+func ParseGetApiWebsitesPlatformDomainsResponse(rsp *http.Response) (*GetApiWebsitesPlatformDomainsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiWebsitesPlatformDomainsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlatformDomainListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApiWebsitesPlatformDomainsAvailabilityResponse parses an HTTP response from a GetApiWebsitesPlatformDomainsAvailabilityWithResponse call
+func ParseGetApiWebsitesPlatformDomainsAvailabilityResponse(rsp *http.Response) (*GetApiWebsitesPlatformDomainsAvailabilityResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApiWebsitesPlatformDomainsAvailabilityResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest PlatformAvailabilityResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

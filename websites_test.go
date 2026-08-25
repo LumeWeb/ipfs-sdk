@@ -320,6 +320,75 @@ func TestWebsitesService_CreateWithOptions_HTTPError(t *testing.T) {
 	})
 }
 
+func TestWebsitesService_ListPlatformDomains(t *testing.T) {
+	t.Run("returns platform domains when endpoint responds 200", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+		expected := &client.PlatformDomainListResponse{
+			Data: []client.PlatformDomainResponse{
+				{Domain: "acme.lume.io", Enabled: true, Id: 1, Namespace: "acme", ZoneId: 42},
+			},
+			Total: 1,
+		}
+
+		mockClient.EXPECT().
+			GetApiWebsitesPlatformDomainsWithResponse(mock.Anything).
+			Return(&client.GetApiWebsitesPlatformDomainsResponse{
+				Body:         []byte(`{}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expected,
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.ListPlatformDomains(context.Background())
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Len(t, result.Data, 1)
+		assert.Equal(t, "acme.lume.io", result.Data[0].Domain)
+		assert.True(t, result.Data[0].Enabled)
+		assert.Equal(t, 1, result.Total)
+	})
+
+	t.Run("returns error on unauthorized response", func(t *testing.T) {
+		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesPlatformDomainsWithResponse(mock.Anything).
+			Return(&client.GetApiWebsitesPlatformDomainsResponse{
+				Body:         []byte(`{"error":{"reason":"authentication required"}}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
+				JSON401:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "authentication required"}},
+			}, nil).
+			Once()
+
+		service := NewWebsitesService(mockClient)
+		result, err := service.ListPlatformDomains(context.Background())
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "authentication required")
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetApiWebsitesPlatformDomainsWithResponse(mock.Anything).
+			Return(&client.GetApiWebsitesPlatformDomainsResponse{
+				Body:         []byte(`{}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.ListPlatformDomains(context.Background())
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 func TestWebsitesService_UpdateWithOptions_DisableDNSHosting(t *testing.T) {
 	t.Run("updates website with dns_hosting_enabled=false", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
@@ -1714,8 +1783,8 @@ func TestWebsitesService_CheckPlatformDomainAvailability_Success(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetApiPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
-			Return(&client.GetApiPlatformDomainsAvailabilityResponse{
+			GetApiWebsitesPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
+			Return(&client.GetApiWebsitesPlatformDomainsAvailabilityResponse{
 				Body:         []byte(`{}`),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 				JSON200:      expected,
@@ -1736,12 +1805,12 @@ func TestWebsitesService_CheckPlatformDomainAvailability_Success(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
 
 		mockClient.EXPECT().
-			GetApiPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
-			Run(func(_ context.Context, params *client.GetApiPlatformDomainsAvailabilityParams, _ ...client.RequestEditorFn) {
+			GetApiWebsitesPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
+			Run(func(_ context.Context, params *client.GetApiWebsitesPlatformDomainsAvailabilityParams, _ ...client.RequestEditorFn) {
 				require.NotNil(t, params.Label)
 				assert.Equal(t, "mysite", *params.Label)
 			}).
-			Return(&client.GetApiPlatformDomainsAvailabilityResponse{
+			Return(&client.GetApiWebsitesPlatformDomainsAvailabilityResponse{
 				Body:         []byte(`{}`),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 				JSON200:      &client.PlatformAvailabilityResponse{Label: "mysite"},
@@ -1759,8 +1828,8 @@ func TestWebsitesService_CheckPlatformDomainAvailability_HTTPError(t *testing.T)
 		service, mockClient := testWebsitesDomainService(t)
 
 		mockClient.EXPECT().
-			GetApiPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
-			Return(&client.GetApiPlatformDomainsAvailabilityResponse{
+			GetApiWebsitesPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
+			Return(&client.GetApiWebsitesPlatformDomainsAvailabilityResponse{
 				Body:         []byte(`{"error":{"reason":"authentication required"}}`),
 				HTTPResponse: &http.Response{StatusCode: http.StatusUnauthorized},
 				JSON401:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "authentication required"}},
@@ -1778,8 +1847,8 @@ func TestWebsitesService_CheckPlatformDomainAvailability_HTTPError(t *testing.T)
 		service, mockClient := testWebsitesDomainService(t)
 
 		mockClient.EXPECT().
-			GetApiPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
-			Return(&client.GetApiPlatformDomainsAvailabilityResponse{
+			GetApiWebsitesPlatformDomainsAvailabilityWithResponse(mock.Anything, mock.Anything).
+			Return(&client.GetApiWebsitesPlatformDomainsAvailabilityResponse{
 				Body:         []byte(`{}`),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 				JSON200:      nil,
