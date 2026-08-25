@@ -969,7 +969,15 @@ components:
           type: boolean
         domain:
           type: string
+        generate:
+          type: boolean
+        label:
+          type: string
         namespace:
+          type: string
+        platform_domain:
+          type: string
+        platform_namespace:
           type: string
         target_hash:
           type: string
