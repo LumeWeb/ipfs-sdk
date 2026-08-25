@@ -63,6 +63,7 @@ const (
 	OpVerifyWebsiteDomain
 	OpDNSRequirementsWebsiteDomain
 	OpRepublishDomainDANE
+	OpListPlatformDomains
 	OpCheckPlatformDomainAvailability
 
 	// Pinning operations
@@ -128,6 +129,7 @@ var operationString = map[int]string{
 	OpVerifyWebsiteDomain:             "verify website domain",
 	OpDNSRequirementsWebsiteDomain:    "get domain DNS requirements",
 	OpRepublishDomainDANE:             "republish domain DANE records",
+	OpListPlatformDomains:             "list platform domains",
 	OpCheckPlatformDomainAvailability: "check platform domain availability",
 
 	// Pinning operations
@@ -484,6 +486,9 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 	OpCheckPlatformDomainAvailability: {
 		http.StatusUnauthorized: authErr("authentication required"),
 		http.StatusBadRequest:   plainErr("invalid label"),
+	},
+	OpListPlatformDomains: {
+		http.StatusUnauthorized: authErr("authentication required"),
 	},
 	OpGetGatewayWebsite: {
 		http.StatusUnauthorized: authErr("authentication required"),

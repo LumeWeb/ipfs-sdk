@@ -296,19 +296,27 @@ type MockIPNSService_ListKeys_Call struct {
 //   - opts ...ipfs.ListKeyOption
 func (_e *MockIPNSService_Expecter) ListKeys(ctx any, opts ...any) *MockIPNSService_ListKeys_Call {
 	return &MockIPNSService_ListKeys_Call{Call: _e.mock.On("ListKeys",
-		append([]any{ctx}, opts...)...,
-	)}
+		append([]any{ctx}, opts...)...)}
 }
 
 func (_c *MockIPNSService_ListKeys_Call) Run(run func(ctx context.Context, opts ...ipfs.ListKeyOption)) *MockIPNSService_ListKeys_Call {
 	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 []ipfs.ListKeyOption
 		variadicArgs := make([]ipfs.ListKeyOption, len(args)-1)
 		for i, a := range args[1:] {
 			if a != nil {
 				variadicArgs[i] = a.(ipfs.ListKeyOption)
 			}
 		}
-		run(args[0].(context.Context), variadicArgs...)
+		arg1 = variadicArgs
+		run(
+			arg0,
+			arg1...,
+		)
 	})
 	return _c
 }
