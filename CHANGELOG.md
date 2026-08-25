@@ -1,3 +1,9 @@
+## 0.1.87 (2026-08-25)
+
+### Fixes
+
+- update swagger for WebsiteRequest fields
+
 ## 0.1.86 (2026-08-25)
 
 ### Features
