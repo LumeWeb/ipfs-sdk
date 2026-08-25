@@ -662,6 +662,111 @@ type PatchApiUploadTusIdParams struct {
 	UploadOffset map[string]interface{} `json:"Upload-Offset"`
 }
 
+// GetApiWebsitesParams defines parameters for GetApiWebsites.
+type GetApiWebsitesParams struct {
+	// UnderscoreEnd Ending index of the items to return (exclusive). Defaults to 10.
+	UnderscoreEnd *int `form:"_end,omitempty" json:"_end,omitempty"`
+
+	// UnderscoreOrder Comma-separated list of sort orders ('asc' or 'desc') corresponding to _sort fields. Defaults to 'asc'.
+	UnderscoreOrder *string `form:"_order,omitempty" json:"_order,omitempty"`
+
+	// UnderscoreSort Comma-separated list of fields to sort by. Available fields: target_type, status
+	UnderscoreSort *string `form:"_sort,omitempty" json:"_sort,omitempty"`
+
+	// UnderscoreStart Starting index of the items to return (0-based). Defaults to 0.
+	UnderscoreStart *int `form:"_start,omitempty" json:"_start,omitempty"`
+
+	// DomainContains Filter by domain contains
+	DomainContains *string `form:"domain_contains,omitempty" json:"domain_contains,omitempty"`
+
+	// DomainEndswith Filter by domain endswith
+	DomainEndswith *string `form:"domain_endswith,omitempty" json:"domain_endswith,omitempty"`
+
+	// DomainEq Filter by domain eq
+	DomainEq *string `form:"domain_eq,omitempty" json:"domain_eq,omitempty"`
+
+	// DomainNe Filter by domain ne
+	DomainNe *string `form:"domain_ne,omitempty" json:"domain_ne,omitempty"`
+
+	// DomainStartswith Filter by domain startswith
+	DomainStartswith *string `form:"domain_startswith,omitempty" json:"domain_startswith,omitempty"`
+
+	// FiltersDomainContains Filter by domain contains
+	FiltersDomainContains *string `form:"filters[domain][contains],omitempty" json:"filters[domain][contains],omitempty"`
+
+	// FiltersDomainEndswith Filter by domain endswith
+	FiltersDomainEndswith *string `form:"filters[domain][endswith],omitempty" json:"filters[domain][endswith],omitempty"`
+
+	// FiltersDomainEq Filter by domain eq
+	FiltersDomainEq *string `form:"filters[domain][eq],omitempty" json:"filters[domain][eq],omitempty"`
+
+	// FiltersDomainNe Filter by domain ne
+	FiltersDomainNe *string `form:"filters[domain][ne],omitempty" json:"filters[domain][ne],omitempty"`
+
+	// FiltersDomainStartswith Filter by domain startswith
+	FiltersDomainStartswith *string `form:"filters[domain][startswith],omitempty" json:"filters[domain][startswith],omitempty"`
+
+	// FiltersStatusContains Filter by status contains
+	FiltersStatusContains *string `form:"filters[status][contains],omitempty" json:"filters[status][contains],omitempty"`
+
+	// FiltersStatusEndswith Filter by status endswith
+	FiltersStatusEndswith *string `form:"filters[status][endswith],omitempty" json:"filters[status][endswith],omitempty"`
+
+	// FiltersStatusEq Filter by status eq
+	FiltersStatusEq *string `form:"filters[status][eq],omitempty" json:"filters[status][eq],omitempty"`
+
+	// FiltersStatusNe Filter by status ne
+	FiltersStatusNe *string `form:"filters[status][ne],omitempty" json:"filters[status][ne],omitempty"`
+
+	// FiltersStatusStartswith Filter by status startswith
+	FiltersStatusStartswith *string `form:"filters[status][startswith],omitempty" json:"filters[status][startswith],omitempty"`
+
+	// FiltersTargetTypeContains Filter by target_type contains
+	FiltersTargetTypeContains *string `form:"filters[target_type][contains],omitempty" json:"filters[target_type][contains],omitempty"`
+
+	// FiltersTargetTypeEndswith Filter by target_type endswith
+	FiltersTargetTypeEndswith *string `form:"filters[target_type][endswith],omitempty" json:"filters[target_type][endswith],omitempty"`
+
+	// FiltersTargetTypeEq Filter by target_type eq
+	FiltersTargetTypeEq *string `form:"filters[target_type][eq],omitempty" json:"filters[target_type][eq],omitempty"`
+
+	// FiltersTargetTypeNe Filter by target_type ne
+	FiltersTargetTypeNe *string `form:"filters[target_type][ne],omitempty" json:"filters[target_type][ne],omitempty"`
+
+	// FiltersTargetTypeStartswith Filter by target_type startswith
+	FiltersTargetTypeStartswith *string `form:"filters[target_type][startswith],omitempty" json:"filters[target_type][startswith],omitempty"`
+
+	// StatusContains Filter by status contains
+	StatusContains *string `form:"status_contains,omitempty" json:"status_contains,omitempty"`
+
+	// StatusEndswith Filter by status endswith
+	StatusEndswith *string `form:"status_endswith,omitempty" json:"status_endswith,omitempty"`
+
+	// StatusEq Filter by status eq
+	StatusEq *string `form:"status_eq,omitempty" json:"status_eq,omitempty"`
+
+	// StatusNe Filter by status ne
+	StatusNe *string `form:"status_ne,omitempty" json:"status_ne,omitempty"`
+
+	// StatusStartswith Filter by status startswith
+	StatusStartswith *string `form:"status_startswith,omitempty" json:"status_startswith,omitempty"`
+
+	// TargetTypeContains Filter by target_type contains
+	TargetTypeContains *string `form:"target_type_contains,omitempty" json:"target_type_contains,omitempty"`
+
+	// TargetTypeEndswith Filter by target_type endswith
+	TargetTypeEndswith *string `form:"target_type_endswith,omitempty" json:"target_type_endswith,omitempty"`
+
+	// TargetTypeEq Filter by target_type eq
+	TargetTypeEq *string `form:"target_type_eq,omitempty" json:"target_type_eq,omitempty"`
+
+	// TargetTypeNe Filter by target_type ne
+	TargetTypeNe *string `form:"target_type_ne,omitempty" json:"target_type_ne,omitempty"`
+
+	// TargetTypeStartswith Filter by target_type startswith
+	TargetTypeStartswith *string `form:"target_type_startswith,omitempty" json:"target_type_startswith,omitempty"`
+}
+
 // GetApiWebsitesPlatformDomainsAvailabilityParams defines parameters for GetApiWebsitesPlatformDomainsAvailability.
 type GetApiWebsitesPlatformDomainsAvailabilityParams struct {
 	// Label Candidate subdomain label
@@ -963,7 +1068,7 @@ type ClientInterface interface {
 	PatchApiUploadTusIdWithBody(ctx context.Context, id string, params *PatchApiUploadTusIdParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiWebsites request
-	GetApiWebsites(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetApiWebsites(ctx context.Context, params *GetApiWebsitesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostApiWebsitesWithBody request with any body
 	PostApiWebsitesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1644,8 +1749,8 @@ func (c *Client) PatchApiUploadTusIdWithBody(ctx context.Context, id string, par
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetApiWebsites(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApiWebsitesRequest(c.Server)
+func (c *Client) GetApiWebsites(ctx context.Context, params *GetApiWebsitesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiWebsitesRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3686,7 +3791,7 @@ func NewPatchApiUploadTusIdRequestWithBody(server string, id string, params *Pat
 }
 
 // NewGetApiWebsitesRequest generates requests for GetApiWebsites
-func NewGetApiWebsitesRequest(server string) (*http.Request, error) {
+func NewGetApiWebsitesRequest(server string, params *GetApiWebsitesParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3702,6 +3807,556 @@ func NewGetApiWebsitesRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.UnderscoreEnd != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "_end", *params.UnderscoreEnd, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.UnderscoreOrder != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "_order", *params.UnderscoreOrder, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.UnderscoreSort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "_sort", *params.UnderscoreSort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.UnderscoreStart != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "_start", *params.UnderscoreStart, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DomainContains != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "domain_contains", *params.DomainContains, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DomainEndswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "domain_endswith", *params.DomainEndswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DomainEq != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "domain_eq", *params.DomainEq, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DomainNe != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "domain_ne", *params.DomainNe, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.DomainStartswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "domain_startswith", *params.DomainStartswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersDomainContains != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[domain][contains]", *params.FiltersDomainContains, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersDomainEndswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[domain][endswith]", *params.FiltersDomainEndswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersDomainEq != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[domain][eq]", *params.FiltersDomainEq, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersDomainNe != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[domain][ne]", *params.FiltersDomainNe, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersDomainStartswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[domain][startswith]", *params.FiltersDomainStartswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersStatusContains != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[status][contains]", *params.FiltersStatusContains, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersStatusEndswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[status][endswith]", *params.FiltersStatusEndswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersStatusEq != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[status][eq]", *params.FiltersStatusEq, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersStatusNe != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[status][ne]", *params.FiltersStatusNe, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersStatusStartswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[status][startswith]", *params.FiltersStatusStartswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersTargetTypeContains != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[target_type][contains]", *params.FiltersTargetTypeContains, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersTargetTypeEndswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[target_type][endswith]", *params.FiltersTargetTypeEndswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersTargetTypeEq != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[target_type][eq]", *params.FiltersTargetTypeEq, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersTargetTypeNe != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[target_type][ne]", *params.FiltersTargetTypeNe, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.FiltersTargetTypeStartswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "filters[target_type][startswith]", *params.FiltersTargetTypeStartswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.StatusContains != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status_contains", *params.StatusContains, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.StatusEndswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status_endswith", *params.StatusEndswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.StatusEq != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status_eq", *params.StatusEq, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.StatusNe != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status_ne", *params.StatusNe, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.StatusStartswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status_startswith", *params.StatusStartswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TargetTypeContains != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_type_contains", *params.TargetTypeContains, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TargetTypeEndswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_type_endswith", *params.TargetTypeEndswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TargetTypeEq != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_type_eq", *params.TargetTypeEq, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TargetTypeNe != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_type_ne", *params.TargetTypeNe, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TargetTypeStartswith != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "target_type_startswith", *params.TargetTypeStartswith, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -5361,7 +6016,7 @@ type ClientWithResponsesInterface interface {
 	PatchApiUploadTusIdWithBodyWithResponse(ctx context.Context, id string, params *PatchApiUploadTusIdParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PatchApiUploadTusIdResponse, error)
 
 	// GetApiWebsitesWithResponse request
-	GetApiWebsitesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesResponse, error)
+	GetApiWebsitesWithResponse(ctx context.Context, params *GetApiWebsitesParams, reqEditors ...RequestEditorFn) (*GetApiWebsitesResponse, error)
 
 	// PostApiWebsitesWithBodyWithResponse request with any body
 	PostApiWebsitesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiWebsitesResponse, error)
@@ -7907,8 +8562,8 @@ func (c *ClientWithResponses) PatchApiUploadTusIdWithBodyWithResponse(ctx contex
 }
 
 // GetApiWebsitesWithResponse request returning *GetApiWebsitesResponse
-func (c *ClientWithResponses) GetApiWebsitesWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiWebsitesResponse, error) {
-	rsp, err := c.GetApiWebsites(ctx, reqEditors...)
+func (c *ClientWithResponses) GetApiWebsitesWithResponse(ctx context.Context, params *GetApiWebsitesParams, reqEditors ...RequestEditorFn) (*GetApiWebsitesResponse, error) {
+	rsp, err := c.GetApiWebsites(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

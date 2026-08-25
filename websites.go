@@ -149,7 +149,7 @@ type internalClientToWebsitesAdapter struct {
 }
 
 func (a *internalClientToWebsitesAdapter) GetApiWebsitesWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesResponse, error) {
-	return a.client.GetApiWebsitesWithResponse(ctx, reqEditors...)
+	return a.client.GetApiWebsitesWithResponse(ctx, nil, reqEditors...)
 }
 
 func (a *internalClientToWebsitesAdapter) GetApiWebsitesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdResponse, error) {
@@ -234,10 +234,49 @@ func convertWebsitesClient(client *internalclient.ClientWithResponses) WebsitesC
 	return &internalClientToWebsitesAdapter{client: client}
 }
 
+// ListWebsitesOption configures the server-side filtering of the websites list.
+// The portal /api/websites endpoint is a queryutil list endpoint, so filters are
+// sent as query params (filters[field][op]=value) rather than fetched and then
+// filtered on the client.
+type ListWebsitesOption func(*websiteListFilters)
+
+type websiteListFilters struct {
+	domain     string
+	status     string
+	targetType string
+}
+
+// WithDomainFilter narrows List to websites whose bound domain contains the given
+// substring (filters[domain][contains]). Sentinel by being server-side, not
+// post-fetch client filtering.
+func WithDomainFilter(domain string) ListWebsitesOption {
+	return func(f *websiteListFilters) {
+		f.domain = domain
+	}
+}
+
+// WithStatusFilter narrows List to websites with the given status
+// (filters[status][eq]). Sentinel by being server-side, not post-fetch client
+// filtering.
+func WithStatusFilter(status string) ListWebsitesOption {
+	return func(f *websiteListFilters) {
+		f.status = status
+	}
+}
+
+// WithTargetTypeFilter narrows List to websites with the given target type
+// (filters[target_type][eq]). Sentinel by being server-side, not post-fetch
+// client filtering.
+func WithTargetTypeFilter(targetType string) ListWebsitesOption {
+	return func(f *websiteListFilters) {
+		f.targetType = targetType
+	}
+}
+
 // WebsitesService provides website management functionality
 type WebsitesService interface {
 	// Website management
-	List(ctx context.Context) ([]WebsiteItem, error)
+	List(ctx context.Context, opts ...ListWebsitesOption) ([]WebsiteItem, error)
 	Get(ctx context.Context, id string) (*WebsiteResponse, error)
 	Create(ctx context.Context, domain string, targetHash string, targetType string) (*WebsiteResponse, error)
 	CreateWithOptions(ctx context.Context, req WebsiteRequest) (*WebsiteResponse, error)
@@ -323,12 +362,29 @@ func NewWebsitesService(genClient WebsitesClientWithResponsesInterface, opts ...
 	return &websitesService{client: genClient, config: cfg}
 }
 
-// List retrieves all websites for the authenticated user
-func (s *websitesService) List(ctx context.Context) ([]WebsiteItem, error) {
+// List retrieves all websites for the authenticated user, optionally narrowed
+// server-side by the provided list options.
+func (s *websitesService) List(ctx context.Context, opts ...ListWebsitesOption) ([]WebsiteItem, error) {
+	var filters websiteListFilters
+	for _, opt := range opts {
+		opt(&filters)
+	}
+
 	var result []WebsiteItem
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.GetApiWebsitesWithResponse(ctx)
+		var (
+			resp *internalclient.GetApiWebsitesResponse
+			err  error
+		)
+		reqEditor := buildListWebsitesEditor(filters)
+		if reqEditor == nil {
+			// No filters: preserve the no-editor call so existing callers and
+			// test mocks are unaffected.
+			resp, err = s.client.GetApiWebsitesWithResponse(ctx)
+		} else {
+			resp, err = s.client.GetApiWebsitesWithResponse(ctx, reqEditor)
+		}
 		if err != nil {
 			return err
 		}
@@ -350,6 +406,29 @@ func (s *websitesService) List(ctx context.Context) ([]WebsiteItem, error) {
 	}
 
 	return result, nil
+}
+
+// buildListWebsitesEditor returns a request editor that appends the queryutil
+// list-query filter params for a website list call. Calls with no filters yield
+// a nil editor (no query mutations).
+func buildListWebsitesEditor(f websiteListFilters) internalclient.RequestEditorFn {
+	if f.domain == "" && f.status == "" && f.targetType == "" {
+		return nil
+	}
+	return func(_ context.Context, req *http.Request) error {
+		q := req.URL.Query()
+		if f.domain != "" {
+			q.Set("filters[domain][contains]", f.domain)
+		}
+		if f.status != "" {
+			q.Set("filters[status][eq]", f.status)
+		}
+		if f.targetType != "" {
+			q.Set("filters[target_type][eq]", f.targetType)
+		}
+		req.URL.RawQuery = q.Encode()
+		return nil
+	}
 }
 
 // Get retrieves a specific website by ID

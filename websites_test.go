@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -1860,4 +1863,49 @@ func TestWebsitesService_CheckPlatformDomainAvailability_HTTPError(t *testing.T)
 		require.Error(t, err)
 		assert.Nil(t, result)
 	})
+}
+
+// TestWebsitesService_ListSendsFilters is the end-to-end guard for server-side
+// website list filtering. List with a filter option must emit the corresponding
+// queryutil filters[field][op]=value query param (not fetch-then-filter
+// client-side), and a plain List must send no filters.
+func TestWebsitesService_ListSendsFilters(t *testing.T) {
+	var (
+		mu    sync.Mutex
+		gotQuery url.Values
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		gotQuery = r.URL.Query()
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"total":0}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	genClient, err := client.NewClientWithResponses(srv.URL)
+	require.NoError(t, err)
+	service := NewWebsitesService(convertWebsitesClient(genClient))
+
+	// With filters: each configured filter must be sent as its queryutil param.
+	_, err = service.List(context.Background(),
+		WithDomainFilter("example.com"),
+		WithStatusFilter("active"),
+		WithTargetTypeFilter("ipfs"),
+	)
+	require.NoError(t, err)
+	mu.Lock()
+	assert.Equal(t, "example.com", gotQuery.Get("filters[domain][contains]"))
+	assert.Equal(t, "active", gotQuery.Get("filters[status][eq]"))
+	assert.Equal(t, "ipfs", gotQuery.Get("filters[target_type][eq]"))
+	mu.Unlock()
+
+	// Without filters: no query params on the list call.
+	_, err = service.List(context.Background())
+	require.NoError(t, err)
+	mu.Lock()
+	assert.Empty(t, gotQuery.Get("filters[domain][contains]"))
+	assert.Empty(t, gotQuery.Get("filters[status][eq]"))
+	assert.Empty(t, gotQuery.Get("filters[target_type][eq]"))
+	mu.Unlock()
 }
