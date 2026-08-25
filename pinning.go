@@ -206,8 +206,8 @@ func WithListMeta(meta ippinning.PinMeta) ListOption {
 	return ListOption{Meta: &meta}
 }
 
-// WithLimit sets max results
-func WithLimit(limit int32) ListOption {
+// WithPinningLimit sets max results
+func WithPinningLimit(limit int32) ListOption {
 	return ListOption{Limit: &limit}
 }
 

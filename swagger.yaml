@@ -3702,6 +3702,181 @@ paths:
         Returns paginated list of website configurations with status, domain, and target information. Supports filtering by status and other criteria.
 
         See also:.*
+      parameters:
+      - description: Ending index of the items to return (exclusive). Defaults to
+          10.
+        in: query
+        name: _end
+        schema:
+          type: integer
+      - description: Comma-separated list of sort orders ('asc' or 'desc') corresponding
+          to _sort fields. Defaults to 'asc'.
+        in: query
+        name: _order
+        schema:
+          type: string
+      - description: 'Comma-separated list of fields to sort by. Available fields:
+          target_type, status'
+        in: query
+        name: _sort
+        schema:
+          type: string
+      - description: Starting index of the items to return (0-based). Defaults to
+          0.
+        in: query
+        name: _start
+        schema:
+          type: integer
+      - description: Filter by domain contains
+        in: query
+        name: domain_contains
+        schema:
+          type: string
+      - description: Filter by domain endswith
+        in: query
+        name: domain_endswith
+        schema:
+          type: string
+      - description: Filter by domain eq
+        in: query
+        name: domain_eq
+        schema:
+          type: string
+      - description: Filter by domain ne
+        in: query
+        name: domain_ne
+        schema:
+          type: string
+      - description: Filter by domain startswith
+        in: query
+        name: domain_startswith
+        schema:
+          type: string
+      - description: Filter by domain contains
+        in: query
+        name: filters[domain][contains]
+        schema:
+          type: string
+      - description: Filter by domain endswith
+        in: query
+        name: filters[domain][endswith]
+        schema:
+          type: string
+      - description: Filter by domain eq
+        in: query
+        name: filters[domain][eq]
+        schema:
+          type: string
+      - description: Filter by domain ne
+        in: query
+        name: filters[domain][ne]
+        schema:
+          type: string
+      - description: Filter by domain startswith
+        in: query
+        name: filters[domain][startswith]
+        schema:
+          type: string
+      - description: Filter by status contains
+        in: query
+        name: filters[status][contains]
+        schema:
+          type: string
+      - description: Filter by status endswith
+        in: query
+        name: filters[status][endswith]
+        schema:
+          type: string
+      - description: Filter by status eq
+        in: query
+        name: filters[status][eq]
+        schema:
+          type: string
+      - description: Filter by status ne
+        in: query
+        name: filters[status][ne]
+        schema:
+          type: string
+      - description: Filter by status startswith
+        in: query
+        name: filters[status][startswith]
+        schema:
+          type: string
+      - description: Filter by target_type contains
+        in: query
+        name: filters[target_type][contains]
+        schema:
+          type: string
+      - description: Filter by target_type endswith
+        in: query
+        name: filters[target_type][endswith]
+        schema:
+          type: string
+      - description: Filter by target_type eq
+        in: query
+        name: filters[target_type][eq]
+        schema:
+          type: string
+      - description: Filter by target_type ne
+        in: query
+        name: filters[target_type][ne]
+        schema:
+          type: string
+      - description: Filter by target_type startswith
+        in: query
+        name: filters[target_type][startswith]
+        schema:
+          type: string
+      - description: Filter by status contains
+        in: query
+        name: status_contains
+        schema:
+          type: string
+      - description: Filter by status endswith
+        in: query
+        name: status_endswith
+        schema:
+          type: string
+      - description: Filter by status eq
+        in: query
+        name: status_eq
+        schema:
+          type: string
+      - description: Filter by status ne
+        in: query
+        name: status_ne
+        schema:
+          type: string
+      - description: Filter by status startswith
+        in: query
+        name: status_startswith
+        schema:
+          type: string
+      - description: Filter by target_type contains
+        in: query
+        name: target_type_contains
+        schema:
+          type: string
+      - description: Filter by target_type endswith
+        in: query
+        name: target_type_endswith
+        schema:
+          type: string
+      - description: Filter by target_type eq
+        in: query
+        name: target_type_eq
+        schema:
+          type: string
+      - description: Filter by target_type ne
+        in: query
+        name: target_type_ne
+        schema:
+          type: string
+      - description: Filter by target_type startswith
+        in: query
+        name: target_type_startswith
+        schema:
+          type: string
       responses:
         "200":
           content:
@@ -3709,6 +3884,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebsiteItemResponse'
           description: List of websites
+          headers:
+            X-Total-Count:
+              description: Total number of items
+              schema:
+                type: string
         "400":
           content:
             application/json:

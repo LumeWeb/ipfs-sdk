@@ -794,8 +794,16 @@ func (_c *MockWebsitesService_GetSSLStatus_Call) RunAndReturn(run func(ctx conte
 }
 
 // List provides a mock function for the type MockWebsitesService
-func (_mock *MockWebsitesService) List(ctx context.Context) ([]ipfs.WebsiteItem, error) {
-	ret := _mock.Called(ctx)
+func (_mock *MockWebsitesService) List(ctx context.Context, opts ...ipfs.ListWebsitesOption) ([]ipfs.WebsiteItem, error) {
+	// ipfs.ListWebsitesOption
+	_va := make([]any, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []any
+	_ca = append(_ca, ctx)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
@@ -803,18 +811,18 @@ func (_mock *MockWebsitesService) List(ctx context.Context) ([]ipfs.WebsiteItem,
 
 	var r0 []ipfs.WebsiteItem
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) ([]ipfs.WebsiteItem, error)); ok {
-		return returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, ...ipfs.ListWebsitesOption) ([]ipfs.WebsiteItem, error)); ok {
+		return returnFunc(ctx, opts...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context) []ipfs.WebsiteItem); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, ...ipfs.ListWebsitesOption) []ipfs.WebsiteItem); ok {
+		r0 = returnFunc(ctx, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]ipfs.WebsiteItem)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, ...ipfs.ListWebsitesOption) error); ok {
+		r1 = returnFunc(ctx, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -828,18 +836,29 @@ type MockWebsitesService_List_Call struct {
 
 // List is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockWebsitesService_Expecter) List(ctx any) *MockWebsitesService_List_Call {
-	return &MockWebsitesService_List_Call{Call: _e.mock.On("List", ctx)}
+//   - opts ...ipfs.ListWebsitesOption
+func (_e *MockWebsitesService_Expecter) List(ctx any, opts ...any) *MockWebsitesService_List_Call {
+	return &MockWebsitesService_List_Call{Call: _e.mock.On("List",
+		append([]any{ctx}, opts...)...)}
 }
 
-func (_c *MockWebsitesService_List_Call) Run(run func(ctx context.Context)) *MockWebsitesService_List_Call {
+func (_c *MockWebsitesService_List_Call) Run(run func(ctx context.Context, opts ...ipfs.ListWebsitesOption)) *MockWebsitesService_List_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 []ipfs.ListWebsitesOption
+		variadicArgs := make([]ipfs.ListWebsitesOption, len(args)-1)
+		for i, a := range args[1:] {
+			if a != nil {
+				variadicArgs[i] = a.(ipfs.ListWebsitesOption)
+			}
+		}
+		arg1 = variadicArgs
 		run(
 			arg0,
+			arg1...,
 		)
 	})
 	return _c
@@ -850,7 +869,7 @@ func (_c *MockWebsitesService_List_Call) Return(vs []ipfs.WebsiteItem, err error
 	return _c
 }
 
-func (_c *MockWebsitesService_List_Call) RunAndReturn(run func(ctx context.Context) ([]ipfs.WebsiteItem, error)) *MockWebsitesService_List_Call {
+func (_c *MockWebsitesService_List_Call) RunAndReturn(run func(ctx context.Context, opts ...ipfs.ListWebsitesOption) ([]ipfs.WebsiteItem, error)) *MockWebsitesService_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
