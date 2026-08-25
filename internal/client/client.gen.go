@@ -525,7 +525,11 @@ type WebsiteItemResponse struct {
 type WebsiteRequest struct {
 	DnsHostingEnabled *bool   `json:"dns_hosting_enabled,omitempty"`
 	Domain            string  `json:"domain"`
+	Generate          *bool   `json:"generate,omitempty"`
+	Label             *string `json:"label,omitempty"`
 	Namespace         *string `json:"namespace,omitempty"`
+	PlatformDomain    *string `json:"platform_domain,omitempty"`
+	PlatformNamespace *string `json:"platform_namespace,omitempty"`
 	TargetHash        string  `json:"target_hash"`
 	TargetType        string  `json:"target_type"`
 }
