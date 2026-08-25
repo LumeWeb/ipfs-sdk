@@ -1,3 +1,13 @@
+## 0.1.86 (2026-08-25)
+
+### Features
+
+- expose list filter options
+
+### Fixes
+
+- add pagination options to list
+
 ## 0.1.85 (2026-08-25)
 
 ### Fixes
