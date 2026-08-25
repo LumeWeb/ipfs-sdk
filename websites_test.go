@@ -212,7 +212,7 @@ func TestWebsitesService_CreateWithOptions_DisableDNSHosting(t *testing.T) {
 
 		service := NewWebsitesService(mockClient)
 		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
-			Domain:            "example.com",
+			Domain:            new("example.com"),
 			TargetHash:        "QmTest",
 			TargetType:        "ipfs",
 			DnsHostingEnabled: new(bool),
@@ -252,7 +252,7 @@ func TestWebsitesService_CreateWithOptions_EnableDNSHosting(t *testing.T) {
 		dnsHostingTrue := true
 		service := NewWebsitesService(mockClient)
 		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
-			Domain:            "example.com",
+			Domain:            new("example.com"),
 			TargetHash:        "QmTest",
 			TargetType:        "ipfs",
 			DnsHostingEnabled: &dnsHostingTrue,
@@ -294,7 +294,7 @@ func TestWebsitesService_Create_CallsCreateWithOptions(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedWebsite.Id, result.Id)
-		assert.Equal(t, "example.com", capturedReq.Domain)
+		assert.Equal(t, "example.com", *capturedReq.Domain)
 		assert.Equal(t, "QmTest", capturedReq.TargetHash)
 		assert.Equal(t, "ipfs", capturedReq.TargetType)
 		// DnsHostingEnabled should be nil when not specified
@@ -313,7 +313,7 @@ func TestWebsitesService_CreateWithOptions_HTTPError(t *testing.T) {
 
 		service := NewWebsitesService(mockClient)
 		result, err := service.CreateWithOptions(context.Background(), client.WebsiteRequest{
-			Domain:     "example.com",
+			Domain:     new("example.com"),
 			TargetHash: "QmTest",
 			TargetType: "ipfs",
 		})
@@ -777,7 +777,7 @@ func TestWebsitesService_WaitForSSLStatusReady_Success(t *testing.T) {
 						Domain: "example.com",
 						Ssl: &client.SSLStatusInfo{
 							Status: "failed",
-							Error:  strPtr("certificate validation failed"),
+							Error:  new("certificate validation failed"),
 						},
 					},
 				}, nil
@@ -1050,10 +1050,6 @@ func TestWebsitesService_WaitForDNSValidation(t *testing.T) {
 	})
 }
 
-func strPtr(s string) *string {
-	return &s
-}
-
 func boolPtr(b bool) *bool {
 	return &b
 }
@@ -1299,7 +1295,7 @@ func TestWebsitesService_ListDomains(t *testing.T) {
 				Id:        1,
 				Domain:    "example.com",
 				Namespace: "icann",
-				ZoneName:  strPtr("example.com."),
+				ZoneName:  new("example.com."),
 			},
 			{
 				Id:        2,
@@ -1629,20 +1625,20 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 			Id:          1,
 			Domain:      "lumeweb",
 			Namespace:   "hns",
-			Status:      strPtr("records_generated"),
-			ZoneName:    strPtr("lumeweb."),
-			GatewayHost: strPtr("gateway.lumeweb.com"),
+			Status:      new("records_generated"),
+			ZoneName:    new("lumeweb."),
+			GatewayHost: new("gateway.lumeweb.com"),
 			Delegation: &client.DNSDelegation{
-				Mode:        strPtr("delegated"),
-				Dnssec:      strPtr("enabled"),
+				Mode:        new("delegated"),
+				Dnssec:      new("enabled"),
 				DnssecError: nil,
 				ParentRecords: &[]client.DNSDelegationRecord{
-					{Type: "NS", Value: strPtr("ns1.lumeweb,ns2.lumeweb")},
-					{Type: "DS", Value: strPtr(ds)},
+					{Type: "NS", Value: new("ns1.lumeweb,ns2.lumeweb")},
+					{Type: "DS", Value: new(ds)},
 				},
 				AuthoritativeRecords: &[]client.DNSDelegationRecord{
-					{Type: "NS", Value: strPtr("ns1.lumeweb\nns2.lumeweb")},
-					{Type: "TLSA", Value: strPtr("_443._tcp.lumeweb. 3 1 1 <sha256>")},
+					{Type: "NS", Value: new("ns1.lumeweb\nns2.lumeweb")},
+					{Type: "TLSA", Value: new("_443._tcp.lumeweb. 3 1 1 <sha256>")},
 				},
 			},
 		}
@@ -1661,9 +1657,9 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 		require.NotNil(t, result)
 		require.NotNil(t, result.Delegation)
 		assert.Equal(t, "hns", result.Namespace)
-		assert.Equal(t, strPtr("gateway.lumeweb.com"), result.GatewayHost)
-		assert.Equal(t, strPtr("delegated"), result.Delegation.Mode)
-		assert.Equal(t, strPtr("enabled"), result.Delegation.Dnssec)
+		assert.Equal(t, new("gateway.lumeweb.com"), result.GatewayHost)
+		assert.Equal(t, new("delegated"), result.Delegation.Mode)
+		assert.Equal(t, new("enabled"), result.Delegation.Dnssec)
 		require.NotNil(t, result.Delegation.ParentRecords)
 		assert.Len(t, *result.Delegation.ParentRecords, 2)
 		assert.Equal(t, "TLSA", (*result.Delegation.AuthoritativeRecords)[1].Type)
@@ -1721,9 +1717,9 @@ func TestWebsitesService_RepublishDANE(t *testing.T) {
 			Id:         1,
 			Domain:     "lumeweb",
 			Namespace:  "hns",
-			TlsaRdata:  strPtr("3 1 1 <sha256>"),
-			OwnerName:  strPtr("_443._tcp.lumeweb"),
-			TlsaRecord: strPtr("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"),
+			TlsaRdata:  new("3 1 1 <sha256>"),
+			OwnerName:  new("_443._tcp.lumeweb"),
+			TlsaRecord: new("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"),
 		}
 
 		mockClient.EXPECT().
@@ -1739,8 +1735,8 @@ func TestWebsitesService_RepublishDANE(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		assert.Equal(t, "hns", result.Namespace)
-		assert.Equal(t, strPtr("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"), result.TlsaRecord)
-		assert.Equal(t, strPtr("_443._tcp.lumeweb"), result.OwnerName)
+		assert.Equal(t, new("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"), result.TlsaRecord)
+		assert.Equal(t, new("_443._tcp.lumeweb"), result.OwnerName)
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {

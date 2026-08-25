@@ -493,7 +493,7 @@ func (s *websitesService) Get(ctx context.Context, id string) (*WebsiteResponse,
 // Create creates a new website
 func (s *websitesService) Create(ctx context.Context, domain string, targetHash string, targetType string) (*WebsiteResponse, error) {
 	return s.CreateWithOptions(ctx, WebsiteRequest{
-		Domain:     domain,
+		Domain:     &domain,
 		TargetHash: targetHash,
 		TargetType: targetType,
 	})

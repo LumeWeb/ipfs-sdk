@@ -912,7 +912,7 @@ func TestDNSService_GetCert(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: new("hns")}).
 			Return(&internalclient.GetInternalDnsCertDomainResponse{
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 				JSON200:      expectedResp,
@@ -947,7 +947,7 @@ func TestDNSService_GetCert(t *testing.T) {
 		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
-			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: new("hns")}).
 			Return(&internalclient.GetInternalDnsCertDomainResponse{
 				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
 			}, nil).
@@ -964,7 +964,7 @@ func TestDNSService_GetCert(t *testing.T) {
 		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
-			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: new("hns")}).
 			Return(&internalclient.GetInternalDnsCertDomainResponse{
 				HTTPResponse: &http.Response{StatusCode: http.StatusForbidden},
 			}, nil).
@@ -981,7 +981,7 @@ func TestDNSService_GetCert(t *testing.T) {
 		service, mockClient := testDNSService(t)
 
 		mockClient.EXPECT().
-			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: strPtr("hns")}).
+			GetInternalDnsCertDomainWithResponse(mock.Anything, "example", &internalclient.GetInternalDnsCertDomainParams{Namespace: new("hns")}).
 			Return(&internalclient.GetInternalDnsCertDomainResponse{
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
 				JSON200:      nil,

@@ -524,7 +524,7 @@ type WebsiteItemResponse struct {
 // WebsiteRequest defines model for WebsiteRequest.
 type WebsiteRequest struct {
 	DnsHostingEnabled *bool   `json:"dns_hosting_enabled,omitempty"`
-	Domain            string  `json:"domain"`
+	Domain            *string `json:"domain,omitempty"`
 	Generate          *bool   `json:"generate,omitempty"`
 	Label             *string `json:"label,omitempty"`
 	Namespace         *string `json:"namespace,omitempty"`

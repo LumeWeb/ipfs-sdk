@@ -984,7 +984,6 @@ components:
         target_type:
           type: string
       required:
-      - domain
       - target_type
       - target_hash
       type: object
