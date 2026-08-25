@@ -1,3 +1,9 @@
+## 0.1.88 (2026-08-25)
+
+### Fixes
+
+- make website domain optional
+
 ## 0.1.87 (2026-08-25)
 
 ### Fixes
