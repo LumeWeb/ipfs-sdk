@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
@@ -244,6 +245,8 @@ type websiteListFilters struct {
 	domain     string
 	status     string
 	targetType string
+	start      int
+	limit      int
 }
 
 // WithDomainFilter narrows List to websites whose bound domain contains the given
@@ -270,6 +273,25 @@ func WithStatusFilter(status string) ListWebsitesOption {
 func WithTargetTypeFilter(targetType string) ListWebsitesOption {
 	return func(f *websiteListFilters) {
 		f.targetType = targetType
+	}
+}
+
+// WithStart sets the 0-based starting index of the website list window
+// (_start). Use together with WithWebsitesLimit to page beyond the server's default
+// 10-item window.
+func WithStart(start int) ListWebsitesOption {
+	return func(f *websiteListFilters) {
+		f.start = start
+	}
+}
+
+// WithWebsitesLimit sets the number of websites to return per page; the
+// underlying exclusive _end index is derived as start+limit. The portal website
+// list defaults to a 10-item window, so filtered results are silently truncated
+// to that window unless a limit is set.
+func WithWebsitesLimit(limit int) ListWebsitesOption {
+	return func(f *websiteListFilters) {
+		f.limit = limit
 	}
 }
 
@@ -409,10 +431,10 @@ func (s *websitesService) List(ctx context.Context, opts ...ListWebsitesOption) 
 }
 
 // buildListWebsitesEditor returns a request editor that appends the queryutil
-// list-query filter params for a website list call. Calls with no filters yield
-// a nil editor (no query mutations).
+// list-query filter and pagination params for a website list call. Calls with no
+// filters or pagination yield a nil editor (no query mutations).
 func buildListWebsitesEditor(f websiteListFilters) internalclient.RequestEditorFn {
-	if f.domain == "" && f.status == "" && f.targetType == "" {
+	if f.domain == "" && f.status == "" && f.targetType == "" && f.start == 0 && f.limit == 0 {
 		return nil
 	}
 	return func(_ context.Context, req *http.Request) error {
@@ -425,6 +447,12 @@ func buildListWebsitesEditor(f websiteListFilters) internalclient.RequestEditorF
 		}
 		if f.targetType != "" {
 			q.Set("filters[target_type][eq]", f.targetType)
+		}
+		if f.limit != 0 {
+			q.Set("_end", strconv.Itoa(f.start+f.limit))
+		}
+		if f.start != 0 {
+			q.Set("_start", strconv.Itoa(f.start))
 		}
 		req.URL.RawQuery = q.Encode()
 		return nil

@@ -108,7 +108,7 @@ func TestListPinsSendsMatchParam(t *testing.T) {
 	_, err := s.ListPins(context.Background(),
 		WithFilterName("docs"),
 		WithFilterMatch(ippinning.Partial),
-		WithLimit(10),
+		WithPinningLimit(10),
 	)
 	require.NoError(t, err)
 
@@ -201,7 +201,7 @@ func TestPinningService_SetAuthToken(t *testing.T) {
 	require.NotNil(t, s)
 
 	// Build a list-pins request and assert it used token-a.
-	_, err := s.ListPins(context.Background(), WithLimit(1))
+	_, err := s.ListPins(context.Background(), WithPinningLimit(1))
 	require.NoError(t, err)
 	mu.Lock()
 	first := gotAuth
@@ -218,10 +218,10 @@ func TestPinningService_SetAuthToken(t *testing.T) {
 	assert.Equal(t, "Bearer token-b", second, "request after SetAuthToken must use the new token")
 }
 
-func TestWithLimit(t *testing.T) {
+func TestWithPinningLimit(t *testing.T) {
 	t.Run("creates limit option", func(t *testing.T) {
 		limit := int32(10)
-		opt := WithLimit(limit)
+		opt := WithPinningLimit(limit)
 
 		assert.NotNil(t, opt)
 	})

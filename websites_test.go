@@ -1900,12 +1900,23 @@ func TestWebsitesService_ListSendsFilters(t *testing.T) {
 	assert.Equal(t, "ipfs", gotQuery.Get("filters[target_type][eq]"))
 	mu.Unlock()
 
-	// Without filters: no query params on the list call.
+	// With pagination: _start and _end window params must be sent so filtered
+	// results are not truncated to the server's default 10-item window.
+	_, err = service.List(context.Background(), WithStart(20), WithWebsitesLimit(10))
+	require.NoError(t, err)
+	mu.Lock()
+	assert.Equal(t, "20", gotQuery.Get("_start"))
+	assert.Equal(t, "30", gotQuery.Get("_end"))
+	mu.Unlock()
+
+	// Without filters or pagination: no query params on the list call.
 	_, err = service.List(context.Background())
 	require.NoError(t, err)
 	mu.Lock()
 	assert.Empty(t, gotQuery.Get("filters[domain][contains]"))
 	assert.Empty(t, gotQuery.Get("filters[status][eq]"))
 	assert.Empty(t, gotQuery.Get("filters[target_type][eq]"))
+	assert.Empty(t, gotQuery.Get("_start"))
+	assert.Empty(t, gotQuery.Get("_end"))
 	mu.Unlock()
 }
