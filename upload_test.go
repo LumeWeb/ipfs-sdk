@@ -182,6 +182,58 @@ func TestUploadService_AuthorizationHeaders(t *testing.T) {
 	})
 }
 
+func TestUploadService_SendsPinNameMetadata(t *testing.T) {
+	t.Run("TUS upload sends name via Upload-Metadata", func(t *testing.T) {
+		server, _, store := setupTUSTest(t)
+		defer server.Close()
+
+		service, err := NewUploadService(server.URL, testAuthToken,
+			WithTUSEndpoint(server.URL+"/tus"),
+			WithUploadLimit(1), // force TUS routing for any content larger than 1 byte
+		)
+		require.NoError(t, err)
+
+		data := []byte("larger file content to exercise the TUS path")
+		name := "my-custom-pin-name"
+
+		_, err = service.Upload(context.Background(), bytes.NewReader(data), name, int64(len(data)))
+		require.NoError(t, err)
+
+		infos, err := store.GetUploadsInfo(context.Background())
+		require.NoError(t, err)
+		require.NotEmpty(t, infos, "expected at least one stored TUS upload")
+		assert.Equal(t, name, infos[0].MetaData["name"], "TUS Upload-Metadata should carry the pin name")
+	})
+
+	t.Run("POST upload sends name as a query parameter", func(t *testing.T) {
+		var capturedName string
+		var mu sync.Mutex
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			capturedName = r.URL.Query().Get("name")
+			mu.Unlock()
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		service, err := NewUploadService(server.URL, testAuthToken,
+			WithUploadLimit(100), // small file routes to POST
+		)
+		require.NoError(t, err)
+
+		data := []byte("small content")
+		name := "post-pin-name"
+
+		_, err = service.Upload(context.Background(), bytes.NewReader(data), name, int64(len(data)))
+		require.NoError(t, err)
+
+		mu.Lock()
+		defer mu.Unlock()
+		assert.Equal(t, name, capturedName, "POST upload should send the pin name as a query parameter")
+	})
+}
+
 func TestUploadService_Upload_Success(t *testing.T) {
 	t.Run("uploads data successfully via TUS", func(t *testing.T) {
 		server, _, _ := setupTUSTest(t)
