@@ -439,12 +439,20 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 		return nil, err
 	}
 
-	// Build TUS metadata from archive config
+	// Build TUS metadata from archive config and the optional pin name. The
+	// name is sent via the TUS Upload-Metadata header so the resulting pin is
+	// named on the server.
 	var metadata map[string]string
 	if archiveConfig != nil {
 		metadata = map[string]string{
 			"archive": string(*archiveConfig),
 		}
+	}
+	if name != "" {
+		if metadata == nil {
+			metadata = make(map[string]string)
+		}
+		metadata["name"] = name
 	}
 
 	// Create upload on server and send initial data to initialize multipart upload
@@ -594,7 +602,7 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 			}
 		}()
 
-		uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig)
+		uploadErr := s.postUpload(ctx, uploadEndpoint, pr, writer.FormDataContentType(), archiveConfig, name)
 		if uploadErr != nil {
 			pw.CloseWithError(uploadErr)
 		}
@@ -624,14 +632,21 @@ func (s *UploadService) uploadViaPOST(ctx context.Context, reader io.Reader, nam
 // postUpload sends the CAR data via HTTP POST as multipart form.
 // If the server responds with 307/308, it returns errRedirectUpgraded
 // with the resolved URL so the caller can retry with a fresh pipe.
-func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io.Reader, contentType string, archiveConfig *ArchiveMode) error {
-	if archiveConfig != nil {
+func (s *UploadService) postUpload(ctx context.Context, endpoint string, body io.Reader, contentType string, archiveConfig *ArchiveMode, name string) error {
+	// The optional pin name is sent as a query parameter so the server can name
+	// the resulting pin, matching the POST /upload DTO (query:"name").
+	if archiveConfig != nil || name != "" {
 		parsedURL, err := url.Parse(endpoint)
 		if err != nil {
 			return fmt.Errorf("failed to parse endpoint URL: %w", err)
 		}
 		q := parsedURL.Query()
-		q.Set("archive", string(*archiveConfig))
+		if archiveConfig != nil {
+			q.Set("archive", string(*archiveConfig))
+		}
+		if name != "" {
+			q.Set("name", name)
+		}
 		parsedURL.RawQuery = q.Encode()
 		endpoint = parsedURL.String()
 	}
