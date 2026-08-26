@@ -442,16 +442,11 @@ func (s *UploadService) uploadViaTUS(ctx context.Context, reader io.Reader, name
 	// Build TUS metadata from archive config and the optional pin name. The
 	// name is sent via the TUS Upload-Metadata header so the resulting pin is
 	// named on the server.
-	var metadata map[string]string
+	metadata := make(map[string]string)
 	if archiveConfig != nil {
-		metadata = map[string]string{
-			"archive": string(*archiveConfig),
-		}
+		metadata["archive"] = string(*archiveConfig)
 	}
 	if name != "" {
-		if metadata == nil {
-			metadata = make(map[string]string)
-		}
 		metadata["name"] = name
 	}
 
