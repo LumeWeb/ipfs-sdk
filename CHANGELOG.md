@@ -1,3 +1,9 @@
+## 0.1.89 (2026-08-26)
+
+### Features
+
+- send pin name metadata on POST and TUS uploads
+
 ## 0.1.88 (2026-08-25)
 
 ### Fixes
