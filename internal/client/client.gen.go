@@ -1124,6 +1124,9 @@ type ClientInterface interface {
 	// GetApiWebsitesIdDomainsDomainIdDnsRequirements request
 	GetApiWebsitesIdDomainsDomainIdDnsRequirements(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostApiWebsitesIdDomainsDomainIdOnchain request
+	PostApiWebsitesIdDomainsDomainIdOnchain(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostApiWebsitesIdDomainsDomainIdVerify request
 	PostApiWebsitesIdDomainsDomainIdVerify(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1971,6 +1974,18 @@ func (c *Client) PostApiWebsitesIdDomainsDomainIdDaneRepublish(ctx context.Conte
 
 func (c *Client) GetApiWebsitesIdDomainsDomainIdDnsRequirements(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetApiWebsitesIdDomainsDomainIdDnsRequirementsRequest(c.Server, id, domainId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostApiWebsitesIdDomainsDomainIdOnchain(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostApiWebsitesIdDomainsDomainIdOnchainRequest(c.Server, id, domainId)
 	if err != nil {
 		return nil, err
 	}
@@ -4921,6 +4936,47 @@ func NewGetApiWebsitesIdDomainsDomainIdDnsRequirementsRequest(server string, id 
 	return req, nil
 }
 
+// NewPostApiWebsitesIdDomainsDomainIdOnchainRequest generates requests for PostApiWebsitesIdDomainsDomainIdOnchain
+func NewPostApiWebsitesIdDomainsDomainIdOnchainRequest(server string, id string, domainId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "id", id, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "domain_id", domainId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/websites/%s/domains/%s/onchain", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewPostApiWebsitesIdDomainsDomainIdVerifyRequest generates requests for PostApiWebsitesIdDomainsDomainIdVerify
 func NewPostApiWebsitesIdDomainsDomainIdVerifyRequest(server string, id string, domainId string) (*http.Request, error) {
 	var err error
@@ -6071,6 +6127,9 @@ type ClientWithResponsesInterface interface {
 
 	// GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse request
 	GetApiWebsitesIdDomainsDomainIdDnsRequirementsWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse, error)
+
+	// PostApiWebsitesIdDomainsDomainIdOnchainWithResponse request
+	PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdDomainsDomainIdOnchainResponse, error)
 
 	// PostApiWebsitesIdDomainsDomainIdVerifyWithResponse request
 	PostApiWebsitesIdDomainsDomainIdVerifyWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdDomainsDomainIdVerifyResponse, error)
@@ -7547,6 +7606,34 @@ func (r GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse) StatusCode() int
 	return 0
 }
 
+type PostApiWebsitesIdDomainsDomainIdOnchainResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DomainResponse
+	JSON400      *ErrorResponse
+	JSON401      *ErrorResponse
+	JSON403      *ErrorResponse
+	JSON404      *ErrorResponse
+	JSON422      *ErrorResponse
+	JSON500      *ErrorResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r PostApiWebsitesIdDomainsDomainIdOnchainResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostApiWebsitesIdDomainsDomainIdOnchainResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type PostApiWebsitesIdDomainsDomainIdVerifyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -8730,6 +8817,15 @@ func (c *ClientWithResponses) GetApiWebsitesIdDomainsDomainIdDnsRequirementsWith
 		return nil, err
 	}
 	return ParseGetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse(rsp)
+}
+
+// PostApiWebsitesIdDomainsDomainIdOnchainWithResponse request returning *PostApiWebsitesIdDomainsDomainIdOnchainResponse
+func (c *ClientWithResponses) PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx context.Context, id string, domainId string, reqEditors ...RequestEditorFn) (*PostApiWebsitesIdDomainsDomainIdOnchainResponse, error) {
+	rsp, err := c.PostApiWebsitesIdDomainsDomainIdOnchain(ctx, id, domainId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostApiWebsitesIdDomainsDomainIdOnchainResponse(rsp)
 }
 
 // PostApiWebsitesIdDomainsDomainIdVerifyWithResponse request returning *PostApiWebsitesIdDomainsDomainIdVerifyResponse
@@ -12169,6 +12265,74 @@ func ParseGetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse(rsp *http.Respo
 	}
 
 	response := &GetApiWebsitesIdDomainsDomainIdDnsRequirementsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DomainResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest ErrorResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostApiWebsitesIdDomainsDomainIdOnchainResponse parses an HTTP response from a PostApiWebsitesIdDomainsDomainIdOnchainWithResponse call
+func ParsePostApiWebsitesIdDomainsDomainIdOnchainResponse(rsp *http.Response) (*PostApiWebsitesIdDomainsDomainIdOnchainResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostApiWebsitesIdDomainsDomainIdOnchainResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

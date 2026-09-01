@@ -63,6 +63,7 @@ const (
 	OpVerifyWebsiteDomain
 	OpDNSRequirementsWebsiteDomain
 	OpRepublishDomainDANE
+	OpConvertDomainToOnChain
 	OpListPlatformDomains
 	OpCheckPlatformDomainAvailability
 
@@ -129,6 +130,7 @@ var operationString = map[int]string{
 	OpVerifyWebsiteDomain:             "verify website domain",
 	OpDNSRequirementsWebsiteDomain:    "get domain DNS requirements",
 	OpRepublishDomainDANE:             "republish domain DANE records",
+	OpConvertDomainToOnChain:          "convert domain to on-chain managed",
 	OpListPlatformDomains:             "list platform domains",
 	OpCheckPlatformDomainAvailability: "check platform domain availability",
 
@@ -482,6 +484,11 @@ var httpErrorMessages = map[int]map[int]errorFactory{
 		http.StatusNotFound:     notFoundErr("domain or website not found"),
 		http.StatusBadRequest:   plainErr("invalid request"),
 		http.StatusConflict:     plainErr("no DANE records to republish (no stored certificate or managed zone)"),
+	},
+	OpConvertDomainToOnChain: {
+		http.StatusUnauthorized:        authErr("authentication required"),
+		http.StatusNotFound:            notFoundErr("domain or website not found"),
+		http.StatusUnprocessableEntity: plainErr("domain is not eligible for on-chain conversion (already on-chain, not yet on-chain, or shared zone)"),
 	},
 	OpCheckPlatformDomainAvailability: {
 		http.StatusUnauthorized: authErr("authentication required"),

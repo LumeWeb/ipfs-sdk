@@ -4639,6 +4639,72 @@ paths:
       tags:
       - Websites
       - Domains
+  /api/websites/{id}/domains/{domain_id}/onchain:
+    post:
+      description: Reclassifies a bound domain as on-chain managed (e.g. a Handshake
+        HIP-5 name whose NS now points at an external contract). Deletes the portal-managed
+        PowerDNS zone and DNSSEC for the binding and switches ownership verification
+        to the TXT token; DANE/SSL state is retained. One-way.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          type: string
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainResponse'
+          description: Converted domain
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Reclassify domain as on-chain managed
+      tags:
+      - Websites
+      - Domains
   /api/websites/{id}/domains/{domain_id}/verify:
     post:
       description: Triggers verification of domain delegation.
