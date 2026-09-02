@@ -180,6 +180,80 @@ func (_c *MockWebsitesService_CheckPlatformDomainAvailability_Call) RunAndReturn
 	return _c
 }
 
+// ConvertDomainToOnChain provides a mock function for the type MockWebsitesService
+func (_mock *MockWebsitesService) ConvertDomainToOnChain(ctx context.Context, websiteID string, domainID string) (*ipfs.DomainResponse, error) {
+	ret := _mock.Called(ctx, websiteID, domainID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConvertDomainToOnChain")
+	}
+
+	var r0 *ipfs.DomainResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*ipfs.DomainResponse, error)); ok {
+		return returnFunc(ctx, websiteID, domainID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *ipfs.DomainResponse); ok {
+		r0 = returnFunc(ctx, websiteID, domainID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.DomainResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, websiteID, domainID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesService_ConvertDomainToOnChain_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConvertDomainToOnChain'
+type MockWebsitesService_ConvertDomainToOnChain_Call struct {
+	*mock.Call
+}
+
+// ConvertDomainToOnChain is a helper method to define mock.On call
+//   - ctx context.Context
+//   - websiteID string
+//   - domainID string
+func (_e *MockWebsitesService_Expecter) ConvertDomainToOnChain(ctx any, websiteID any, domainID any) *MockWebsitesService_ConvertDomainToOnChain_Call {
+	return &MockWebsitesService_ConvertDomainToOnChain_Call{Call: _e.mock.On("ConvertDomainToOnChain", ctx, websiteID, domainID)}
+}
+
+func (_c *MockWebsitesService_ConvertDomainToOnChain_Call) Run(run func(ctx context.Context, websiteID string, domainID string)) *MockWebsitesService_ConvertDomainToOnChain_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_ConvertDomainToOnChain_Call) Return(v *ipfs.DomainResponse, err error) *MockWebsitesService_ConvertDomainToOnChain_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockWebsitesService_ConvertDomainToOnChain_Call) RunAndReturn(run func(ctx context.Context, websiteID string, domainID string) (*ipfs.DomainResponse, error)) *MockWebsitesService_ConvertDomainToOnChain_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type MockWebsitesService
 func (_mock *MockWebsitesService) Create(ctx context.Context, domain string, targetHash string, targetType string) (*ipfs.WebsiteResponse, error) {
 	ret := _mock.Called(ctx, domain, targetHash, targetType)
@@ -1000,6 +1074,74 @@ func (_c *MockWebsitesService_ListPlatformDomains_Call) Return(v *ipfs.PlatformD
 }
 
 func (_c *MockWebsitesService_ListPlatformDomains_Call) RunAndReturn(run func(ctx context.Context) (*ipfs.PlatformDomainListResponse, error)) *MockWebsitesService_ListPlatformDomains_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ReconcileWebsiteChanges provides a mock function for the type MockWebsitesService
+func (_mock *MockWebsitesService) ReconcileWebsiteChanges(ctx context.Context, after string) (*ipfs.WebsiteChangesResponse, error) {
+	ret := _mock.Called(ctx, after)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReconcileWebsiteChanges")
+	}
+
+	var r0 *ipfs.WebsiteChangesResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*ipfs.WebsiteChangesResponse, error)); ok {
+		return returnFunc(ctx, after)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *ipfs.WebsiteChangesResponse); ok {
+		r0 = returnFunc(ctx, after)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*ipfs.WebsiteChangesResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, after)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesService_ReconcileWebsiteChanges_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReconcileWebsiteChanges'
+type MockWebsitesService_ReconcileWebsiteChanges_Call struct {
+	*mock.Call
+}
+
+// ReconcileWebsiteChanges is a helper method to define mock.On call
+//   - ctx context.Context
+//   - after string
+func (_e *MockWebsitesService_Expecter) ReconcileWebsiteChanges(ctx any, after any) *MockWebsitesService_ReconcileWebsiteChanges_Call {
+	return &MockWebsitesService_ReconcileWebsiteChanges_Call{Call: _e.mock.On("ReconcileWebsiteChanges", ctx, after)}
+}
+
+func (_c *MockWebsitesService_ReconcileWebsiteChanges_Call) Run(run func(ctx context.Context, after string)) *MockWebsitesService_ReconcileWebsiteChanges_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesService_ReconcileWebsiteChanges_Call) Return(v *ipfs.WebsiteChangesResponse, err error) *MockWebsitesService_ReconcileWebsiteChanges_Call {
+	_c.Call.Return(v, err)
+	return _c
+}
+
+func (_c *MockWebsitesService_ReconcileWebsiteChanges_Call) RunAndReturn(run func(ctx context.Context, after string) (*ipfs.WebsiteChangesResponse, error)) *MockWebsitesService_ReconcileWebsiteChanges_Call {
 	_c.Call.Return(run)
 	return _c
 }
