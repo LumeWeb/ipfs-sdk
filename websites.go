@@ -1106,9 +1106,20 @@ func (s *websitesService) ConvertDomainToOnChain(ctx context.Context, websiteID 
 		// already committed server-side but its response was lost (the transient
 		// error that triggered a retry), the retry comes back as 422 "already
 		// on-chain". That state is exactly the conversion's end goal, so it is
-		// treated as success instead of a spurious error.
+		// treated as success instead of a spurious error. Return the current
+		// domain state so callers receive a real result.
 		if resp.StatusCode() == http.StatusUnprocessableEntity && alreadyOnChainConflict(resp) {
-			return nil
+			domains, listErr := s.ListDomains(ctx, websiteID)
+			if listErr != nil {
+				return listErr
+			}
+			for i := range domains {
+				if strconv.Itoa(domains[i].Id) == domainID {
+					result = &domains[i]
+					return nil
+				}
+			}
+			return ErrBadRequest(opsString(OpConvertDomainToOnChain) + " domain " + domainID + " already on-chain but not found in current state")
 		}
 
 		if err := handleResponse(resp.StatusCode(), resp.Body, OpConvertDomainToOnChain, []int{http.StatusOK}); err != nil {
@@ -1134,12 +1145,14 @@ func (s *websitesService) ConvertDomainToOnChain(ctx context.Context, websiteID 
 // end state) rather than ineligible for conversion for another reason (not yet
 // on-chain, or sharing a zone). The backend maps all three 422 cases to the
 // generic INVALID_REQUEST reason, so the distinguishing signal is carried in
-// the human-readable details.
+// the human-readable details: the sentinel text of the backend's
+// ErrDomainAlreadyOnChain ("domain is already on-chain managed"), which the
+// other 422 causes never contain.
 func alreadyOnChainConflict(resp *internalclient.PostApiWebsitesIdDomainsDomainIdOnchainResponse) bool {
 	if resp == nil || resp.JSON422 == nil || resp.JSON422.Error.Details == nil {
 		return false
 	}
-	return strings.Contains(*resp.JSON422.Error.Details, "already on-chain")
+	return strings.Contains(*resp.JSON422.Error.Details, "domain is already on-chain managed")
 }
 
 // ListPlatformDomains lists the platform (free-subdomain) roots available for
