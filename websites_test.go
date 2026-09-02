@@ -1836,15 +1836,36 @@ func TestWebsitesService_ConvertDomainToOnChain(t *testing.T) {
 		mockClient.EXPECT().
 			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
 			Return(&client.PostApiWebsitesIdDomainsDomainIdOnchainResponse{
-				Body:         []byte(`{"error":{"reason":"domain is already on-chain managed"}}`),
+				Body:         []byte(`{"error":{"reason":"domain is not yet on-chain managed"}}`),
 				HTTPResponse: &http.Response{StatusCode: http.StatusUnprocessableEntity},
-				JSON422:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "domain is already on-chain managed"}},
+				JSON422:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "InvalidRequest", Details: new("Invalid request parameter: domain is not yet on-chain managed")}},
 			}, nil).
 			Once()
 
 		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
 
 		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("treats 422 already-on-chain as success after retry", func(t *testing.T) {
+		// A lost 5xx response after a committed conversion makes the retry come
+		// back as 422 "already on-chain". That is the desired end state, so it
+		// must not surface as an error.
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdOnchainResponse{
+				Body:         []byte(`{"error":{"reason":"InvalidRequest","details":"Invalid request parameter: domain is already on-chain managed"}}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusUnprocessableEntity},
+				JSON422:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "InvalidRequest", Details: new("Invalid request parameter: domain is already on-chain managed")}},
+			}, nil).
+			Once()
+
+		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
+
+		require.NoError(t, err)
 		assert.Nil(t, result)
 	})
 }
