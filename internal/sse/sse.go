@@ -211,15 +211,18 @@ func (c *Connection) IsClosed() bool {
 // attempt, routes parsed frames to per-type handlers, and reports optional
 // telemetry via Stats.
 type Client struct {
-	mu            sync.RWMutex
-	done          chan struct{}
-	closeOnce     sync.Once
-	wg            sync.WaitGroup
-	logger        *zap.Logger
-	state         ConnectionState
-	stateMu       sync.RWMutex
-	connMu        sync.Mutex
-	conn          *Connection
+	mu        sync.RWMutex
+	done      chan struct{}
+	closeOnce sync.Once
+	wg        sync.WaitGroup
+	logger    *zap.Logger
+	state     ConnectionState
+	stateMu   sync.RWMutex
+	connMu    sync.Mutex
+	conn      *Connection
+	// spawnMu serializes the done-closure (Disconnect) with wg.Add in Connect so
+	// no Add can race a concurrent Wait after shutdown begins.
+	spawnMu       sync.Mutex
 	url           string
 	options       Options
 	headers       map[string]string
@@ -357,12 +360,19 @@ func (c *Client) Connect() error {
 		conn.SetHeader(key, value)
 	}
 
+	// Publish the connection up front so a concurrent Disconnect can cancel it
+	// while the blocking request below is in flight.
 	c.connMu.Lock()
 	c.conn = conn
 	c.connMu.Unlock()
 
 	eventChan, err := conn.Connect()
 	if err != nil {
+		c.connMu.Lock()
+		if c.conn == conn {
+			c.conn = nil
+		}
+		c.connMu.Unlock()
 		c.setState(StateDisconnected)
 		c.fireConnectionError(err)
 		return err
@@ -371,7 +381,19 @@ func (c *Client) Connect() error {
 	c.setState(StateConnected)
 	c.fireConnected(true)
 
-	c.wg.Add(1)
+	// Add under spawnMu, re-checking done, so an Add can never race the Wait
+	// that follows Disconnect after shutdown has begun.
+	c.spawnMu.Lock()
+	select {
+	case <-c.done:
+		c.spawnMu.Unlock()
+		conn.Close()
+		return ErrClientClosed
+	default:
+		c.wg.Add(1)
+	}
+	c.spawnMu.Unlock()
+
 	go func() {
 		defer c.wg.Done()
 		c.handleEvents(eventChan)
@@ -529,8 +551,8 @@ func (c *Client) handleDisconnection() {
 				if c.options.MaxRetries > 0 && attempt >= c.options.MaxRetries {
 					c.setState(StateDisconnected)
 					err := fmt.Errorf("SSE reconnect failed after %d attempts", c.options.MaxRetries)
-					if c.errorHandler != nil {
-						c.errorHandler(err)
+					if h := c.errorHandlerSnapshot(); h != nil {
+						h(err)
 					}
 					return
 				}
@@ -550,8 +572,12 @@ func (c *Client) handleDisconnection() {
 // Disconnect closes the stream and stops all reconnection. The client is
 // single-use afterwards.
 func (c *Client) Disconnect() {
+	// Close done under spawnMu so that once Disconnect returns, no Connect
+	// can be mid-Add and race the subsequent Wait.
 	c.closeOnce.Do(func() {
+		c.spawnMu.Lock()
 		close(c.done)
+		c.spawnMu.Unlock()
 	})
 
 	c.connMu.Lock()
@@ -610,6 +636,12 @@ func (c *Client) headersSnapshot() map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+func (c *Client) errorHandlerSnapshot() ErrorHandler {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.errorHandler
 }
 
 // addJitter perturbs a backoff by +/- 2% to avoid self-synchronizing reconnects.
