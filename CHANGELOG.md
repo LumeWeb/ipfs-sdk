@@ -1,3 +1,9 @@
+## 0.1.91 (2026-09-02)
+
+### Features
+
+- export client enums and constrain website change events
+
 ## 0.1.90 (2026-09-02)
 
 ### Features
