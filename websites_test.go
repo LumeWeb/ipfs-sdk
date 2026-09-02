@@ -1709,6 +1709,24 @@ func TestDomainNamespaceOf(t *testing.T) {
 	})
 }
 
+func TestWebsiteChangeEventTypeEnum(t *testing.T) {
+	assert.Equal(t, WebsiteChangeEventType("published"), WebsiteChangeEventPublished)
+	assert.Equal(t, WebsiteChangeEventType("removed"), WebsiteChangeEventRemoved)
+}
+
+func TestGatewayNamespaceEnum(t *testing.T) {
+	assert.Equal(t, GatewayNamespace("icann"), GatewayNamespaceICANN)
+	assert.Equal(t, GatewayNamespace("hns"), GatewayNamespaceHNS)
+}
+
+func TestWebsiteChangeEventUsesExportedEnum(t *testing.T) {
+	ev := WebsiteChangeEvent{
+		EventType: WebsiteChangeEventPublished,
+	}
+	assert.Equal(t, WebsiteChangeEventPublished, ev.EventType)
+	assert.Equal(t, "published", string(ev.EventType))
+}
+
 func TestWebsitesService_RepublishDANE(t *testing.T) {
 	t.Run("returns republish result", func(t *testing.T) {
 		service, mockClient := testWebsitesDomainService(t)

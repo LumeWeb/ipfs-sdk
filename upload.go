@@ -264,6 +264,23 @@ type UploadResult struct {
 // UploadResultInfo is the result of querying upload status by identifier.
 type UploadResultInfo = internalclient.UploadResultResponse
 
+// UploadStatusEnum represents the status of an upload result. Type alias to
+// expose the generated enum from the client.
+type UploadStatusEnum = internalclient.UploadResultResponseStatus
+
+const (
+	// UploadStatusCompleted - upload completed successfully
+	UploadStatusCompleted UploadStatusEnum = internalclient.Completed
+	// UploadStatusDuplicate - upload was a duplicate of an existing upload
+	UploadStatusDuplicate UploadStatusEnum = internalclient.Duplicate
+	// UploadStatusFailed - upload failed
+	UploadStatusFailed UploadStatusEnum = internalclient.Failed
+	// UploadStatusPending - upload is queued and waiting
+	UploadStatusPending UploadStatusEnum = internalclient.Pending
+	// UploadStatusProcessing - upload is being processed
+	UploadStatusProcessing UploadStatusEnum = internalclient.Processing
+)
+
 // getUploadResultSize determines the appropriate Size field value for UploadResult.
 // For CAR uploads (unixFSSize > 0), returns the UnixFS logical size.
 // For non-CAR uploads (unixFSSize == 0), returns the network transfer size.

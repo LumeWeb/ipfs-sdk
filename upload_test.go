@@ -549,6 +549,14 @@ func TestUploadService_ResumeUpload(t *testing.T) {
 	})
 }
 
+func TestUploadStatusEnum(t *testing.T) {
+	assert.Equal(t, UploadStatusEnum("completed"), UploadStatusCompleted)
+	assert.Equal(t, UploadStatusEnum("duplicate"), UploadStatusDuplicate)
+	assert.Equal(t, UploadStatusEnum("failed"), UploadStatusFailed)
+	assert.Equal(t, UploadStatusEnum("pending"), UploadStatusPending)
+	assert.Equal(t, UploadStatusEnum("processing"), UploadStatusProcessing)
+}
+
 func TestUploadService_VerifyUploadIntegrity(t *testing.T) {
 	t.Run("currently returns true as placeholder", func(t *testing.T) {
 		_, err := NewUploadService("https://api.example.com", testAuthToken)

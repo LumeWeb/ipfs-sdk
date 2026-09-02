@@ -63,6 +63,24 @@ func (e UploadResultResponseStatus) Valid() bool {
 	}
 }
 
+// Defines values for WebsiteChangeEventEventType.
+const (
+	Published WebsiteChangeEventEventType = "published"
+	Removed   WebsiteChangeEventEventType = "removed"
+)
+
+// Valid indicates whether the value is a known member of the WebsiteChangeEventEventType enum.
+func (e WebsiteChangeEventEventType) Valid() bool {
+	switch e {
+	case Published:
+		return true
+	case Removed:
+		return true
+	default:
+		return false
+	}
+}
+
 // BlockMetaResponse defines model for BlockMetaResponse.
 type BlockMetaResponse struct {
 	BlockSize  int      `json:"block_size"`
@@ -488,14 +506,17 @@ type ValidationResponse struct {
 
 // WebsiteChangeEvent defines model for WebsiteChangeEvent.
 type WebsiteChangeEvent struct {
-	Cid       *string   `json:"cid,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	Domain    string    `json:"domain"`
-	EventType string    `json:"event_type"`
-	Id        int       `json:"id"`
-	UserId    *int      `json:"user_id,omitempty"`
-	WebsiteId *int      `json:"website_id,omitempty"`
+	Cid       *string                     `json:"cid,omitempty"`
+	CreatedAt time.Time                   `json:"created_at"`
+	Domain    string                      `json:"domain"`
+	EventType WebsiteChangeEventEventType `json:"event_type"`
+	Id        int                         `json:"id"`
+	UserId    *int                        `json:"user_id,omitempty"`
+	WebsiteId *int                        `json:"website_id,omitempty"`
 }
+
+// WebsiteChangeEventEventType defines model for WebsiteChangeEvent.EventType.
+type WebsiteChangeEventEventType string
 
 // WebsiteChangesResponse defines model for WebsiteChangesResponse.
 type WebsiteChangesResponse struct {
