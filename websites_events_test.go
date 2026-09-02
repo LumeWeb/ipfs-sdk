@@ -95,3 +95,38 @@ func TestWebsiteEventsClient_StreamsLifecycleEvents(t *testing.T) {
 		t.Errorf("X-Gateway-Secret header = %q, want %q", gotSecret, "s3cr3t")
 	}
 }
+
+// TestWebsiteEventsClient_OnEventAfterStartConcurrent replaces the handler while
+// events are streaming to prove handler access is synchronized (run with -race).
+func TestWebsiteEventsClient_OnEventAfterStartConcurrent(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "event: site_published\nid: 1\ndata: {\"type\":\"site_published\",\"data\":{\"domain\":\"example.com\",\"cid\":\"QmX\",\"published_at\":\"2026-09-01T00:00:00Z\"}}\n\n")
+		if f, ok := w.(http.Flusher); ok {
+			f.Flush()
+		}
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	client, err := NewWebsiteEventsClient(srv.URL, "test-gateway-secret", WithWebsiteEventsReconnect(false))
+	if err != nil {
+		t.Fatalf("NewWebsiteEventsClient() error: %v", err)
+	}
+	client.OnEvent(func(WebsiteEvent) {})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			client.OnEvent(func(WebsiteEvent) {})
+		}
+	}()
+
+	client.Start()
+	time.Sleep(50 * time.Millisecond)
+	client.Stop()
+	wg.Wait()
+}
