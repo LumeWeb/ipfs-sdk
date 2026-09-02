@@ -361,9 +361,18 @@ func (c *Client) Connect() error {
 	}
 
 	// Publish the connection up front so a concurrent Disconnect can cancel it
-	// while the blocking request below is in flight.
+	// while the blocking request below is in flight. Re-check done in the same
+	// critical section: a Disconnect that slipped in before publication left
+	// c.conn nil and cannot cancel this new connection, so close it here.
 	c.connMu.Lock()
-	c.conn = conn
+	select {
+	case <-c.done:
+		c.connMu.Unlock()
+		conn.Close()
+		return ErrClientClosed
+	default:
+		c.conn = conn
+	}
 	c.connMu.Unlock()
 
 	eventChan, err := conn.Connect()
