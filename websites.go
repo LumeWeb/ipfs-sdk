@@ -20,10 +20,33 @@ type WebsiteItemResponse = internalclient.WebsiteItemResponse
 type WebsiteValidateResponse = internalclient.WebsiteValidateResponse
 type GatewayWebsiteResponse = internalclient.GatewayWebsiteResponse
 type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
+
+// GatewayNamespace identifies the DNS namespace a gateway website response is
+// bound under. Type alias to expose the generated enum from the client.
+type GatewayNamespace = internalclient.GatewayWebsiteResponseNamespace
+
+const (
+	// GatewayNamespaceICANN is an ICANN (traditional DNS) namespace.
+	GatewayNamespaceICANN GatewayNamespace = internalclient.Icann
+	// GatewayNamespaceHNS is an HNS (Handshake) namespace.
+	GatewayNamespaceHNS GatewayNamespace = internalclient.Hns
+)
 type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
 type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 type WebsiteChangeEvent = internalclient.WebsiteChangeEvent
 type WebsiteChangesResponse = internalclient.WebsiteChangesResponse
+
+// WebsiteChangeEventType identifies the type of a website change event
+// (published or removed). Type alias to expose the generated enum from the
+// client.
+type WebsiteChangeEventType = internalclient.WebsiteChangeEventEventType
+
+const (
+	// WebsiteChangeEventPublished is a website publish or update event.
+	WebsiteChangeEventPublished WebsiteChangeEventType = internalclient.Published
+	// WebsiteChangeEventRemoved is a website removal event.
+	WebsiteChangeEventRemoved WebsiteChangeEventType = internalclient.Removed
+)
 
 // Domain types for website domain binding
 type DomainRequest = internalclient.DomainRequest

@@ -177,6 +177,9 @@ All HTTP requests use configurable retry behavior via `internal/http/http.go`:
 ### Type Alias Pattern
 Services use type aliases to expose generated types from the internal client package, avoiding direct imports in external-facing APIs. This keeps the public API clean while leveraging generated models.
 
+### Enum Export Pattern
+Generated enums that surface through aliased response types are re-exported publicly with a type alias plus a public `const` block, placed alongside the response type that uses them. Follow the existing examples: `pinning.PinStatusEnum`/`StatusQueued`, `websites.WebsiteChangeEventType`/`WebsiteChangeEventPublished`, `websites.GatewayNamespace`/`GatewayNamespaceICANN`, `upload.UploadStatusEnum`/`UploadStatusCompleted`. Prefix constants with the enum domain to avoid collisions (e.g. `UploadStatus*` to avoid clashing with pinning's `Status*`). This exposure is purely additive — never rename or remove an existing exported enum identifier.
+
 ## Important Constraints
 
 1. **Code Generation**: Generated files are auto-generated. Do not edit them manually.
