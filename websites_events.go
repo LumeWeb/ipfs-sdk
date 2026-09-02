@@ -141,6 +141,7 @@ func WithWebsiteEventsStatsPollInterval(interval time.Duration) WebsiteEventsOpt
 type WebsiteEventsClient struct {
 	client    *sse.Client
 	handler   WebsiteEventHandler
+	handlerMu sync.RWMutex
 	startOnce sync.Once
 }
 
@@ -186,8 +187,11 @@ func NewWebsiteEventsClient(baseURL, gatewaySecret string, opts ...WebsiteEvents
 }
 
 // OnEvent registers the handler invoked for every parsed lifecycle event. Only
-// one handler is supported; later calls replace the previous one.
+// one handler is supported; later calls replace the previous one. It is safe to
+// call while the client is streaming.
 func (c *WebsiteEventsClient) OnEvent(handler WebsiteEventHandler) {
+	c.handlerMu.Lock()
+	defer c.handlerMu.Unlock()
 	c.handler = handler
 }
 
@@ -252,7 +256,10 @@ func (c *WebsiteEventsClient) route(ev sse.Event) {
 		return
 	}
 
-	if c.handler != nil {
-		c.handler(event)
+	c.handlerMu.RLock()
+	h := c.handler
+	c.handlerMu.RUnlock()
+	if h != nil {
+		h(event)
 	}
 }
