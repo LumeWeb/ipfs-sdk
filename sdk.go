@@ -382,6 +382,15 @@ func (c *Client) Websites() WebsitesService {
 	return c.websites
 }
 
+// WebsiteEvents returns an SSE event client for the gateway-facing website
+// lifecycle stream (GET /internal/websites/events). It is wired with the
+// client's base URL and gateway secret; register a handler with OnEvent and
+// call Start to connect. Pair LastEventID with Websites().ReconcileWebsiteChanges
+// to close a gap after a reconnect.
+func (c *Client) WebsiteEvents(opts ...WebsiteEventsOption) (*WebsiteEventsClient, error) {
+	return NewWebsiteEventsClient(c.baseURL, c.gatewaySecret, opts...)
+}
+
 // Upload returns the upload service for uploading files via TUS.
 func (c *Client) Upload() *UploadService {
 	return c.upload

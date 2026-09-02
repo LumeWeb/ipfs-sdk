@@ -5,6 +5,7 @@ go 1.26.0
 tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 
 require (
+	github.com/apt304/sse-go v0.0.3
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/bdragon300/tusgo v0.1.2
 	github.com/docker/go-units v0.5.0
@@ -20,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tus/tusd/v2 v2.9.1
 	go.lumeweb.com/ipfs-content v0.1.17
+	go.uber.org/zap v1.27.1
 )
 
 require (
@@ -117,7 +119,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
