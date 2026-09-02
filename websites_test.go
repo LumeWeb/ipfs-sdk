@@ -1851,8 +1851,11 @@ func TestWebsitesService_ConvertDomainToOnChain(t *testing.T) {
 	t.Run("treats 422 already-on-chain as success after retry", func(t *testing.T) {
 		// A lost 5xx response after a committed conversion makes the retry come
 		// back as 422 "already on-chain". That is the desired end state, so it
-		// must not surface as an error.
+		// must not surface as an error, and the caller must receive the current
+		// domain state rather than a nil result.
 		service, mockClient := testWebsitesDomainService(t)
+
+		currentState := &client.DomainResponse{Id: 1, Domain: "lumeweb", Namespace: "hns"}
 
 		mockClient.EXPECT().
 			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
@@ -1863,10 +1866,21 @@ func TestWebsitesService_ConvertDomainToOnChain(t *testing.T) {
 			}, nil).
 			Once()
 
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsWithResponse(mock.Anything, "1").
+			Return(&client.GetApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      &client.DomainListResponse{Data: []client.DomainResponse{*currentState}},
+			}, nil).
+			Once()
+
 		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
 
 		require.NoError(t, err)
-		assert.Nil(t, result)
+		require.NotNil(t, result)
+		assert.Equal(t, currentState.Id, result.Id)
+		assert.Equal(t, currentState.Domain, result.Domain)
+		assert.Equal(t, currentState.Namespace, result.Namespace)
 	})
 }
 
@@ -2070,7 +2084,7 @@ func TestWebsitesService_CheckPlatformDomainAvailability_HTTPError(t *testing.T)
 // client-side), and a plain List must send no filters.
 func TestWebsitesService_ListSendsFilters(t *testing.T) {
 	var (
-		mu    sync.Mutex
+		mu       sync.Mutex
 		gotQuery url.Values
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
