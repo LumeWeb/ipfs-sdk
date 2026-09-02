@@ -172,6 +172,32 @@ func TestClient_StatsHooks(t *testing.T) {
 	}
 }
 
+// TestClient_ConcurrentStartStop races Start against Disconnect/Wait to prove
+// the wg.Add/close(done) sequencing never triggers WaitGroup misuse or a data
+// race (run with -race).
+func TestClient_ConcurrentStartStop(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		client := NewClient(srv.URL, Options{Reconnect: true, Backoff: time.Millisecond, MaxBackoff: time.Millisecond})
+		wg.Add(1)
+		go func(c *Client) {
+			defer wg.Done()
+			_ = c.Start()
+		}(client)
+		time.Sleep(200 * time.Microsecond)
+		client.Disconnect()
+		client.Wait()
+	}
+	wg.Wait()
+}
+
 func TestClientReconnectsWithLastEventID(t *testing.T) {
 	var (
 		mu          sync.Mutex
