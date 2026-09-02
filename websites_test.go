@@ -1771,6 +1771,223 @@ func TestWebsitesService_RepublishDANE(t *testing.T) {
 	})
 }
 
+func TestWebsitesService_ConvertDomainToOnChain(t *testing.T) {
+	t.Run("converts domain to on-chain managed", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedResponse := &client.DomainResponse{
+			Id:        1,
+			Domain:    "lumeweb",
+			Namespace: "hns",
+			ZoneName:  new("lumeweb."),
+		}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdOnchainResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, expectedResponse.Id, result.Id)
+		assert.Equal(t, "lumeweb", result.Domain)
+		assert.Equal(t, "hns", result.Namespace)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdOnchainResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error on 422 eligibility rejection", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdOnchainResponse{
+				Body:         []byte(`{"error":{"reason":"domain is not yet on-chain managed"}}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusUnprocessableEntity},
+				JSON422:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "InvalidRequest", Details: new("Invalid request parameter: domain is not yet on-chain managed")}},
+			}, nil).
+			Once()
+
+		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("treats 422 already-on-chain as success after retry", func(t *testing.T) {
+		// A lost 5xx response after a committed conversion makes the retry come
+		// back as 422 "already on-chain". That is the desired end state, so it
+		// must not surface as an error, and the caller must receive the current
+		// domain state rather than a nil result.
+		service, mockClient := testWebsitesDomainService(t)
+
+		currentState := &client.DomainResponse{Id: 1, Domain: "lumeweb", Namespace: "hns"}
+
+		mockClient.EXPECT().
+			PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(mock.Anything, "1", "1").
+			Return(&client.PostApiWebsitesIdDomainsDomainIdOnchainResponse{
+				Body:         []byte(`{"error":{"reason":"InvalidRequest","details":"Invalid request parameter: domain is already on-chain managed"}}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusUnprocessableEntity},
+				JSON422:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "InvalidRequest", Details: new("Invalid request parameter: domain is already on-chain managed")}},
+			}, nil).
+			Once()
+
+		mockClient.EXPECT().
+			GetApiWebsitesIdDomainsWithResponse(mock.Anything, "1").
+			Return(&client.GetApiWebsitesIdDomainsResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      &client.DomainListResponse{Data: []client.DomainResponse{*currentState}},
+			}, nil).
+			Once()
+
+		result, err := service.ConvertDomainToOnChain(context.Background(), "1", "1")
+
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Equal(t, currentState.Id, result.Id)
+		assert.Equal(t, currentState.Domain, result.Domain)
+		assert.Equal(t, currentState.Namespace, result.Namespace)
+	})
+}
+
+func TestWebsitesService_ReconcileWebsiteChanges(t *testing.T) {
+	t.Run("returns changes after cursor", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		expectedResponse := &client.WebsiteChangesResponse{
+			Events: []client.WebsiteChangeEvent{
+				{Id: 1, EventType: "published", Domain: "lumeweb", Cid: new("QmTest")},
+				{Id: 2, EventType: "removed", Domain: "example.com"},
+			},
+			HighWaterMark: 2,
+			Truncated:     false,
+		}
+
+		mockClient.EXPECT().
+			GetInternalWebsitesChangesWithResponse(mock.Anything, mock.AnythingOfType("*client.GetInternalWebsitesChangesParams")).
+			Run(func(_ context.Context, params *client.GetInternalWebsitesChangesParams, _ ...client.RequestEditorFn) {
+				require.NotNil(t, params.After)
+				assert.Equal(t, "5", *params.After)
+			}).
+			Return(&client.GetInternalWebsitesChangesResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedResponse,
+			}, nil).
+			Once()
+
+		result, err := service.ReconcileWebsiteChanges(context.Background(), "5")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Len(t, result.Events, 2)
+		assert.Equal(t, 2, result.HighWaterMark)
+		assert.Equal(t, "lumeweb", result.Events[0].Domain)
+	})
+
+	t.Run("omits after param when cursor is empty", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetInternalWebsitesChangesWithResponse(mock.Anything, mock.AnythingOfType("*client.GetInternalWebsitesChangesParams")).
+			Run(func(_ context.Context, params *client.GetInternalWebsitesChangesParams, _ ...client.RequestEditorFn) {
+				assert.Nil(t, params.After)
+			}).
+			Return(&client.GetInternalWebsitesChangesResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      &client.WebsiteChangesResponse{},
+			}, nil).
+			Once()
+
+		result, err := service.ReconcileWebsiteChanges(context.Background(), "")
+
+		require.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("returns error on HTTP error", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetInternalWebsitesChangesWithResponse(mock.Anything, mock.AnythingOfType("*client.GetInternalWebsitesChangesParams")).
+			Return(nil, assert.AnError).
+			Once()
+
+		result, err := service.ReconcileWebsiteChanges(context.Background(), "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error when JSON200 is nil", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetInternalWebsitesChangesWithResponse(mock.Anything, mock.AnythingOfType("*client.GetInternalWebsitesChangesParams")).
+			Return(&client.GetInternalWebsitesChangesResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      nil,
+			}, nil).
+			Once()
+
+		result, err := service.ReconcileWebsiteChanges(context.Background(), "1")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("returns error on invalid after cursor", func(t *testing.T) {
+		service, mockClient := testWebsitesDomainService(t)
+
+		mockClient.EXPECT().
+			GetInternalWebsitesChangesWithResponse(mock.Anything, mock.AnythingOfType("*client.GetInternalWebsitesChangesParams")).
+			Return(&client.GetInternalWebsitesChangesResponse{
+				Body:         []byte(`{"error":{"reason":"invalid after cursor"}}`),
+				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
+				JSON400:      &client.ErrorResponse{Error: client.ErrorDetail{Reason: "invalid after cursor"}},
+			}, nil).
+			Once()
+
+		result, err := service.ReconcileWebsiteChanges(context.Background(), "not-a-number")
+
+		require.Error(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 func TestWebsitesService_CheckPlatformDomainAvailability_Success(t *testing.T) {
 	t.Run("returns availability results when endpoint responds 200", func(t *testing.T) {
 		mockClient := mocks.NewMockWebsitesClientWithResponsesInterface(t)
@@ -1867,7 +2084,7 @@ func TestWebsitesService_CheckPlatformDomainAvailability_HTTPError(t *testing.T)
 // client-side), and a plain List must send no filters.
 func TestWebsitesService_ListSendsFilters(t *testing.T) {
 	var (
-		mu    sync.Mutex
+		mu       sync.Mutex
 		gotQuery url.Values
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

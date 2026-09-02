@@ -881,6 +881,46 @@ components:
       - message
       - checked_at
       type: object
+    WebsiteChangeEvent:
+      additionalProperties: false
+      properties:
+        cid:
+          type: string
+        created_at:
+          format: date-time
+          type: string
+        domain:
+          type: string
+        event_type:
+          type: string
+        id:
+          type: integer
+        user_id:
+          type: integer
+        website_id:
+          type: integer
+      required:
+      - id
+      - event_type
+      - domain
+      - created_at
+      type: object
+    WebsiteChangesResponse:
+      additionalProperties: false
+      properties:
+        events:
+          items:
+            $ref: '#/components/schemas/WebsiteChangeEvent'
+          type: array
+        high_water_mark:
+          type: integer
+        truncated:
+          type: boolean
+      required:
+      - events
+      - high_water_mark
+      - truncated
+      type: object
     WebsiteConfigResponse:
       additionalProperties: false
       properties:
@@ -4639,6 +4679,72 @@ paths:
       tags:
       - Websites
       - Domains
+  /api/websites/{id}/domains/{domain_id}/onchain:
+    post:
+      description: Reclassifies a bound domain as on-chain managed (e.g. a Handshake
+        HIP-5 name whose NS now points at an external contract). Deletes the portal-managed
+        PowerDNS zone and DNSSEC for the binding and switches ownership verification
+        to the TXT token; DANE/SSL state is retained. One-way.
+      parameters:
+      - description: Domain ID
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          type: string
+      - description: Website ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainResponse'
+          description: Converted domain
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Reclassify domain as on-chain managed
+      tags:
+      - Websites
+      - Domains
   /api/websites/{id}/domains/{domain_id}/verify:
     post:
       description: Triggers verification of domain delegation.
@@ -5360,11 +5466,73 @@ paths:
       summary: Get website status for gateway
       tags:
       - Gateway
+  /internal/websites/changes:
+    get:
+      description: |-
+        Returns durable website lifecycle changes (published, removed) after the
+        supplied cursor, in ascending durable-ID order, together with the current
+        replay high-water mark. The gateway calls this after an SSE reconnect to
+        discover domains it missed during the gap without relying on visitor traffic.
+        Requires X-Gateway-Secret header for authentication.
+      parameters:
+      - description: Durable event cursor to resume after. Returns all events with
+          id > after. Omit to start from the beginning of the retained window.
+        in: query
+        name: after
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebsiteChangesResponse'
+          description: Reconciled changes
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Invalid after cursor
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error occurred
+      summary: Reconcile website changes
+      tags:
+      - Gateway
   /internal/websites/events:
     get:
       description: |-
         Server-Sent Events endpoint for gateway-to-portal communication.
         Streams website lifecycle events (published, removed) in real time.
+        Supports Last-Event-ID replay of durable events after a reconnect.
         Requires X-Gateway-Secret header for authentication.
       responses:
         "200":

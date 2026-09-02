@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
@@ -21,6 +22,8 @@ type GatewayWebsiteResponse = internalclient.GatewayWebsiteResponse
 type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
 type SSLStatusUpdateRequest = internalclient.SSLStatusUpdateRequest
 type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
+type WebsiteChangeEvent = internalclient.WebsiteChangeEvent
+type WebsiteChangesResponse = internalclient.WebsiteChangesResponse
 
 // Domain types for website domain binding
 type DomainRequest = internalclient.DomainRequest
@@ -123,6 +126,9 @@ type WebsitesClientWithResponsesInterface interface {
 	PostInternalWebsitesDomainSslStatusWithResponse(ctx context.Context, domain string, body internalclient.SSLStatusUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostInternalWebsitesDomainSslStatusResponse, error)
 	GetInternalWebsitesDomainWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainResponse, error)
 	GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainStatusResponse, error)
+	// GetInternalWebsitesChangesWithResponse returns durable website lifecycle
+	// changes (published, removed) after a cursor for gateway reconciliation.
+	GetInternalWebsitesChangesWithResponse(ctx context.Context, params *internalclient.GetInternalWebsitesChangesParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesChangesResponse, error)
 	GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesConfigResponse, error)
 	// Domain binding
 	GetApiWebsitesIdDomainsWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesIdDomainsResponse, error)
@@ -133,6 +139,9 @@ type WebsitesClientWithResponsesInterface interface {
 	// PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse forces re-publication
 	// of a bound domain's DANE records (TLSA) into the managed authoritative zone.
 	PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)
+	// PostApiWebsitesIdDomainsDomainIdOnchainWithResponse reclassifies a bound
+	// domain as on-chain managed (one-way).
+	PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdOnchainResponse, error)
 	// PatchApiWebsitesIdDomainsDomainIdWithResponse updates a bound domain's
 	// per-domain DNS control (dns_hosting_enabled and/or primary).
 	PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body internalclient.DomainUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PatchApiWebsitesIdDomainsDomainIdResponse, error)
@@ -187,7 +196,10 @@ func (a *internalClientToWebsitesAdapter) GetInternalWebsitesDomainWithResponse(
 
 func (a *internalClientToWebsitesAdapter) GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesDomainStatusResponse, error) {
 	return a.client.GetInternalWebsitesDomainStatusWithResponse(ctx, domain, reqEditors...)
+}
 
+func (a *internalClientToWebsitesAdapter) GetInternalWebsitesChangesWithResponse(ctx context.Context, params *internalclient.GetInternalWebsitesChangesParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetInternalWebsitesChangesResponse, error) {
+	return a.client.GetInternalWebsitesChangesWithResponse(ctx, params, reqEditors...)
 }
 
 func (a *internalClientToWebsitesAdapter) GetApiWebsitesConfigWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWebsitesConfigResponse, error) {
@@ -216,6 +228,10 @@ func (a *internalClientToWebsitesAdapter) GetApiWebsitesIdDomainsDomainIdDnsRequ
 
 func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error) {
 	return a.client.PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse(ctx, id, domainId, reqEditors...)
+}
+
+func (a *internalClientToWebsitesAdapter) PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx context.Context, id string, domainId string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWebsitesIdDomainsDomainIdOnchainResponse, error) {
+	return a.client.PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx, id, domainId, reqEditors...)
 }
 
 func (a *internalClientToWebsitesAdapter) PatchApiWebsitesIdDomainsDomainIdWithResponse(ctx context.Context, id string, domainId string, body internalclient.DomainUpdateRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PatchApiWebsitesIdDomainsDomainIdResponse, error) {
@@ -319,6 +335,12 @@ type WebsitesService interface {
 	GetGatewayWebsite(ctx context.Context, domain string) (*GatewayWebsiteResponse, error)
 	// Gets website status for gateway monitoring
 	GetGatewayWebsiteStatus(ctx context.Context, domain string) (*GatewayWebsiteStatusResponse, error)
+	// ReconcileWebsiteChanges returns durable website lifecycle changes
+	// (published, removed) after the supplied cursor, together with the replay
+	// high-water mark. The gateway calls this after an SSE reconnect to catch up
+	// on events it missed. An empty after starts from the beginning of the
+	// retained window. Requires the gateway secret to be configured.
+	ReconcileWebsiteChanges(ctx context.Context, after string) (*WebsiteChangesResponse, error)
 	// WaitForSSLStatusReady polls SSL status until it reaches ready or failed state
 	// Suitable for: SSL certificate provisioning, ACME challenge completion, timeout detection
 	WaitForSSLStatusReady(ctx context.Context, domain string, opts ...PollOption) (string, error)
@@ -353,6 +375,13 @@ type WebsitesService interface {
 	// to recover a TLSA that was deleted or went missing and wasn't re-published
 	// by cert renewal.
 	RepublishDANE(ctx context.Context, websiteID string, domainID string) (*DomainDANERepublishResponse, error)
+	// ConvertDomainToOnChain reclassifies a bound domain as on-chain managed — the
+	// one-way transition for e.g. an HNS name whose NS now points at an external
+	// contract. It deletes the portal-managed PowerDNS zone/DNSSEC for the binding
+	// and switches ownership verification to the TXT token; DANE/SSL state is
+	// retained. Refused when the domain is not eligible (not yet on-chain, already
+	// on-chain, or shares a zone).
+	ConvertDomainToOnChain(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error)
 	// CheckPlatformDomainAvailability checks, for a candidate subdomain label,
 	// whether it is claimable on each enabled platform (free-subdomain) root.
 	// Returns one availability result per platform-owned root (never user-managed
@@ -705,6 +734,45 @@ func (s *websitesService) GetGatewayWebsiteStatus(ctx context.Context, domain st
 	return result, nil
 }
 
+// ReconcileWebsiteChanges returns durable website lifecycle changes (published,
+// removed) after the supplied cursor, in ascending durable-ID order, together
+// with the current replay high-water mark. The gateway calls this after an SSE
+// reconnect to discover domains it missed during the gap without relying on
+// visitor traffic. An empty after starts from the beginning of the retained
+// window. Authentication via the gateway secret is handled automatically by the
+// client for /internal/ paths.
+func (s *websitesService) ReconcileWebsiteChanges(ctx context.Context, after string) (*WebsiteChangesResponse, error) {
+	var result *WebsiteChangesResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		params := &internalclient.GetInternalWebsitesChangesParams{}
+		if after != "" {
+			params.After = &after
+		}
+
+		resp, err := s.client.GetInternalWebsitesChangesWithResponse(ctx, params)
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpReconcileWebsiteChanges, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpReconcileWebsiteChanges) + " no response data")
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
 // WaitForSSLStatusReady polls SSL status until it reaches ready or failed state.
 // This is useful for SSL certificate provisioning scenarios, waiting for ACME challenges
 // to complete, and detecting timeouts for failed provisioning.
@@ -1018,6 +1086,73 @@ func (s *websitesService) RepublishDANE(ctx context.Context, websiteID string, d
 	}
 
 	return result, nil
+}
+
+// ConvertDomainToOnChain reclassifies a bound domain as on-chain managed — the
+// one-way transition for a domain whose DNS now points at an external contract
+// (e.g. an HNS name whose owner published a HIP-5 TX record). It deletes the
+// portal-managed PowerDNS zone and DNSSEC for the binding and switches ownership
+// verification to the TXT token; DANE/SSL state is retained.
+func (s *websitesService) ConvertDomainToOnChain(ctx context.Context, websiteID string, domainID string) (*DomainResponse, error) {
+	var result *DomainResponse
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		resp, err := s.client.PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx, websiteID, domainID)
+		if err != nil {
+			return err
+		}
+
+		// The conversion is a one-way, destructive mutation. If a prior attempt
+		// already committed server-side but its response was lost (the transient
+		// error that triggered a retry), the retry comes back as 422 "already
+		// on-chain". That state is exactly the conversion's end goal, so it is
+		// treated as success instead of a spurious error. Return the current
+		// domain state so callers receive a real result.
+		if resp.StatusCode() == http.StatusUnprocessableEntity && alreadyOnChainConflict(resp) {
+			domains, listErr := s.ListDomains(ctx, websiteID)
+			if listErr != nil {
+				return listErr
+			}
+			for i := range domains {
+				if strconv.Itoa(domains[i].Id) == domainID {
+					result = &domains[i]
+					return nil
+				}
+			}
+			return ErrBadRequest(opsString(OpConvertDomainToOnChain) + " domain " + domainID + " already on-chain but not found in current state")
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpConvertDomainToOnChain, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			return ErrBadRequest(opsString(OpConvertDomainToOnChain) + " no response data for domain " + domainID)
+		}
+
+		result = resp.JSON200
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+// alreadyOnChainConflict reports whether a 422 response from the on-chain
+// conversion endpoint means the domain is already on-chain managed (the desired
+// end state) rather than ineligible for conversion for another reason (not yet
+// on-chain, or sharing a zone). The backend maps all three 422 cases to the
+// generic INVALID_REQUEST reason, so the distinguishing signal is carried in
+// the human-readable details: the sentinel text of the backend's
+// ErrDomainAlreadyOnChain ("domain is already on-chain managed"), which the
+// other 422 causes never contain.
+func alreadyOnChainConflict(resp *internalclient.PostApiWebsitesIdDomainsDomainIdOnchainResponse) bool {
+	if resp == nil || resp.JSON422 == nil || resp.JSON422.Error.Details == nil {
+		return false
+	}
+	return strings.Contains(*resp.JSON422.Error.Details, "domain is already on-chain managed")
 }
 
 // ListPlatformDomains lists the platform (free-subdomain) roots available for

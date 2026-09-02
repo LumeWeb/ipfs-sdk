@@ -902,6 +902,93 @@ func (_c *MockWebsitesClientWithResponsesInterface_GetApiWebsitesWithResponse_Ca
 	return _c
 }
 
+// GetInternalWebsitesChangesWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
+func (_mock *MockWebsitesClientWithResponsesInterface) GetInternalWebsitesChangesWithResponse(ctx context.Context, params *client.GetInternalWebsitesChangesParams, reqEditors ...client.RequestEditorFn) (*client.GetInternalWebsitesChangesResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]any, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []any
+	_ca = append(_ca, ctx, params)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetInternalWebsitesChangesWithResponse")
+	}
+
+	var r0 *client.GetInternalWebsitesChangesResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *client.GetInternalWebsitesChangesParams, ...client.RequestEditorFn) (*client.GetInternalWebsitesChangesResponse, error)); ok {
+		return returnFunc(ctx, params, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *client.GetInternalWebsitesChangesParams, ...client.RequestEditorFn) *client.GetInternalWebsitesChangesResponse); ok {
+		r0 = returnFunc(ctx, params, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.GetInternalWebsitesChangesResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *client.GetInternalWebsitesChangesParams, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, params, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetInternalWebsitesChangesWithResponse'
+type MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call struct {
+	*mock.Call
+}
+
+// GetInternalWebsitesChangesWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - params *client.GetInternalWebsitesChangesParams
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockWebsitesClientWithResponsesInterface_Expecter) GetInternalWebsitesChangesWithResponse(ctx any, params any, reqEditors ...any) *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call {
+	return &MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call{Call: _e.mock.On("GetInternalWebsitesChangesWithResponse",
+		append([]any{ctx, params}, reqEditors...)...)}
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call) Run(run func(ctx context.Context, params *client.GetInternalWebsitesChangesParams, reqEditors ...client.RequestEditorFn)) *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *client.GetInternalWebsitesChangesParams
+		if args[1] != nil {
+			arg1 = args[1].(*client.GetInternalWebsitesChangesParams)
+		}
+		var arg2 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call) Return(getInternalWebsitesChangesResponse *client.GetInternalWebsitesChangesResponse, err error) *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call {
+	_c.Call.Return(getInternalWebsitesChangesResponse, err)
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call) RunAndReturn(run func(ctx context.Context, params *client.GetInternalWebsitesChangesParams, reqEditors ...client.RequestEditorFn) (*client.GetInternalWebsitesChangesResponse, error)) *MockWebsitesClientWithResponsesInterface_GetInternalWebsitesChangesWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetInternalWebsitesDomainStatusWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
 func (_mock *MockWebsitesClientWithResponsesInterface) GetInternalWebsitesDomainStatusWithResponse(ctx context.Context, domain string, reqEditors ...client.RequestEditorFn) (*client.GetInternalWebsitesDomainStatusResponse, error) {
 	// client.RequestEditorFn
@@ -1264,6 +1351,99 @@ func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomai
 }
 
 func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdDaneRepublishResponse, error)) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdDaneRepublishWithResponse_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PostApiWebsitesIdDomainsDomainIdOnchainWithResponse provides a mock function for the type MockWebsitesClientWithResponsesInterface
+func (_mock *MockWebsitesClientWithResponsesInterface) PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdOnchainResponse, error) {
+	// client.RequestEditorFn
+	_va := make([]any, len(reqEditors))
+	for _i := range reqEditors {
+		_va[_i] = reqEditors[_i]
+	}
+	var _ca []any
+	_ca = append(_ca, ctx, id, domainId)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PostApiWebsitesIdDomainsDomainIdOnchainWithResponse")
+	}
+
+	var r0 *client.PostApiWebsitesIdDomainsDomainIdOnchainResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdOnchainResponse, error)); ok {
+		return returnFunc(ctx, id, domainId, reqEditors...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, ...client.RequestEditorFn) *client.PostApiWebsitesIdDomainsDomainIdOnchainResponse); ok {
+		r0 = returnFunc(ctx, id, domainId, reqEditors...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.PostApiWebsitesIdDomainsDomainIdOnchainResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, id, domainId, reqEditors...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PostApiWebsitesIdDomainsDomainIdOnchainWithResponse'
+type MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call struct {
+	*mock.Call
+}
+
+// PostApiWebsitesIdDomainsDomainIdOnchainWithResponse is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - domainId string
+//   - reqEditors ...client.RequestEditorFn
+func (_e *MockWebsitesClientWithResponsesInterface_Expecter) PostApiWebsitesIdDomainsDomainIdOnchainWithResponse(ctx any, id any, domainId any, reqEditors ...any) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call {
+	return &MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call{Call: _e.mock.On("PostApiWebsitesIdDomainsDomainIdOnchainWithResponse",
+		append([]any{ctx, id, domainId}, reqEditors...)...)}
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call) Run(run func(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn)) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(client.RequestEditorFn)
+			}
+		}
+		arg3 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3...,
+		)
+	})
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call) Return(postApiWebsitesIdDomainsDomainIdOnchainResponse *client.PostApiWebsitesIdDomainsDomainIdOnchainResponse, err error) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call {
+	_c.Call.Return(postApiWebsitesIdDomainsDomainIdOnchainResponse, err)
+	return _c
+}
+
+func (_c *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call) RunAndReturn(run func(ctx context.Context, id string, domainId string, reqEditors ...client.RequestEditorFn) (*client.PostApiWebsitesIdDomainsDomainIdOnchainResponse, error)) *MockWebsitesClientWithResponsesInterface_PostApiWebsitesIdDomainsDomainIdOnchainWithResponse_Call {
 	_c.Call.Return(run)
 	return _c
 }
