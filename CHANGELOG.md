@@ -1,3 +1,18 @@
+## 0.1.90 (2026-09-02)
+
+### Features
+
+- add ConvertDomainToOnChain and ReconcileWebsiteChanges
+- add SSE event streaming client for the internal websites API
+
+### Fixes
+
+- treat already-on-chain 422 as success in ConvertDomainToOnChain
+- guard wg.Add against concurrent Disconnect and lock errorHandler reads
+- synchronize WebsiteEventsClient handler access
+- return current domain state on already-on-chain conversion
+- close in-flight connection when Disconnect races Connect publication
+
 ## 0.1.89 (2026-08-26)
 
 ### Features
