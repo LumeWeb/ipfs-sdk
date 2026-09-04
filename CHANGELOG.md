@@ -1,3 +1,9 @@
+## 0.1.94 (2026-09-04)
+
+### Features
+
+- export domain and SSL status enums
+
 ## 0.1.93 (2026-09-04)
 
 ### Fixes
