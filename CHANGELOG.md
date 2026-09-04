@@ -1,3 +1,9 @@
+## 0.1.95 (2026-09-04)
+
+### Fixes
+
+- alias DomainNamespace to generated enum
+
 ## 0.1.94 (2026-09-04)
 
 ### Features
