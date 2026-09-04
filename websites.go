@@ -66,11 +66,14 @@ type PlatformDomainListResponse = internalclient.PlatformDomainListResponse
 type PlatformDomainResponse = internalclient.PlatformDomainResponse
 
 // DomainNamespace identifies the DNS namespace a website domain is bound under.
-type DomainNamespace string
+// Type alias to expose the generated enum from the client.
+type DomainNamespace = internalclient.DomainResponseNamespace
 
 const (
-	DomainNamespaceICANN DomainNamespace = "icann"
-	DomainNamespaceHNS   DomainNamespace = "hns"
+	// DomainNamespaceICANN is an ICANN (traditional DNS) namespace.
+	DomainNamespaceICANN DomainNamespace = internalclient.DomainResponseNamespaceIcann
+	// DomainNamespaceHNS is an HNS (Handshake) namespace.
+	DomainNamespaceHNS DomainNamespace = internalclient.DomainResponseNamespaceHns
 )
 
 // DomainNamespaceOf returns the typed namespace for a domain response, or the
@@ -79,7 +82,7 @@ func DomainNamespaceOf(r *DomainResponse) DomainNamespace {
 	if r == nil {
 		return ""
 	}
-	return DomainNamespace(r.Namespace)
+	return r.Namespace
 }
 
 // DomainResponseStatus identifies the lifecycle status of a domain binding.
