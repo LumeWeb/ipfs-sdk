@@ -25,6 +25,14 @@ type WebsiteConfigResponse = internalclient.WebsiteConfigResponse
 type WebsiteChangeEvent = internalclient.WebsiteChangeEvent
 type WebsiteChangesResponse = internalclient.WebsiteChangesResponse
 
+// WebsiteChangeEventEventType identifies the kind of website change event.
+type WebsiteChangeEventEventType = internalclient.WebsiteChangeEventEventType
+
+const (
+	Published WebsiteChangeEventEventType = internalclient.Published
+	Removed   WebsiteChangeEventEventType = internalclient.Removed
+)
+
 // Domain types for website domain binding
 type DomainRequest = internalclient.DomainRequest
 type DomainUpdateRequest = internalclient.DomainUpdateRequest
