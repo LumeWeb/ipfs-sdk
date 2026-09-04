@@ -270,15 +270,15 @@ type UploadStatusEnum = internalclient.UploadResultResponseStatus
 
 const (
 	// UploadStatusCompleted - upload completed successfully
-	UploadStatusCompleted UploadStatusEnum = internalclient.Completed
+	UploadStatusCompleted UploadStatusEnum = internalclient.UploadResultResponseStatusCompleted
 	// UploadStatusDuplicate - upload was a duplicate of an existing upload
-	UploadStatusDuplicate UploadStatusEnum = internalclient.Duplicate
+	UploadStatusDuplicate UploadStatusEnum = internalclient.UploadResultResponseStatusDuplicate
 	// UploadStatusFailed - upload failed
-	UploadStatusFailed UploadStatusEnum = internalclient.Failed
+	UploadStatusFailed UploadStatusEnum = internalclient.UploadResultResponseStatusFailed
 	// UploadStatusPending - upload is queued and waiting
-	UploadStatusPending UploadStatusEnum = internalclient.Pending
+	UploadStatusPending UploadStatusEnum = internalclient.UploadResultResponseStatusPending
 	// UploadStatusProcessing - upload is being processed
-	UploadStatusProcessing UploadStatusEnum = internalclient.Processing
+	UploadStatusProcessing UploadStatusEnum = internalclient.UploadResultResponseStatusProcessing
 )
 
 // getUploadResultSize determines the appropriate Size field value for UploadResult.

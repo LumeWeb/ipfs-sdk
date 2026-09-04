@@ -201,12 +201,23 @@ components:
         id:
           type: integer
         namespace:
+          enum:
+          - icann
+          - hns
           type: string
         owner_name:
           type: string
         ssl:
           $ref: '#/components/schemas/SSLStatusInfo'
         status:
+          enum:
+          - draft
+          - records_generated
+          - waiting_delegation
+          - active
+          - self_hosted
+          - error
+          - onchain_managed
           type: string
         tlsa_rdata:
           type: string
@@ -269,10 +280,21 @@ components:
         id:
           type: integer
         namespace:
+          enum:
+          - icann
+          - hns
           type: string
         ssl:
           $ref: '#/components/schemas/SSLStatusInfo'
         status:
+          enum:
+          - draft
+          - records_generated
+          - waiting_delegation
+          - active
+          - self_hosted
+          - error
+          - onchain_managed
           type: string
         zone_name:
           type: string
@@ -811,6 +833,11 @@ components:
           format: date-time
           type: string
         status:
+          enum:
+          - pending
+          - issuing
+          - ready
+          - failed
           type: string
       required:
       - status
