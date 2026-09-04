@@ -1,3 +1,9 @@
+## 0.1.93 (2026-09-04)
+
+### Fixes
+
+- constrain namespace, website, and SSL status enums
+
 ## 0.1.92 (2026-09-04)
 
 ### Fixes
