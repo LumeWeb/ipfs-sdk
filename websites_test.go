@@ -1321,12 +1321,12 @@ func TestWebsitesService_ListDomains(t *testing.T) {
 		require.Len(t, result, 2)
 		assert.Equal(t, 1, result[0].Id)
 		assert.Equal(t, "example.com", result[0].Domain)
-		assert.Equal(t, "icann", result[0].Namespace)
+		assert.Equal(t, "icann", string(result[0].Namespace))
 		assert.NotNil(t, result[0].ZoneName)
 		assert.Equal(t, "example.com.", *result[0].ZoneName)
 		assert.Equal(t, 2, result[1].Id)
 		assert.Equal(t, "example.hns", result[1].Domain)
-		assert.Equal(t, "hns", result[1].Namespace)
+		assert.Equal(t, "hns", string(result[1].Namespace))
 	})
 
 	t.Run("returns empty list when no domains bound", func(t *testing.T) {
@@ -1410,7 +1410,7 @@ func TestWebsitesService_BindDomain(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedResponse.Id, result.Id)
 		assert.Equal(t, "example.com", result.Domain)
-		assert.Equal(t, "icann", result.Namespace)
+		assert.Equal(t, "icann", string(result.Namespace))
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
@@ -1581,7 +1581,7 @@ func TestWebsitesService_VerifyDomain(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedResponse.Id, result.Id)
 		assert.Equal(t, "example.com", result.Domain)
-		assert.Equal(t, "icann", result.Namespace)
+		assert.Equal(t, "icann", string(result.Namespace))
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {
@@ -1625,7 +1625,7 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 			Id:          1,
 			Domain:      "lumeweb",
 			Namespace:   "hns",
-			Status:      new("records_generated"),
+			Status:      new(client.DomainResponseStatusRecordsGenerated),
 			ZoneName:    new("lumeweb."),
 			GatewayHost: new("gateway.lumeweb.com"),
 			Delegation: &client.DNSDelegation{
@@ -1656,7 +1656,7 @@ func TestWebsitesService_GetDomainDNSRequirements(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result)
 		require.NotNil(t, result.Delegation)
-		assert.Equal(t, "hns", result.Namespace)
+		assert.Equal(t, "hns", string(result.Namespace))
 		assert.Equal(t, new("gateway.lumeweb.com"), result.GatewayHost)
 		assert.Equal(t, new("delegated"), result.Delegation.Mode)
 		assert.Equal(t, new("enabled"), result.Delegation.Dnssec)
@@ -1752,7 +1752,7 @@ func TestWebsitesService_RepublishDANE(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Equal(t, "hns", result.Namespace)
+		assert.Equal(t, "hns", string(result.Namespace))
 		assert.Equal(t, new("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"), result.TlsaRecord)
 		assert.Equal(t, new("_443._tcp.lumeweb"), result.OwnerName)
 	})
@@ -1814,7 +1814,7 @@ func TestWebsitesService_ConvertDomainToOnChain(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.Equal(t, expectedResponse.Id, result.Id)
 		assert.Equal(t, "lumeweb", result.Domain)
-		assert.Equal(t, "hns", result.Namespace)
+		assert.Equal(t, "hns", string(result.Namespace))
 	})
 
 	t.Run("returns error on HTTP error", func(t *testing.T) {

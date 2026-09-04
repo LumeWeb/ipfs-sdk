@@ -18,6 +18,108 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for DomainDANERepublishResponseNamespace.
+const (
+	DomainDANERepublishResponseNamespaceHns   DomainDANERepublishResponseNamespace = "hns"
+	DomainDANERepublishResponseNamespaceIcann DomainDANERepublishResponseNamespace = "icann"
+)
+
+// Valid indicates whether the value is a known member of the DomainDANERepublishResponseNamespace enum.
+func (e DomainDANERepublishResponseNamespace) Valid() bool {
+	switch e {
+	case DomainDANERepublishResponseNamespaceHns:
+		return true
+	case DomainDANERepublishResponseNamespaceIcann:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DomainDANERepublishResponseStatus.
+const (
+	DomainDANERepublishResponseStatusActive            DomainDANERepublishResponseStatus = "active"
+	DomainDANERepublishResponseStatusDraft             DomainDANERepublishResponseStatus = "draft"
+	DomainDANERepublishResponseStatusError             DomainDANERepublishResponseStatus = "error"
+	DomainDANERepublishResponseStatusOnchainManaged    DomainDANERepublishResponseStatus = "onchain_managed"
+	DomainDANERepublishResponseStatusRecordsGenerated  DomainDANERepublishResponseStatus = "records_generated"
+	DomainDANERepublishResponseStatusSelfHosted        DomainDANERepublishResponseStatus = "self_hosted"
+	DomainDANERepublishResponseStatusWaitingDelegation DomainDANERepublishResponseStatus = "waiting_delegation"
+)
+
+// Valid indicates whether the value is a known member of the DomainDANERepublishResponseStatus enum.
+func (e DomainDANERepublishResponseStatus) Valid() bool {
+	switch e {
+	case DomainDANERepublishResponseStatusActive:
+		return true
+	case DomainDANERepublishResponseStatusDraft:
+		return true
+	case DomainDANERepublishResponseStatusError:
+		return true
+	case DomainDANERepublishResponseStatusOnchainManaged:
+		return true
+	case DomainDANERepublishResponseStatusRecordsGenerated:
+		return true
+	case DomainDANERepublishResponseStatusSelfHosted:
+		return true
+	case DomainDANERepublishResponseStatusWaitingDelegation:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DomainResponseNamespace.
+const (
+	DomainResponseNamespaceHns   DomainResponseNamespace = "hns"
+	DomainResponseNamespaceIcann DomainResponseNamespace = "icann"
+)
+
+// Valid indicates whether the value is a known member of the DomainResponseNamespace enum.
+func (e DomainResponseNamespace) Valid() bool {
+	switch e {
+	case DomainResponseNamespaceHns:
+		return true
+	case DomainResponseNamespaceIcann:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DomainResponseStatus.
+const (
+	DomainResponseStatusActive            DomainResponseStatus = "active"
+	DomainResponseStatusDraft             DomainResponseStatus = "draft"
+	DomainResponseStatusError             DomainResponseStatus = "error"
+	DomainResponseStatusOnchainManaged    DomainResponseStatus = "onchain_managed"
+	DomainResponseStatusRecordsGenerated  DomainResponseStatus = "records_generated"
+	DomainResponseStatusSelfHosted        DomainResponseStatus = "self_hosted"
+	DomainResponseStatusWaitingDelegation DomainResponseStatus = "waiting_delegation"
+)
+
+// Valid indicates whether the value is a known member of the DomainResponseStatus enum.
+func (e DomainResponseStatus) Valid() bool {
+	switch e {
+	case DomainResponseStatusActive:
+		return true
+	case DomainResponseStatusDraft:
+		return true
+	case DomainResponseStatusError:
+		return true
+	case DomainResponseStatusOnchainManaged:
+		return true
+	case DomainResponseStatusRecordsGenerated:
+		return true
+	case DomainResponseStatusSelfHosted:
+		return true
+	case DomainResponseStatusWaitingDelegation:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GatewayWebsiteResponseNamespace.
 const (
 	Hns   GatewayWebsiteResponseNamespace = "hns"
@@ -36,27 +138,51 @@ func (e GatewayWebsiteResponseNamespace) Valid() bool {
 	}
 }
 
+// Defines values for SSLStatusInfoStatus.
+const (
+	SSLStatusInfoStatusFailed  SSLStatusInfoStatus = "failed"
+	SSLStatusInfoStatusIssuing SSLStatusInfoStatus = "issuing"
+	SSLStatusInfoStatusPending SSLStatusInfoStatus = "pending"
+	SSLStatusInfoStatusReady   SSLStatusInfoStatus = "ready"
+)
+
+// Valid indicates whether the value is a known member of the SSLStatusInfoStatus enum.
+func (e SSLStatusInfoStatus) Valid() bool {
+	switch e {
+	case SSLStatusInfoStatusFailed:
+		return true
+	case SSLStatusInfoStatusIssuing:
+		return true
+	case SSLStatusInfoStatusPending:
+		return true
+	case SSLStatusInfoStatusReady:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UploadResultResponseStatus.
 const (
-	Completed  UploadResultResponseStatus = "completed"
-	Duplicate  UploadResultResponseStatus = "duplicate"
-	Failed     UploadResultResponseStatus = "failed"
-	Pending    UploadResultResponseStatus = "pending"
-	Processing UploadResultResponseStatus = "processing"
+	UploadResultResponseStatusCompleted  UploadResultResponseStatus = "completed"
+	UploadResultResponseStatusDuplicate  UploadResultResponseStatus = "duplicate"
+	UploadResultResponseStatusFailed     UploadResultResponseStatus = "failed"
+	UploadResultResponseStatusPending    UploadResultResponseStatus = "pending"
+	UploadResultResponseStatusProcessing UploadResultResponseStatus = "processing"
 )
 
 // Valid indicates whether the value is a known member of the UploadResultResponseStatus enum.
 func (e UploadResultResponseStatus) Valid() bool {
 	switch e {
-	case Completed:
+	case UploadResultResponseStatusCompleted:
 		return true
-	case Duplicate:
+	case UploadResultResponseStatusDuplicate:
 		return true
-	case Failed:
+	case UploadResultResponseStatusFailed:
 		return true
-	case Pending:
+	case UploadResultResponseStatusPending:
 		return true
-	case Processing:
+	case UploadResultResponseStatusProcessing:
 		return true
 	default:
 		return false
@@ -173,18 +299,24 @@ type DNSDelegationRecord struct {
 
 // DomainDANERepublishResponse defines model for DomainDANERepublishResponse.
 type DomainDANERepublishResponse struct {
-	Delegation  *DNSDelegation `json:"delegation,omitempty"`
-	Domain      string         `json:"domain"`
-	GatewayHost *string        `json:"gateway_host,omitempty"`
-	Id          int            `json:"id"`
-	Namespace   string         `json:"namespace"`
-	OwnerName   *string        `json:"owner_name,omitempty"`
-	Ssl         *SSLStatusInfo `json:"ssl,omitempty"`
-	Status      *string        `json:"status,omitempty"`
-	TlsaRdata   *string        `json:"tlsa_rdata,omitempty"`
-	TlsaRecord  *string        `json:"tlsa_record,omitempty"`
-	ZoneName    *string        `json:"zone_name,omitempty"`
+	Delegation  *DNSDelegation                       `json:"delegation,omitempty"`
+	Domain      string                               `json:"domain"`
+	GatewayHost *string                              `json:"gateway_host,omitempty"`
+	Id          int                                  `json:"id"`
+	Namespace   DomainDANERepublishResponseNamespace `json:"namespace"`
+	OwnerName   *string                              `json:"owner_name,omitempty"`
+	Ssl         *SSLStatusInfo                       `json:"ssl,omitempty"`
+	Status      *DomainDANERepublishResponseStatus   `json:"status,omitempty"`
+	TlsaRdata   *string                              `json:"tlsa_rdata,omitempty"`
+	TlsaRecord  *string                              `json:"tlsa_record,omitempty"`
+	ZoneName    *string                              `json:"zone_name,omitempty"`
 }
+
+// DomainDANERepublishResponseNamespace defines model for DomainDANERepublishResponse.Namespace.
+type DomainDANERepublishResponseNamespace string
+
+// DomainDANERepublishResponseStatus defines model for DomainDANERepublishResponse.Status.
+type DomainDANERepublishResponseStatus string
 
 // DomainListResponse defines model for DomainListResponse.
 type DomainListResponse struct {
@@ -206,16 +338,22 @@ type DomainRequest struct {
 
 // DomainResponse defines model for DomainResponse.
 type DomainResponse struct {
-	Delegation        *DNSDelegation `json:"delegation,omitempty"`
-	DnsHostingEnabled bool           `json:"dns_hosting_enabled"`
-	Domain            string         `json:"domain"`
-	GatewayHost       *string        `json:"gateway_host,omitempty"`
-	Id                int            `json:"id"`
-	Namespace         string         `json:"namespace"`
-	Ssl               *SSLStatusInfo `json:"ssl,omitempty"`
-	Status            *string        `json:"status,omitempty"`
-	ZoneName          *string        `json:"zone_name,omitempty"`
+	Delegation        *DNSDelegation          `json:"delegation,omitempty"`
+	DnsHostingEnabled bool                    `json:"dns_hosting_enabled"`
+	Domain            string                  `json:"domain"`
+	GatewayHost       *string                 `json:"gateway_host,omitempty"`
+	Id                int                     `json:"id"`
+	Namespace         DomainResponseNamespace `json:"namespace"`
+	Ssl               *SSLStatusInfo          `json:"ssl,omitempty"`
+	Status            *DomainResponseStatus   `json:"status,omitempty"`
+	ZoneName          *string                 `json:"zone_name,omitempty"`
 }
+
+// DomainResponseNamespace defines model for DomainResponse.Namespace.
+type DomainResponseNamespace string
+
+// DomainResponseStatus defines model for DomainResponse.Status.
+type DomainResponseStatus string
 
 // DomainUpdateRequest defines model for DomainUpdateRequest.
 type DomainUpdateRequest struct {
@@ -465,11 +603,14 @@ type RecordResult struct {
 
 // SSLStatusInfo defines model for SSLStatusInfo.
 type SSLStatusInfo struct {
-	Error         *string    `json:"error,omitempty"`
-	IssuedAt      *time.Time `json:"issued_at,omitempty"`
-	LastUpdatedAt *time.Time `json:"last_updated_at,omitempty"`
-	Status        string     `json:"status"`
+	Error         *string             `json:"error,omitempty"`
+	IssuedAt      *time.Time          `json:"issued_at,omitempty"`
+	LastUpdatedAt *time.Time          `json:"last_updated_at,omitempty"`
+	Status        SSLStatusInfoStatus `json:"status"`
 }
+
+// SSLStatusInfoStatus defines model for SSLStatusInfo.Status.
+type SSLStatusInfoStatus string
 
 // SSLStatusUpdateRequest defines model for SSLStatusUpdateRequest.
 type SSLStatusUpdateRequest struct {

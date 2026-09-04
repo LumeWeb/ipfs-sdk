@@ -816,7 +816,7 @@ func (s *websitesService) WaitForSSLStatusReady(ctx context.Context, domain stri
 			return "", nil
 		}
 
-		return resp.Ssl.Status, nil
+		return string(resp.Ssl.Status), nil
 	}, settledStates, opts...)
 
 	if err != nil {
