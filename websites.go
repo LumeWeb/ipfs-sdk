@@ -82,6 +82,42 @@ func DomainNamespaceOf(r *DomainResponse) DomainNamespace {
 	return DomainNamespace(r.Namespace)
 }
 
+// DomainResponseStatus identifies the lifecycle status of a domain binding.
+// Type alias to expose the generated enum from the client.
+type DomainResponseStatus = internalclient.DomainResponseStatus
+
+const (
+	// DomainResponseStatusDraft means the binding was created but DNS records are not generated yet.
+	DomainResponseStatusDraft DomainResponseStatus = internalclient.DomainResponseStatusDraft
+	// DomainResponseStatusRecordsGenerated means DNS records exist but delegation is incomplete.
+	DomainResponseStatusRecordsGenerated DomainResponseStatus = internalclient.DomainResponseStatusRecordsGenerated
+	// DomainResponseStatusWaitingDelegation means records are generated and awaiting delegation.
+	DomainResponseStatusWaitingDelegation DomainResponseStatus = internalclient.DomainResponseStatusWaitingDelegation
+	// DomainResponseStatusActive means the domain is fully active.
+	DomainResponseStatusActive DomainResponseStatus = internalclient.DomainResponseStatusActive
+	// DomainResponseStatusSelfHosted means the domain is hosted by the operator.
+	DomainResponseStatusSelfHosted DomainResponseStatus = internalclient.DomainResponseStatusSelfHosted
+	// DomainResponseStatusError means the binding is in an error state.
+	DomainResponseStatusError DomainResponseStatus = internalclient.DomainResponseStatusError
+	// DomainResponseStatusOnchainManaged means the domain is managed on-chain.
+	DomainResponseStatusOnchainManaged DomainResponseStatus = internalclient.DomainResponseStatusOnchainManaged
+)
+
+// SSLStatus identifies the certificate issuance state for a website.
+// Type alias to expose the generated enum from the client.
+type SSLStatus = internalclient.SSLStatusInfoStatus
+
+const (
+	// SSLStatusPending means certificate issuance has not started.
+	SSLStatusPending SSLStatus = internalclient.SSLStatusInfoStatusPending
+	// SSLStatusIssuing means the certificate is being issued.
+	SSLStatusIssuing SSLStatus = internalclient.SSLStatusInfoStatusIssuing
+	// SSLStatusReady means the certificate is issued and installed.
+	SSLStatusReady SSLStatus = internalclient.SSLStatusInfoStatusReady
+	// SSLStatusFailed means certificate issuance failed.
+	SSLStatusFailed SSLStatus = internalclient.SSLStatusInfoStatusFailed
+)
+
 type WebsiteValidationReason string
 
 const (
