@@ -1,3 +1,9 @@
+## 0.1.92 (2026-09-04)
+
+### Fixes
+
+- constrain website change event_type to enum
+
 ## 0.1.91 (2026-09-02)
 
 ### Features
