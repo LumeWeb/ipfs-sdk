@@ -1,3 +1,9 @@
+## 0.1.96 (2026-09-05)
+
+### Fixes
+
+- sync swagger with portal ipfs plugin api
+
 ## 0.1.95 (2026-09-04)
 
 ### Fixes
