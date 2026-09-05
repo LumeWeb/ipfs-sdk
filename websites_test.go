@@ -1737,7 +1737,6 @@ func TestWebsitesService_RepublishDANE(t *testing.T) {
 			Namespace:  "hns",
 			TlsaRdata:  new("3 1 1 <sha256>"),
 			OwnerName:  new("_443._tcp.lumeweb"),
-			TlsaRecord: new("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"),
 		}
 
 		mockClient.EXPECT().
@@ -1752,8 +1751,8 @@ func TestWebsitesService_RepublishDANE(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, result)
-		assert.Equal(t, "hns", string(result.Namespace))
-		assert.Equal(t, new("_443._tcp.lumeweb. 3600 IN TLSA 3 1 1 <sha256>"), result.TlsaRecord)
+		assert.Equal(t, client.DomainDANERepublishResponseNamespace("hns"), result.Namespace)
+		assert.Equal(t, new("3 1 1 <sha256>"), result.TlsaRdata)
 		assert.Equal(t, new("_443._tcp.lumeweb"), result.OwnerName)
 	})
 
