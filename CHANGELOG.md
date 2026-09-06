@@ -1,3 +1,9 @@
+## 0.1.97 (2026-09-06)
+
+### Fixes
+
+- restore validation checks in api spec
+
 ## 0.1.96 (2026-09-05)
 
 ### Fixes
