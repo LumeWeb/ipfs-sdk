@@ -18,6 +18,7 @@ type WebsiteUpdateRequest = internalclient.WebsiteUpdateRequest
 type WebsiteItem = internalclient.WebsiteItem
 type WebsiteItemResponse = internalclient.WebsiteItemResponse
 type WebsiteValidateResponse = internalclient.WebsiteValidateResponse
+type ValidationCheck = internalclient.ValidationCheck
 type GatewayWebsiteResponse = internalclient.GatewayWebsiteResponse
 type GatewayWebsiteStatusResponse = internalclient.GatewayWebsiteStatusResponse
 
