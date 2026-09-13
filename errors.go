@@ -79,6 +79,17 @@ const (
 
 	// DAG operations
 	OpResolveDAG
+
+	// Workspace operations
+	OpListWorkspaces
+	OpGetWorkspace
+	OpCreateWorkspace
+	OpDeleteWorkspace
+	OpGetWorkspaceAccess
+	OpAttachWorkspace
+	OpResumeWorkspace
+	OpSuspendWorkspace
+	OpResolveWorkspace
 )
 
 // operationString maps operation IDs to human-readable names.
@@ -147,6 +158,17 @@ var operationString = map[int]string{
 
 	// DAG operations
 	OpResolveDAG: "resolve DAG",
+
+	// Workspace operations
+	OpListWorkspaces:     "list workspaces",
+	OpGetWorkspace:       "get workspace",
+	OpCreateWorkspace:    "create workspace",
+	OpDeleteWorkspace:    "delete workspace",
+	OpGetWorkspaceAccess: "get workspace access",
+	OpAttachWorkspace:    "attach workspace",
+	OpResumeWorkspace:    "resume workspace",
+	OpSuspendWorkspace:   "suspend workspace",
+	OpResolveWorkspace:   "resolve workspace",
 }
 
 // Named error types for error comparison.
