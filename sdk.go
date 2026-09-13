@@ -23,14 +23,15 @@ type HostOverride struct {
 
 // Client is the main SDK client that provides access to all IPFS services.
 type Client struct {
-	pinning  PinningService
-	dns      DNSService
-	ipns     IPNSService
-	websites WebsitesService
-	upload   *UploadService
-	download *DownloadService
-	ping     PingService
-	dag      DAGService
+	pinning    PinningService
+	dns        DNSService
+	ipns       IPNSService
+	websites   WebsitesService
+	workspaces WorkspacesService
+	upload     *UploadService
+	download   *DownloadService
+	ping       PingService
+	dag        DAGService
 
 	httpClient    *http.Client
 	baseURL       string
@@ -382,6 +383,11 @@ func (c *Client) Websites() WebsitesService {
 	return c.websites
 }
 
+// Workspaces returns the workspaces service for managing workspaces.
+func (c *Client) Workspaces() WorkspacesService {
+	return c.workspaces
+}
+
 // WebsiteEvents returns an SSE event client for the gateway-facing website
 // lifecycle stream (GET /internal/websites/events). It is wired with the
 // client's base URL and gateway secret; register a handler with OnEvent and
@@ -450,6 +456,7 @@ func (c *Client) rebuildInternalGen() error {
 	c.dns = NewDNSServiceFromClient(internalGen, WithDNSRetry(c.retry))
 	c.ipns = NewIPNSService(ConvertClientToIPNS(internalGen), WithIPNSRetry(c.retry))
 	c.websites = NewWebsitesService(convertWebsitesClient(internalGen), WithWebsitesRetry(c.retry))
+	c.workspaces = NewWorkspacesService(ConvertClientToWorkspaces(internalGen), WithWorkspacesRetry(c.retry))
 	c.ping = NewPingService(ConvertClientToPing(internalGen), WithPingRetry(c.retry))
 	c.dag = NewDAGService(ConvertClientToDAG(internalGen), WithDAGRetry(c.retry))
 	// Re-wire the download service's blockMeta client so metadata queries

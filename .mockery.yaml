@@ -34,6 +34,11 @@ packages:
         config:
           dir: ./mocks/services
           pkgname: servicemocks
+      WorkspacesClientWithResponsesInterface: {}
+      WorkspacesService:
+        config:
+          dir: ./mocks/services
+          pkgname: servicemocks
   go.lumeweb.com/ipfs-sdk/fs:
     config:
       dir: ./mocks

@@ -4,8 +4,8 @@ import (
 	"context"
 	"io"
 
-	dnsreq "go.lumeweb.com/ipfs-sdk/internal/dnsreq"
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
+	dnsreq "go.lumeweb.com/ipfs-sdk/internal/dnsreq"
 )
 
 // IPNSClientWithResponsesInterface defines the methods needed from the generated internal client for IPNS
@@ -173,4 +173,63 @@ func (a *internalClientToPingAdapter) GetInternalPingWithResponse(ctx context.Co
 // ConvertClientToPing converts a ClientWithResponses to PingClientWithResponsesInterface
 func ConvertClientToPing(client *internalclient.ClientWithResponses) PingClientWithResponsesInterface {
 	return &internalClientToPingAdapter{client: client}
+}
+
+// WorkspacesClientWithResponsesInterface defines the methods needed from the generated internal client for Workspaces
+type WorkspacesClientWithResponsesInterface interface {
+	GetApiWorkspacesWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesResponse, error)
+	PostApiWorkspacesWithResponse(ctx context.Context, body internalclient.WorkspaceRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesResponse, error)
+	GetApiWorkspacesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesIdResponse, error)
+	DeleteApiWorkspacesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWorkspacesIdResponse, error)
+	GetApiWorkspacesIdAccessWithResponse(ctx context.Context, id string, params *internalclient.GetApiWorkspacesIdAccessParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesIdAccessResponse, error)
+	PostApiWorkspacesIdAttachWithResponse(ctx context.Context, id string, body internalclient.WorkspaceRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesIdAttachResponse, error)
+	PostApiWorkspacesIdResumeWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesIdResumeResponse, error)
+	PostApiWorkspacesIdSuspendWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesIdSuspendResponse, error)
+	GetApiWorkspacesResolveWithResponse(ctx context.Context, params *internalclient.GetApiWorkspacesResolveParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesResolveResponse, error)
+}
+
+// internalClientToWorkspacesAdapter adapts internalclient.ClientWithResponses to WorkspacesClientWithResponsesInterface
+type internalClientToWorkspacesAdapter struct {
+	client *internalclient.ClientWithResponses
+}
+
+func (a *internalClientToWorkspacesAdapter) GetApiWorkspacesWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesResponse, error) {
+	return a.client.GetApiWorkspacesWithResponse(ctx, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) PostApiWorkspacesWithResponse(ctx context.Context, body internalclient.WorkspaceRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesResponse, error) {
+	return a.client.PostApiWorkspacesWithResponse(ctx, body, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) GetApiWorkspacesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesIdResponse, error) {
+	return a.client.GetApiWorkspacesIdWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) DeleteApiWorkspacesIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiWorkspacesIdResponse, error) {
+	return a.client.DeleteApiWorkspacesIdWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) GetApiWorkspacesIdAccessWithResponse(ctx context.Context, id string, params *internalclient.GetApiWorkspacesIdAccessParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesIdAccessResponse, error) {
+	return a.client.GetApiWorkspacesIdAccessWithResponse(ctx, id, params, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) PostApiWorkspacesIdAttachWithResponse(ctx context.Context, id string, body internalclient.WorkspaceRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesIdAttachResponse, error) {
+	return a.client.PostApiWorkspacesIdAttachWithResponse(ctx, id, body, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) PostApiWorkspacesIdResumeWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesIdResumeResponse, error) {
+	return a.client.PostApiWorkspacesIdResumeWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) PostApiWorkspacesIdSuspendWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiWorkspacesIdSuspendResponse, error) {
+	return a.client.PostApiWorkspacesIdSuspendWithResponse(ctx, id, reqEditors...)
+}
+
+func (a *internalClientToWorkspacesAdapter) GetApiWorkspacesResolveWithResponse(ctx context.Context, params *internalclient.GetApiWorkspacesResolveParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiWorkspacesResolveResponse, error) {
+	return a.client.GetApiWorkspacesResolveWithResponse(ctx, params, reqEditors...)
+}
+
+// ConvertClientToWorkspaces converts a ClientWithResponses to WorkspacesClientWithResponsesInterface
+func ConvertClientToWorkspaces(client *internalclient.ClientWithResponses) WorkspacesClientWithResponsesInterface {
+	return &internalClientToWorkspacesAdapter{client: client}
 }

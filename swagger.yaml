@@ -1179,6 +1179,113 @@ components:
       - message
       - reason
       type: object
+    WorkspaceAccessResponse:
+      additionalProperties: false
+      properties:
+        password:
+          type: string
+        username:
+          type: string
+      required:
+      - username
+      - password
+      type: object
+    WorkspaceListResponseResponse:
+      additionalProperties: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/WorkspaceResponse'
+          type: array
+        total:
+          type: integer
+      required:
+      - data
+      - total
+      type: object
+    WorkspaceRequest:
+      additionalProperties: false
+      properties:
+        website_id:
+          type: integer
+      type: object
+    WorkspaceResolveResponse:
+      additionalProperties: false
+      properties:
+        created:
+          format: date-time
+          type: string
+        domain:
+          type: string
+        error:
+          type: string
+        id:
+          type: integer
+        label:
+          type: string
+        status:
+          type: string
+        updated:
+          format: date-time
+          type: string
+        website:
+          $ref: '#/components/schemas/WorkspaceResolveWebsite'
+        website_id:
+          type: integer
+      required:
+      - id
+      - label
+      - domain
+      - status
+      - created
+      - updated
+      type: object
+    WorkspaceResolveWebsite:
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        target_hash:
+          type: string
+        target_type:
+          type: string
+      required:
+      - id
+      - target_type
+      - target_hash
+      - status
+      type: object
+    WorkspaceResponse:
+      additionalProperties: false
+      properties:
+        created:
+          format: date-time
+          type: string
+        domain:
+          type: string
+        error:
+          type: string
+        id:
+          type: integer
+        label:
+          type: string
+        status:
+          type: string
+        updated:
+          format: date-time
+          type: string
+        website_id:
+          type: integer
+      required:
+      - id
+      - label
+      - domain
+      - status
+      - created
+      - updated
+      type: object
     ZoneListResponse:
       additionalProperties: false
       properties:
@@ -5096,6 +5203,538 @@ paths:
       tags:
       - Websites
       - PlatformDomains
+  /api/workspaces:
+    get:
+      description: Lists workspaces owned by the authenticated user, including unattached
+        workspaces, filtered, sorted, and paginated. Returns the standard paginated
+        list shape ({data, total}).
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceListResponseResponse'
+          description: Workspaces
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: List workspaces
+      tags:
+      - Workspaces
+    post:
+      description: Creates a workspace owned by the authenticated user. Optionally
+        pass website_id to attach it to a website the user owns (the publish link);
+        omit it to create an unattached workspace that needs no Website record or
+        domain. Building in a workspace is separate from publishing.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceRequest'
+        description: Workspace request
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+          description: Created workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Create workspace
+      tags:
+      - Workspaces
+  /api/workspaces/{id}:
+    delete:
+      description: Marks a workspace deleting, revokes its portal API key, deletes
+        the application (and storage) before the database, treats provider 404 as
+        already deleted, and soft-deletes the workspace.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+          description: Deleted workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Workspace not found
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Workspace is already being deleted
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Delete workspace
+      tags:
+      - Workspaces
+    get:
+      description: Returns a workspace owned by the authenticated user.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+          description: Workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Get workspace
+      tags:
+      - Workspaces
+  /api/workspaces/{id}/access:
+    get:
+      description: Returns the owner's proxy Basic Auth credentials. Pass ?rotate=true
+        to rotate them. Only the proxy credential is returned; the portal API key
+        and database password are never exposed.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - description: Rotate the proxy credential before returning
+        in: query
+        name: rotate
+        schema:
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceAccessResponse'
+          description: Access credentials
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Get workspace access credentials
+      tags:
+      - Workspaces
+  /api/workspaces/{id}/attach:
+    post:
+      description: Links an existing unattached workspace (owned by the user) to a
+        website the user owns. Verifies ownership of both and prevents duplicate attachment.
+        Only records the publish link; it never changes the workspace authoring hostname.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceRequest'
+        description: Workspace request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+          description: Attached workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Attach workspace to website
+      tags:
+      - Workspaces
+  /api/workspaces/{id}/resume:
+    post:
+      description: Starts a suspended workspace's application (and, per configuration,
+        its dedicated database), refreshes the runtime environment, waits for readiness,
+        and marks it ready.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+          description: Ready workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Resume workspace
+      tags:
+      - Workspaces
+  /api/workspaces/{id}/suspend:
+    post:
+      description: Stops a ready workspace's application (and, per configuration,
+        its dedicated database) and marks it suspended. The database and storage are
+        preserved by default.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResponse'
+          description: Suspended workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not found
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation failed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Suspend workspace
+      tags:
+      - Workspaces
+  /api/workspaces/resolve:
+    get:
+      description: Lets a runtime container resolve its own workspace identity from
+        the Coolify-injected COOLIFY_RESOURCE_UUID (the application/resource UUID)
+        plus its workspace PORTAL_API_KEY. The API-key owner must match the workspace
+        owner and the resource UUID must match the workspace's application_resource_id;
+        a mismatch returns not-found. Returns workspace data plus the optional Website
+        publish relationship, never exposing secrets.
+      parameters:
+      - description: The Coolify-injected application/resource UUID
+        in: query
+        name: resource_uuid
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceResolveResponse'
+          description: Resolved workspace
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthenticated or invalid API key
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Workspace not found for this resource UUID/API key
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Missing resource_uuid
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Resolve a workspace's runtime identity
+      tags:
+      - Workspaces
   /internal/dns/cert:
     post:
       description: Internal endpoint for Caddy to push a cert and receive computed
