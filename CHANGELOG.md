@@ -1,3 +1,9 @@
+## 0.1.98 (2026-09-13)
+
+### Features
+
+- add workspace API support
+
 ## 0.1.97 (2026-09-06)
 
 ### Fixes
