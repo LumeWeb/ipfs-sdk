@@ -1,3 +1,14 @@
+## 0.1.99 (2026-09-15)
+
+### Features
+
+- add paged list responses
+- add server-side paged ListKeysPage
+
+### Fixes
+
+- emit default window for start-only paging
+
 ## 0.1.98 (2026-09-13)
 
 ### Features
