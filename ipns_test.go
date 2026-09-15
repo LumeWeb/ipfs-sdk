@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.lumeweb.com/ipfs-sdk/internal/client"
-	"go.lumeweb.com/ipfs-sdk/mocks"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
+	"go.lumeweb.com/ipfs-sdk/mocks"
 )
 
 func TestNewIPNSService(t *testing.T) {
@@ -122,7 +122,7 @@ func TestIPNSService_ListKeys_NoRetryOn400(t *testing.T) {
 // plain ListKeys must send no filters.
 func TestListKeysSendsNameFilter(t *testing.T) {
 	var (
-		mu    sync.Mutex
+		mu       sync.Mutex
 		gotQuery url.Values
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -244,6 +244,38 @@ func TestListKeysPageSendsPagingParams(t *testing.T) {
 	mu.Unlock()
 	assert.Empty(t, plainStart, "plain ListKeysPage must not send _start")
 	assert.Empty(t, plainEnd, "plain ListKeysPage must not send _end")
+}
+
+// TestListKeysPageWithStartOnlyPaging is the regression guard that a nonzero
+// _start without an explicit limit still emits a valid default 10-item window:
+// _end must be derived as start+10, matching the backend default, rather than
+// sending an unbounded start-only page.
+func TestListKeysPageWithStartOnlyPaging(t *testing.T) {
+	var (
+		mu       sync.Mutex
+		gotQuery url.Values
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		gotQuery = r.URL.Query()
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"total":0}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	genClient, err := client.NewClientWithResponses(srv.URL)
+	require.NoError(t, err)
+	service := NewIPNSService(genClient)
+
+	_, err = service.ListKeysPage(context.Background(), WithKeysStart(30))
+	require.NoError(t, err)
+	mu.Lock()
+	start := gotQuery.Get("_start")
+	end := gotQuery.Get("_end")
+	mu.Unlock()
+	assert.Equal(t, "30", start, "_start must be sent from the generated params")
+	assert.Equal(t, "40", end, "start-only paging must derive _end as start+10 default window")
 }
 
 func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {

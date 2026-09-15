@@ -252,20 +252,26 @@ func buildListKeysEditor(filterName string) internalclient.RequestEditorFn {
 // buildListKeysParams converts the paging options into the generated
 // GetApiIpnsKeysParams request parameters. It returns nil when no paging was
 // requested, leaving the server's default 10-item window intact. When paging is
-// requested, the exclusive _end index is derived as start+limit.
+// requested, the exclusive _end index is derived as start+limit. A nonzero start
+// without an explicit limit still emits a valid default 10-item window
+// (_end = start+10), matching the backend default and existing paging convention.
 func buildListKeysParams(o ipnsPagingOptions) *internalclient.GetApiIpnsKeysParams {
 	if o.start == 0 && o.limit == 0 {
 		return nil
 	}
 	params := &internalclient.GetApiIpnsKeysParams{}
-	if o.limit != 0 {
-		end := o.start + o.limit
-		params.UnderscoreEnd = &end
-	}
 	if o.start != 0 {
 		start := o.start
 		params.UnderscoreStart = &start
 	}
+	end := o.start + o.limit
+	if o.limit == 0 {
+		// No explicit limit: fall back to the backend's default 10-item window so
+		// a nonzero start still yields a valid bounded window rather than a
+		// start-only (unbounded) page.
+		end = o.start + 10
+	}
+	params.UnderscoreEnd = &end
 	return params
 }
 
