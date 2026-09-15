@@ -852,6 +852,15 @@ type ZoneResponse struct {
 	UserId         int       `json:"user_id"`
 }
 
+// GetApiIpnsKeysParams defines parameters for GetApiIpnsKeys.
+type GetApiIpnsKeysParams struct {
+	// UnderscoreEnd Ending index of the items to return (exclusive). Defaults to 10.
+	UnderscoreEnd *int `form:"_end,omitempty" json:"_end,omitempty"`
+
+	// UnderscoreStart Starting index of the items to return (0-based). Defaults to 0.
+	UnderscoreStart *int `form:"_start,omitempty" json:"_start,omitempty"`
+}
+
 // GetApiIpnsResolveNameParams defines parameters for GetApiIpnsResolveName.
 type GetApiIpnsResolveNameParams struct {
 	// CheckRouting Whether to verify routing through the IPFS network. 1 = verify (queries DHT), 0 = local only. Default: 0
@@ -1290,7 +1299,7 @@ type ClientInterface interface {
 	GetApiInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetApiIpnsKeys request
-	GetApiIpnsKeys(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetApiIpnsKeys(ctx context.Context, params *GetApiIpnsKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostApiIpnsKeysWithBody request with any body
 	PostApiIpnsKeysWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1853,8 +1862,8 @@ func (c *Client) GetApiInfo(ctx context.Context, reqEditors ...RequestEditorFn) 
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetApiIpnsKeys(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetApiIpnsKeysRequest(c.Server)
+func (c *Client) GetApiIpnsKeys(ctx context.Context, params *GetApiIpnsKeysParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApiIpnsKeysRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -3577,7 +3586,7 @@ func NewGetApiInfoRequest(server string) (*http.Request, error) {
 }
 
 // NewGetApiIpnsKeysRequest generates requests for GetApiIpnsKeys
-func NewGetApiIpnsKeysRequest(server string) (*http.Request, error) {
+func NewGetApiIpnsKeysRequest(server string, params *GetApiIpnsKeysParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -3593,6 +3602,44 @@ func NewGetApiIpnsKeysRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.UnderscoreEnd != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "_end", *params.UnderscoreEnd, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.UnderscoreStart != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "_start", *params.UnderscoreStart, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -6876,7 +6923,7 @@ type ClientWithResponsesInterface interface {
 	GetApiInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiInfoResponse, error)
 
 	// GetApiIpnsKeysWithResponse request
-	GetApiIpnsKeysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiIpnsKeysResponse, error)
+	GetApiIpnsKeysWithResponse(ctx context.Context, params *GetApiIpnsKeysParams, reqEditors ...RequestEditorFn) (*GetApiIpnsKeysResponse, error)
 
 	// PostApiIpnsKeysWithBodyWithResponse request with any body
 	PostApiIpnsKeysWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostApiIpnsKeysResponse, error)
@@ -9666,8 +9713,8 @@ func (c *ClientWithResponses) GetApiInfoWithResponse(ctx context.Context, reqEdi
 }
 
 // GetApiIpnsKeysWithResponse request returning *GetApiIpnsKeysResponse
-func (c *ClientWithResponses) GetApiIpnsKeysWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetApiIpnsKeysResponse, error) {
-	rsp, err := c.GetApiIpnsKeys(ctx, reqEditors...)
+func (c *ClientWithResponses) GetApiIpnsKeysWithResponse(ctx context.Context, params *GetApiIpnsKeysParams, reqEditors ...RequestEditorFn) (*GetApiIpnsKeysResponse, error) {
+	rsp, err := c.GetApiIpnsKeys(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

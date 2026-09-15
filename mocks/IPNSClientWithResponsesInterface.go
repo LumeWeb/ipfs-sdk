@@ -213,14 +213,14 @@ func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysIdWithResponse_Call
 }
 
 // GetApiIpnsKeysWithResponse provides a mock function for the type MockIPNSClientWithResponsesInterface
-func (_mock *MockIPNSClientWithResponsesInterface) GetApiIpnsKeysWithResponse(ctx context.Context, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsKeysResponse, error) {
+func (_mock *MockIPNSClientWithResponsesInterface) GetApiIpnsKeysWithResponse(ctx context.Context, params *client.GetApiIpnsKeysParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsKeysResponse, error) {
 	// client.RequestEditorFn
 	_va := make([]any, len(reqEditors))
 	for _i := range reqEditors {
 		_va[_i] = reqEditors[_i]
 	}
 	var _ca []any
-	_ca = append(_ca, ctx)
+	_ca = append(_ca, ctx, params)
 	_ca = append(_ca, _va...)
 	ret := _mock.Called(_ca...)
 
@@ -230,18 +230,18 @@ func (_mock *MockIPNSClientWithResponsesInterface) GetApiIpnsKeysWithResponse(ct
 
 	var r0 *client.GetApiIpnsKeysResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ...client.RequestEditorFn) (*client.GetApiIpnsKeysResponse, error)); ok {
-		return returnFunc(ctx, reqEditors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *client.GetApiIpnsKeysParams, ...client.RequestEditorFn) (*client.GetApiIpnsKeysResponse, error)); ok {
+		return returnFunc(ctx, params, reqEditors...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, ...client.RequestEditorFn) *client.GetApiIpnsKeysResponse); ok {
-		r0 = returnFunc(ctx, reqEditors...)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *client.GetApiIpnsKeysParams, ...client.RequestEditorFn) *client.GetApiIpnsKeysResponse); ok {
+		r0 = returnFunc(ctx, params, reqEditors...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*client.GetApiIpnsKeysResponse)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, ...client.RequestEditorFn) error); ok {
-		r1 = returnFunc(ctx, reqEditors...)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *client.GetApiIpnsKeysParams, ...client.RequestEditorFn) error); ok {
+		r1 = returnFunc(ctx, params, reqEditors...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -255,29 +255,35 @@ type MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call struct
 
 // GetApiIpnsKeysWithResponse is a helper method to define mock.On call
 //   - ctx context.Context
+//   - params *client.GetApiIpnsKeysParams
 //   - reqEditors ...client.RequestEditorFn
-func (_e *MockIPNSClientWithResponsesInterface_Expecter) GetApiIpnsKeysWithResponse(ctx any, reqEditors ...any) *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call {
+func (_e *MockIPNSClientWithResponsesInterface_Expecter) GetApiIpnsKeysWithResponse(ctx any, params any, reqEditors ...any) *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call {
 	return &MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call{Call: _e.mock.On("GetApiIpnsKeysWithResponse",
-		append([]any{ctx}, reqEditors...)...)}
+		append([]any{ctx, params}, reqEditors...)...)}
 }
 
-func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call) Run(run func(ctx context.Context, reqEditors ...client.RequestEditorFn)) *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call {
+func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call) Run(run func(ctx context.Context, params *client.GetApiIpnsKeysParams, reqEditors ...client.RequestEditorFn)) *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 []client.RequestEditorFn
-		variadicArgs := make([]client.RequestEditorFn, len(args)-1)
-		for i, a := range args[1:] {
+		var arg1 *client.GetApiIpnsKeysParams
+		if args[1] != nil {
+			arg1 = args[1].(*client.GetApiIpnsKeysParams)
+		}
+		var arg2 []client.RequestEditorFn
+		variadicArgs := make([]client.RequestEditorFn, len(args)-2)
+		for i, a := range args[2:] {
 			if a != nil {
 				variadicArgs[i] = a.(client.RequestEditorFn)
 			}
 		}
-		arg1 = variadicArgs
+		arg2 = variadicArgs
 		run(
 			arg0,
-			arg1...,
+			arg1,
+			arg2...,
 		)
 	})
 	return _c
@@ -288,7 +294,7 @@ func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call) 
 	return _c
 }
 
-func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call) RunAndReturn(run func(ctx context.Context, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsKeysResponse, error)) *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call {
+func (_c *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call) RunAndReturn(run func(ctx context.Context, params *client.GetApiIpnsKeysParams, reqEditors ...client.RequestEditorFn) (*client.GetApiIpnsKeysResponse, error)) *MockIPNSClientWithResponsesInterface_GetApiIpnsKeysWithResponse_Call {
 	_c.Call.Return(run)
 	return _c
 }
