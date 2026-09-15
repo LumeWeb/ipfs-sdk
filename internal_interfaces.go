@@ -10,7 +10,7 @@ import (
 
 // IPNSClientWithResponsesInterface defines the methods needed from the generated internal client for IPNS
 type IPNSClientWithResponsesInterface interface {
-	GetApiIpnsKeysWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsKeysResponse, error)
+	GetApiIpnsKeysWithResponse(ctx context.Context, params *internalclient.GetApiIpnsKeysParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsKeysResponse, error)
 	GetApiIpnsKeysIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsKeysIdResponse, error)
 	PostApiIpnsKeysWithResponse(ctx context.Context, body internalclient.IPNSKeyRequest, reqEditors ...internalclient.RequestEditorFn) (*internalclient.PostApiIpnsKeysResponse, error)
 	DeleteApiIpnsKeysIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.DeleteApiIpnsKeysIdResponse, error)
@@ -24,8 +24,8 @@ type internalClientToIPNSAdapter struct {
 	client *internalclient.ClientWithResponses
 }
 
-func (a *internalClientToIPNSAdapter) GetApiIpnsKeysWithResponse(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsKeysResponse, error) {
-	return a.client.GetApiIpnsKeysWithResponse(ctx, reqEditors...)
+func (a *internalClientToIPNSAdapter) GetApiIpnsKeysWithResponse(ctx context.Context, params *internalclient.GetApiIpnsKeysParams, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsKeysResponse, error) {
+	return a.client.GetApiIpnsKeysWithResponse(ctx, params, reqEditors...)
 }
 
 func (a *internalClientToIPNSAdapter) GetApiIpnsKeysIdWithResponse(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) (*internalclient.GetApiIpnsKeysIdResponse, error) {

@@ -2738,6 +2738,17 @@ paths:
         Returns metadata for all IPNS keys including peer IDs, names, and creation dates. Useful for managing your IPNS publishing keys.
 
         See also:.*
+      parameters:
+      - description: Ending index of the items to return (exclusive). Defaults to 10.
+        in: query
+        name: _end
+        schema:
+          type: integer
+      - description: Starting index of the items to return (0-based). Defaults to 0.
+        in: query
+        name: _start
+        schema:
+          type: integer
       responses:
         "200":
           content:

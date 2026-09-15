@@ -39,7 +39,7 @@ func TestIPNSService_ListKeys_Success(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetApiIpnsKeysWithResponse(mock.Anything).
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.Anything).
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
@@ -69,7 +69,7 @@ func TestIPNSService_ListKeys_RetryOn500(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetApiIpnsKeysWithResponse(mock.Anything).
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.Anything).
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusInternalServerError},
@@ -78,7 +78,7 @@ func TestIPNSService_ListKeys_RetryOn500(t *testing.T) {
 			Once()
 
 		mockClient.EXPECT().
-			GetApiIpnsKeysWithResponse(mock.Anything).
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.Anything).
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
@@ -99,7 +99,7 @@ func TestIPNSService_ListKeys_NoRetryOn400(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
 
 		mockClient.EXPECT().
-			GetApiIpnsKeysWithResponse(mock.Anything).
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.Anything).
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadRequest},
@@ -157,6 +157,95 @@ func TestListKeysSendsNameFilter(t *testing.T) {
 	assert.Empty(t, plain, "plain ListKeys must not send a name filter")
 }
 
+// TestIPNSService_ListKeysPage_ReturnsEnvelope guards the corrected IPNS paging
+// design: ListKeysPage must forward the generated GetApiIpnsKeysParams to the
+// client (so the generated params for _start/_end are used) and return the
+// generated JSON200 envelope directly (IPNSKeyPage is a true alias of
+// internalclient.IPNSKeyListResponseResponse). No hand-written
+// IPNSKeyPage{Items,Total} struct and no field-by-field mapping are involved.
+func TestIPNSService_ListKeysPage_ReturnsEnvelope(t *testing.T) {
+	t.Run("passes generated paging params and returns the generated envelope", func(t *testing.T) {
+		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
+		expectedList := []client.IPNSKeyListResponse{
+			{Id: 1, Name: "key1", IpnsName: "key1"},
+			{Id: 2, Name: "key2", IpnsName: "key2"},
+		}
+		expectedEnvelope := &client.IPNSKeyListResponseResponse{
+			Data:  expectedList,
+			Total: 2,
+		}
+
+		var gotParams *client.GetApiIpnsKeysParams
+		mockClient.EXPECT().
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.MatchedBy(func(p *client.GetApiIpnsKeysParams) bool {
+				gotParams = p
+				return p != nil &&
+					p.UnderscoreStart != nil && *p.UnderscoreStart == 5 &&
+					p.UnderscoreEnd != nil && *p.UnderscoreEnd == 15
+			})).
+			Return(&client.GetApiIpnsKeysResponse{
+				Body:         []byte("{}"),
+				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+				JSON200:      expectedEnvelope,
+			}, nil).
+			Once()
+
+		service := NewIPNSService(mockClient)
+		page, err := service.ListKeysPage(context.Background(), WithKeysStart(5), WithKeysLimit(10))
+
+		require.NoError(t, err)
+		require.NotNil(t, page)
+		require.NotNil(t, gotParams)
+
+		// IPNSKeyPage is the generated envelope type (Data+Total), used verbatim.
+		assert.Equal(t, 2, page.Total, "server-reported total must be retained")
+		assert.Equal(t, expectedList, page.Data, "generated envelope Data must be returned as-is")
+	})
+}
+
+// TestListKeysPageSendsPagingParams is the end-to-end guard that ListKeysPage
+// emits the generated _start/_end query params (derived as start and
+// start+limit) on the list request, and that a plain ListKeysPage sends no
+// paging params (server's default 10-item window).
+func TestListKeysPageSendsPagingParams(t *testing.T) {
+	var (
+		mu       sync.Mutex
+		gotQuery url.Values
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		gotQuery = r.URL.Query()
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"total":0}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	genClient, err := client.NewClientWithResponses(srv.URL)
+	require.NoError(t, err)
+	service := NewIPNSService(genClient)
+
+	// With paging: the generated _start/_end params must reach the server.
+	_, err = service.ListKeysPage(context.Background(), WithKeysStart(10), WithKeysLimit(5))
+	require.NoError(t, err)
+	mu.Lock()
+	start := gotQuery.Get("_start")
+	end := gotQuery.Get("_end")
+	mu.Unlock()
+	assert.Equal(t, "10", start, "_start must be sent from the generated params")
+	assert.Equal(t, "15", end, "_end must be derived as start+limit")
+
+	// Without paging: no query params on the list call.
+	_, err = service.ListKeysPage(context.Background())
+	require.NoError(t, err)
+	mu.Lock()
+	plainStart := gotQuery.Get("_start")
+	plainEnd := gotQuery.Get("_end")
+	mu.Unlock()
+	assert.Empty(t, plainStart, "plain ListKeysPage must not send _start")
+	assert.Empty(t, plainEnd, "plain ListKeysPage must not send _end")
+}
+
 func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
 	t.Run("retries on 502 bad gateway", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)
@@ -169,7 +258,7 @@ func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
 		}
 
 		mockClient.EXPECT().
-			GetApiIpnsKeysWithResponse(mock.Anything).
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.Anything).
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusBadGateway},
@@ -177,7 +266,7 @@ func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
 			Once()
 
 		mockClient.EXPECT().
-			GetApiIpnsKeysWithResponse(mock.Anything).
+			GetApiIpnsKeysWithResponse(mock.Anything, mock.Anything).
 			Return(&client.GetApiIpnsKeysResponse{
 				Body:         []byte("{}"),
 				HTTPResponse: &http.Response{StatusCode: http.StatusOK},
