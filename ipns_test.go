@@ -157,6 +157,53 @@ func TestListKeysSendsNameFilter(t *testing.T) {
 	assert.Empty(t, plain, "plain ListKeys must not send a name filter")
 }
 
+// TestListKeysPageSendsPaging is the end-to-end guard for server-side IPNS key
+// paging: ListKeysPage with WithKeysStart/WithKeysLimit must emit _start/_end
+// query params and preserve the total returned by the server.
+func TestListKeysPageSendsPaging(t *testing.T) {
+	var (
+		mu    sync.Mutex
+		query url.Values
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		query = r.URL.Query()
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":1,"name":"key1","ipns_name":"key1"}],"total":42}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	genClient, err := client.NewClientWithResponses(srv.URL)
+	require.NoError(t, err)
+	service := NewIPNSService(genClient)
+
+	page, err := service.ListKeysPage(context.Background(), "", WithKeysStart(10), WithKeysLimit(25))
+	require.NoError(t, err)
+	require.NotNil(t, page)
+	assert.Equal(t, 42, page.Total, "ListKeysPage must preserve the server-side total")
+	assert.Len(t, page.Items, 1, "ListKeysPage must surface the returned window items")
+
+	mu.Lock()
+	start := query.Get("_start")
+	end := query.Get("_end")
+	mu.Unlock()
+	assert.Equal(t, "10", start, "ListKeysPage must send _start")
+	assert.Equal(t, "35", end, "ListKeysPage must derive _end as start+limit")
+
+	// A name filter combined with paging must send both.
+	_, err = service.ListKeysPage(context.Background(), "docs", WithKeysStart(5), WithKeysLimit(3))
+	require.NoError(t, err)
+	mu.Lock()
+	filter := query.Get("filters[name][contains]")
+	start2 := query.Get("_start")
+	end2 := query.Get("_end")
+	mu.Unlock()
+	assert.Equal(t, "docs", filter, "ListKeysPage must send the name filter alongside paging")
+	assert.Equal(t, "5", start2, "ListKeysPage must send _start with filter")
+	assert.Equal(t, "8", end2, "ListKeysPage must send derived _end with filter")
+}
+
 func TestIPNSService_ListKeys_RetryOn502(t *testing.T) {
 	t.Run("retries on 502 bad gateway", func(t *testing.T) {
 		mockClient := mocks.NewMockIPNSClientWithResponsesInterface(t)

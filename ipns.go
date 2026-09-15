@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
 	httputil "go.lumeweb.com/ipfs-sdk/internal/http"
@@ -79,6 +80,39 @@ func (ListKeyOption) WithFilterName(name string) ListKeyOption {
 	return ListKeyOption{FilterName: name}
 }
 
+// IPNSKeyPage is a server-side paged window of IPNS keys together with the
+// total key count. It is returned by ListKeysPage.
+type IPNSKeyPage struct {
+	Items []IPNSKeyResponse
+	Total int
+}
+
+// ipnsPagingOptions holds the shared server-side paging state for the IPNS key
+// list call. _start/_end are sent as query params with end derived as
+// start+limit, matching the portal's queryutil list endpoints.
+type ipnsPagingOptions struct {
+	start int
+	limit int
+}
+
+// IPNSKeyPagingOption configures the server-side paging of ListKeysPage.
+type IPNSKeyPagingOption func(*ipnsPagingOptions)
+
+// WithKeysStart sets the 0-based offset of the keys window (_start). Use
+// together with WithKeysLimit to page beyond the server's default 10-item
+// window.
+func WithKeysStart(start int) IPNSKeyPagingOption {
+	return func(o *ipnsPagingOptions) { o.start = start }
+}
+
+// WithKeysLimit sets the number of keys per page; the underlying exclusive
+// _end index is derived as start+limit. The IPNS keys list defaults to a
+// 10-item window, so a caller paging beyond the first page must set an explicit
+// limit.
+func WithKeysLimit(limit int) IPNSKeyPagingOption {
+	return func(o *ipnsPagingOptions) { o.limit = limit }
+}
+
 // PublishOption applies optional parameters to Publish
 type PublishOption func(*IPNSPublishRequest)
 
@@ -93,6 +127,11 @@ func WithTTL(ttl string) PublishOption {
 type IPNSService interface {
 	// Key management
 	ListKeys(ctx context.Context, opts ...ListKeyOption) ([]IPNSKeyResponse, error)
+	// ListKeysPage returns a server-side paged window of the user's IPNS keys
+	// (optionally narrowed by a name substring filter) along with the total key
+	// count. Use WithKeysStart/WithKeysLimit to page beyond the backend's
+	// default 10-item window.
+	ListKeysPage(ctx context.Context, name string, opts ...IPNSKeyPagingOption) (*IPNSKeyPage, error)
 	GetKey(ctx context.Context, id string) (*IPNSKeyResponse, error)
 	CreateKey(ctx context.Context, name string, opts ...CreateKeyOption) (*IPNSKeyResponse, error)
 	DeleteKey(ctx context.Context, id string) error
@@ -155,7 +194,7 @@ func (s *ipnsService) ListKeys(ctx context.Context, opts ...ListKeyOption) ([]IP
 			// mocks are unaffected.
 			resp, err = s.client.GetApiIpnsKeysWithResponse(ctx)
 		} else {
-			reqEditor := buildListKeysEditor(filterName)
+			reqEditor := buildListKeysEditor(filterName, ipnsPagingOptions{})
 			resp, err = s.client.GetApiIpnsKeysWithResponse(ctx, reqEditor)
 		}
 		if err != nil {
@@ -195,19 +234,87 @@ func (s *ipnsService) ListKeys(ctx context.Context, opts ...ListKeyOption) ([]IP
 
 // buildListKeysEditor returns a request editor that appends the queryutil
 // list-query params for an IPNS key list call. When filterName is non-empty it
-// adds filters[name][contains]=<filterName>, matching the portal handler's
-// expectations for server-side name substring search with zero portal changes.
-// A nil filterName yields a nil editor (no query mutations).
-func buildListKeysEditor(filterName string) internalclient.RequestEditorFn {
-	if filterName == "" {
+// adds filters[name][contains]=<filterName>, and when paging is requested it
+// adds _start/_end, matching the portal handler's expectations for server-side
+// name substring search and paging with zero portal changes. A nil filterName
+// with no paging yields a nil editor (no query mutations).
+func buildListKeysEditor(filterName string, o ipnsPagingOptions) internalclient.RequestEditorFn {
+	if filterName == "" && o.start == 0 && o.limit == 0 {
 		return nil
 	}
 	return func(_ context.Context, req *http.Request) error {
 		q := req.URL.Query()
-		q.Set("filters[name][contains]", filterName)
+		if filterName != "" {
+			q.Set("filters[name][contains]", filterName)
+		}
+		if o.limit != 0 {
+			q.Set("_end", strconv.Itoa(o.start+o.limit))
+		}
+		if o.start != 0 {
+			q.Set("_start", strconv.Itoa(o.start))
+		}
 		req.URL.RawQuery = q.Encode()
 		return nil
 	}
+}
+
+// ListKeysPage retrieves a server-side paged window of the authenticated user's
+// IPNS keys (optionally narrowed by a name substring filter) and the total key
+// count. The backend applies a default 10-item window, so a caller that needs
+// more than the first page must pass paging options rather than assume
+// ListKeys returns everything.
+func (s *ipnsService) ListKeysPage(ctx context.Context, name string, opts ...IPNSKeyPagingOption) (*IPNSKeyPage, error) {
+	var o ipnsPagingOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	var page IPNSKeyPage
+
+	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
+		var (
+			resp *internalclient.GetApiIpnsKeysResponse
+			err  error
+		)
+		if editor := buildListKeysEditor(name, o); editor != nil {
+			resp, err = s.client.GetApiIpnsKeysWithResponse(ctx, editor)
+		} else {
+			resp, err = s.client.GetApiIpnsKeysWithResponse(ctx)
+		}
+		if err != nil {
+			return err
+		}
+
+		if err := handleResponse(resp.StatusCode(), resp.Body, OpListIPNSKeys, []int{http.StatusOK}); err != nil {
+			return err
+		}
+
+		if resp.JSON200 == nil {
+			page = IPNSKeyPage{Items: []IPNSKeyResponse{}, Total: 0}
+			return nil
+		}
+
+		page = IPNSKeyPage{
+			Items: lo.Map(resp.JSON200.Data, func(item internalclient.IPNSKeyListResponse, _ int) internalclient.IPNSKeyResponse {
+				return internalclient.IPNSKeyResponse{
+					Created:         item.Created,
+					Id:              item.Id,
+					IpnsName:        item.IpnsName,
+					LastPublishedAt: item.LastPublishedAt,
+					Name:            item.Name,
+					PeerId:          item.PeerId,
+					Value:           item.Value,
+				}
+			}),
+			Total: resp.JSON200.Total,
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &page, nil
 }
 
 // GetKey retrieves a specific IPNS key by ID
