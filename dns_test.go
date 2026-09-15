@@ -2,6 +2,7 @@ package ipfs
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -300,6 +301,140 @@ func TestDNSService_ListRecords(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, records)
 	})
+}
+
+// applyEditor runs a request editor against a clean GET request so tests can
+// assert which query/regex params the SDK actually sent on the wire. Editors
+// only mutate the request in place, so each call needs a fresh request.
+func applyEditor(editor internalclient.RequestEditorFn) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/api/dns/zones", nil)
+	if err != nil {
+		return nil, err
+	}
+	err = editor(context.Background(), req)
+	return req, err
+}
+
+func TestDNSService_ListZonesPage_ServerSidePaging(t *testing.T) {
+	service, mockClient := testDNSService(t)
+
+	// Build 25 zones so page 2 (10..19) is a non-empty window distinct from page 1.
+	zone := func(id int, domain string) internalclient.ZoneListResponse {
+		return internalclient.ZoneListResponse{Id: id, Domain: domain, Status: "active"}
+	}
+	p2 := make([]internalclient.ZoneListResponse, 0, 10)
+	for i := 0; i < 10; i++ {
+		p2 = append(p2, zone(10+i, fmt.Sprintf("z%d.example", 10+i)))
+	}
+
+	var captured []internalclient.RequestEditorFn
+	mockClient.EXPECT().
+		// The paged call passes one request editor for the _start/_end params,
+		// so the variadic editor argument must be declared for the mock to match.
+		GetApiDnsZonesWithResponse(mock.Anything, mock.Anything).
+		Run(func(ctx context.Context, reqEditors ...internalclient.RequestEditorFn) {
+			captured = reqEditors
+		}).
+		Return(&internalclient.GetApiDnsZonesResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &internalclient.ZoneListResponseResponse{
+				Data:  p2,
+				Total: 25,
+			},
+		}, nil).
+		Once()
+
+	page, err := service.ListZonesPage(context.Background(), WithZonesStart(10), WithZonesLimit(10))
+
+	require.NoError(t, err)
+	require.Len(t, captured, 1, "paging options must attach a request editor")
+	req, aerr := applyEditor(captured[0])
+	require.NoError(t, aerr)
+	assert.Equal(t, "10", req.URL.Query().Get("_start"), "_start must be the requested offset")
+	assert.Equal(t, "20", req.URL.Query().Get("_end"), "_end must be start+limit (exclusive)")
+	assert.Len(t, page.Data, 10, "page 2 must hold exactly the 10-item window")
+	assert.Equal(t, "z10.example", page.Data[0].Domain, "page 2 starts at record index 10")
+	assert.Equal(t, 25, page.Total, "server total must be preserved, not discarded")
+}
+
+func TestDNSService_ListZones_NoOpEditorPreserved(t *testing.T) {
+	service, mockClient := testDNSService(t)
+
+	mockClient.EXPECT().
+		GetApiDnsZonesWithResponse(mock.Anything).
+		Return(&internalclient.GetApiDnsZonesResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200:      &internalclient.ZoneListResponseResponse{Data: []internalclient.ZoneListResponse{}, Total: 0},
+		}, nil).
+		Once()
+
+	// With no paging options the method must use the no-editor call, so the
+	// mock (which declared no editor) matches and the slice shim still works.
+	zones, err := service.ListZones(context.Background())
+
+	require.NoError(t, err)
+	assert.Empty(t, zones)
+}
+
+func TestDNSService_ListRecordsPage_PageTwo(t *testing.T) {
+	service, mockClient := testDNSService(t)
+
+	// Records 11..20: page 2 of a 20-record zone.
+	p2 := make([]internalclient.RecordResponse, 0, 10)
+	for i := 0; i < 10; i++ {
+		p2 = append(p2, internalclient.RecordResponse{
+			Name:    fmt.Sprintf("h%d", 11+i),
+			Type:    "A",
+			Content: fmt.Sprintf("10.0.0.%d", 11+i),
+		})
+	}
+
+	var captured []internalclient.RequestEditorFn
+	mockClient.EXPECT().
+		// The paged call passes one request editor for the _start/_end params,
+		// so the variadic editor argument must be declared for the mock to match.
+		GetApiDnsZonesIdRecordsWithResponse(mock.Anything, "123", mock.Anything).
+		Run(func(ctx context.Context, id string, reqEditors ...internalclient.RequestEditorFn) {
+			captured = reqEditors
+		}).
+		Return(&internalclient.GetApiDnsZonesIdRecordsResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200: &internalclient.RecordResponseResponse{
+				Data:  p2,
+				Total: 20,
+			},
+		}, nil).
+		Once()
+
+	page, err := service.ListRecordsPage(context.Background(), "123", WithRecordsStart(10), WithRecordsLimit(10))
+
+	require.NoError(t, err)
+	require.Len(t, captured, 1, "paging options must attach a request editor")
+	req, aerr := applyEditor(captured[0])
+	require.NoError(t, aerr)
+	assert.Equal(t, "10", req.URL.Query().Get("_start"))
+	assert.Equal(t, "20", req.URL.Query().Get("_end"))
+	require.Len(t, page.Data, 10, "page 2 must return records 11..20")
+	assert.Equal(t, "h11", page.Data[0].Name, "page 2 starts at record 11")
+	assert.Equal(t, "h20", page.Data[9].Name, "page 2 ends at record 20")
+	assert.Equal(t, 20, page.Total, "server total must be preserved")
+}
+
+func TestDNSService_ListRecords_NoOpEditorPreserved(t *testing.T) {
+	service, mockClient := testDNSService(t)
+
+	mockClient.EXPECT().
+		GetApiDnsZonesIdRecordsWithResponse(mock.Anything, "123").
+		Return(&internalclient.GetApiDnsZonesIdRecordsResponse{
+			HTTPResponse: &http.Response{StatusCode: http.StatusOK},
+			JSON200:      &internalclient.RecordResponseResponse{Data: []internalclient.RecordResponse{}, Total: 0},
+		}, nil).
+		Once()
+
+	records, err := service.ListRecords(context.Background(), "123")
+
+	require.NoError(t, err)
+	assert.Empty(t, records)
 }
 
 func TestDNSService_CreateRecord(t *testing.T) {

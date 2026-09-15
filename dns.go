@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	dnsreq "go.lumeweb.com/ipfs-sdk/internal/dnsreq"
 	internalclient "go.lumeweb.com/ipfs-sdk/internal/client"
@@ -59,6 +60,74 @@ func WithDNSClient(client DNSClientWithResponsesInterface) DNSOption {
 	}
 }
 
+// Type aliases for the DNS paged list responses, backed by the generated
+// concrete Swagger client types. ZonePage/RecordPage expose the window the
+// server returned (Data) plus the server's Total count; the total is needed to
+// render "showing X of Y" without truncation, because the backend applies a
+// default 10-row window even when the caller requests no explicit paging.
+type ZonePage = internalclient.ZoneListResponseResponse
+type RecordPage = internalclient.RecordResponseResponse
+
+// dnsListOptions holds the shared server-side paging state for the zone and
+// record list calls. It mirrors the websites list filter pattern: _start/_end
+// are sent as query params with end derived as start+limit.
+type dnsListOptions struct {
+	start int
+	limit int
+}
+
+// ListZonesOption configures the server-side paging of ListZonesPage.
+type ListZonesOption func(*dnsListOptions)
+
+// ListRecordsOption configures the server-side paging of ListRecordsPage.
+type ListRecordsOption func(*dnsListOptions)
+
+// WithZonesStart sets the 0-based offset of the zones window (_start). Use
+// together with WithZonesLimit to page beyond the server's default 10-item
+// window.
+func WithZonesStart(start int) ListZonesOption {
+	return func(o *dnsListOptions) { o.start = start }
+}
+
+// WithZonesLimit sets the number of zones per page; the underlying exclusive
+// _end index is derived as start+limit. The zones list defaults to a 10-item
+// window, so a caller paging beyond the first page must set an explicit limit.
+func WithZonesLimit(limit int) ListZonesOption {
+	return func(o *dnsListOptions) { o.limit = limit }
+}
+
+// WithRecordsStart sets the 0-based offset of the records window (_start).
+func WithRecordsStart(start int) ListRecordsOption {
+	return func(o *dnsListOptions) { o.start = start }
+}
+
+// WithRecordsLimit sets the number of records per page; the underlying
+// exclusive _end index is derived as start+limit.
+func WithRecordsLimit(limit int) ListRecordsOption {
+	return func(o *dnsListOptions) { o.limit = limit }
+}
+
+// buildDNSListEditor returns a request editor that appends the _start/_end
+// paging query params for a DNS list call. Calls with no paging yield a nil
+// editor so existing callers and test mocks that use the no-editor path stay
+// unaffected.
+func buildDNSListEditor(o dnsListOptions) internalclient.RequestEditorFn {
+	if o.start == 0 && o.limit == 0 {
+		return nil
+	}
+	return func(_ context.Context, req *http.Request) error {
+		q := req.URL.Query()
+		if o.limit != 0 {
+			q.Set("_end", strconv.Itoa(o.start+o.limit))
+		}
+		if o.start != 0 {
+			q.Set("_start", strconv.Itoa(o.start))
+		}
+		req.URL.RawQuery = q.Encode()
+		return nil
+	}
+}
+
 // Type aliases for DNS validation response
 type ValidationResponse = internalclient.ValidationResponse
 
@@ -66,6 +135,10 @@ type ValidationResponse = internalclient.ValidationResponse
 type DNSService interface {
 	// Zone management
 	ListZones(ctx context.Context) ([]ZoneListResponse, error)
+	// ListZonesPage returns a server-side paged window of the user's zones along
+	// with the total zone count. Use WithZonesStart/WithZonesLimit to page
+	// beyond the backend's default 10-item window.
+	ListZonesPage(ctx context.Context, opts ...ListZonesOption) (*ZonePage, error)
 	GetZone(ctx context.Context, id string) (*ZoneResponse, error)
 	CreateZone(ctx context.Context, domain string, nameservers []string) (*ZoneResponse, error)
 	DeleteZone(ctx context.Context, id string) error
@@ -74,6 +147,9 @@ type DNSService interface {
 
 	// Record management
 	ListRecords(ctx context.Context, zoneID string) ([]RecordResponse, error)
+	// ListRecordsPage returns a server-side paged window of a zone's records
+	// along with the total record count.
+	ListRecordsPage(ctx context.Context, zoneID string, opts ...ListRecordsOption) (*RecordPage, error)
 	CreateRecord(ctx context.Context, zoneID string, record RecordRequest) (*RecordResponse, error)
 	GetRecord(ctx context.Context, zoneID string, name string, recordType string) (*RecordResponse, error)
 	UpdateRecord(ctx context.Context, zoneID string, name string, recordType string, record RecordRequest) (*RecordResponse, error)
@@ -117,12 +193,28 @@ func NewDNSServiceFromClient(genClient *internalclient.ClientWithResponses, opts
 	return NewDNSService(genClient, opts...)
 }
 
-// ListZones retrieves all DNS zones for the authenticated user
-func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) {
-	var result []ZoneListResponse
+// ListZonesPage retrieves a paged window of the authenticated user's DNS zones
+// and the total zone count. The backend applies a default 10-item window, so a
+// caller that needs more than the first page (e.g. an internal scan) must pass
+// paging options rather than assume ListZones returns everything.
+func (s *dnsService) ListZonesPage(ctx context.Context, opts ...ListZonesOption) (*ZonePage, error) {
+	var o dnsListOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	var page ZonePage
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.GetApiDnsZonesWithResponse(ctx)
+		var (
+			resp *internalclient.GetApiDnsZonesResponse
+			err  error
+		)
+		if editor := buildDNSListEditor(o); editor != nil {
+			resp, err = s.client.GetApiDnsZonesWithResponse(ctx, editor)
+		} else {
+			resp, err = s.client.GetApiDnsZonesWithResponse(ctx)
+		}
 		if err != nil {
 			return err
 		}
@@ -131,19 +223,34 @@ func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) 
 			return err
 		}
 
-		if resp.JSON200 == nil || resp.JSON200.Data == nil {
-			result = []ZoneListResponse{}
+		if resp.JSON200 == nil {
+			page = ZonePage{}
 			return nil
 		}
 
-		result = resp.JSON200.Data
+		// Retain the server-reported total: a paged window is a prefix of a
+		// larger set, and callers use Total to reflect accurate counts. The
+		// generated response type carries the total, so copy it as-is.
+		page = *resp.JSON200
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &page, nil
+}
+
+// ListZones retrieves the backend's default window of DNS zones for the
+// authenticated user. This is kept for backward compatibility; callers that
+// need data beyond the first page should use ListZonesPage with explicit
+// paging instead.
+func (s *dnsService) ListZones(ctx context.Context) ([]ZoneListResponse, error) {
+	page, err := s.ListZonesPage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return page.Data, nil
 }
 
 // GetZone retrieves a specific DNS zone by ID
@@ -271,12 +378,28 @@ func (s *dnsService) ValidateZone(ctx context.Context, id string) (*ValidationRe
 	return result, nil
 }
 
-// ListRecords retrieves all DNS records for a zone
-func (s *dnsService) ListRecords(ctx context.Context, zoneID string) ([]RecordResponse, error) {
-	var result []RecordResponse
+// ListRecordsPage retrieves a paged window of a zone's DNS records and the
+// total record count. The backend applies a default 10-item window, so a caller
+// that needs more than the first page (e.g. resolving a record to delete) must
+// pass paging options rather than assume ListRecords returns everything.
+func (s *dnsService) ListRecordsPage(ctx context.Context, zoneID string, opts ...ListRecordsOption) (*RecordPage, error) {
+	var o dnsListOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	var page RecordPage
 
 	err := httputil.RetryContext(ctx, s.config.Retry, func() error {
-		resp, err := s.client.GetApiDnsZonesIdRecordsWithResponse(ctx, zoneID)
+		var (
+			resp *internalclient.GetApiDnsZonesIdRecordsResponse
+			err  error
+		)
+		if editor := buildDNSListEditor(o); editor != nil {
+			resp, err = s.client.GetApiDnsZonesIdRecordsWithResponse(ctx, zoneID, editor)
+		} else {
+			resp, err = s.client.GetApiDnsZonesIdRecordsWithResponse(ctx, zoneID)
+		}
 		if err != nil {
 			return err
 		}
@@ -285,19 +408,33 @@ func (s *dnsService) ListRecords(ctx context.Context, zoneID string) ([]RecordRe
 			return err
 		}
 
-		if resp.JSON200 == nil || resp.JSON200.Data == nil {
-			result = []RecordResponse{}
+		if resp.JSON200 == nil {
+			page = RecordPage{}
 			return nil
 		}
 
-		result = resp.JSON200.Data
+		// Retain the server-reported total: a paged window is a prefix of a
+		// larger set, and callers use Total to reflect accurate counts. The
+		// generated response type carries the total, so copy it as-is.
+		page = *resp.JSON200
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	return &page, nil
+}
+
+// ListRecords retrieves the backend's default window of DNS records for a zone.
+// This is kept for backward compatibility; callers that need data beyond the
+// first page should use ListRecordsPage with explicit paging instead.
+func (s *dnsService) ListRecords(ctx context.Context, zoneID string) ([]RecordResponse, error) {
+	page, err := s.ListRecordsPage(ctx, zoneID)
+	if err != nil {
+		return nil, err
+	}
+	return page.Data, nil
 }
 
 // handleCreateResponse handles responses for create operations that may return either 200 or 201
